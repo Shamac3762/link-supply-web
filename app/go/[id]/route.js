@@ -1,13 +1,17 @@
 import { createClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
 
+// Tell the server NEVER to cache this, so every single tap is counted!
+export const dynamic = 'force-dynamic'
+
 export async function GET(request, { params }) {
   const { id } = await params 
   
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-  )
+  // THE FIX: We now use the secret Master Key so the counter updates for anyone!
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseMasterKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  
+  const supabase = createClient(supabaseUrl, supabaseMasterKey)
 
   const { data, error } = await supabase
     .from('nfc_stickers')
@@ -24,7 +28,7 @@ export async function GET(request, { params }) {
   }
 
   if (data.target_url) {
-    // 🔥 PREMIUM ANALYTICS: Add +1 to the count and stamp the exact current time
+    // Because we have the Master Key, this will now successfully update!
     await supabase
       .from('nfc_stickers')
       .update({ 
