@@ -2,28 +2,39 @@ import { createClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
 
 export async function GET(request, { params }) {
-  // 1. Wait for the ID from the URL (e.g., /go/LS-001)
   const { id } = await params 
   
-  // 2. Connect to your Supabase project using the keys we put in Vercel
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
   )
 
-  // 3. Search your table for a matching ID
   const { data, error } = await supabase
     .from('nfc_stickers')
-    .select('target_url')
+    .select('target_url, owner_id, tap_count')
     .eq('id', id)
     .single()
 
-  // 4. If we found a link, send the user there immediately
-  if (data?.target_url) {
+  if (error || !data) {
+    return NextResponse.redirect(new URL('/', request.url))
+  }
+
+  if (!data.owner_id) {
+    return NextResponse.redirect(new URL(`/claim/${id}`, request.url))
+  }
+
+  if (data.target_url) {
+    // 🔥 PREMIUM ANALYTICS: Add +1 to the count and stamp the exact current time
+    await supabase
+      .from('nfc_stickers')
+      .update({ 
+        tap_count: (data.tap_count || 0) + 1,
+        last_tapped_at: new Date().toISOString() 
+      })
+      .eq('id', id)
+
     return NextResponse.redirect(new URL(data.target_url))
   }
 
-  // 5. If no ID is found (or error), send them back to your homepage
-  console.error("Redirect error or ID not found:", error)
-  return NextResponse.redirect(new URL('/', request.url))
+  return NextResponse.redirect(new URL('/login', request.url))
 }
