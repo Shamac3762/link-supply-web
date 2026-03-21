@@ -26,7 +26,7 @@ export default function PremiumLoginPage() {
         email, 
         password,
         options: {
-          data: { first_name: firstName, last_name: lastName } // Sends name to your new CRM
+          data: { first_name: firstName, last_name: lastName } 
         }
       })
       if (error) setMessage(error.message)
@@ -69,6 +69,13 @@ export default function PremiumLoginPage() {
           <input required type="email" placeholder="Email Address" onChange={(e) => setEmail(e.target.value)} style={inputStyle} />
           <input required type="password" placeholder="Password" onChange={(e) => setPassword(e.target.value)} style={inputStyle} />
 
+          {/* 🔥 NEW FORGOT PASSWORD LINK - Only shows on the Login screen! 🔥 */}
+          {!isSignUp && (
+            <div style={{ textAlign: 'right', marginTop: '-10px', marginBottom: '15px' }}>
+              <a href="/forgot-password" style={{ fontSize: '13px', color: '#4f46e5', textDecoration: 'none', fontWeight: '600' }}>Forgot password?</a>
+            </div>
+          )}
+
           <button disabled={loading} type="submit" style={{ 
             width: '100%', padding: '14px', backgroundColor: '#111', color: 'white', 
             border: 'none', borderRadius: '8px', fontSize: '16px', fontWeight: 'bold', 
@@ -84,6 +91,7 @@ export default function PremiumLoginPage() {
           <p style={{ color: '#666', fontSize: '14px' }}>
             {isSignUp ? 'Already have an account?' : "Don't have an account?"}
             <button 
+              type="button"
               onClick={() => { setIsSignUp(!isSignUp); setMessage(''); }} 
               style={{ background: 'none', border: 'none', color: '#0070f3', fontWeight: 'bold', cursor: 'pointer', marginLeft: '5px' }}
             >
