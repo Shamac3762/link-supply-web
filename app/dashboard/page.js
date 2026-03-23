@@ -28,12 +28,11 @@ export default function PremiumDashboard() {
     const { data: { session } } = await supabase.auth.getSession()
     if (!session) return router.push('/login') 
 
-    const { data: customerData } = await supabase
-      .from('customers')
-      .select('first_name')
-      .eq('id', session.user.id)
-      .single()
-    if (customerData) setProfile(customerData)
+    // 🔥 THE FIX: Pull the first name directly from their secure login token!
+    const firstName = session.user.user_metadata?.first_name
+    if (firstName) {
+      setProfile({ first_name: firstName })
+    }
 
     const { data: stickerData } = await supabase
       .from('nfc_stickers')
@@ -187,7 +186,6 @@ export default function PremiumDashboard() {
                   </div>
                 </div>
 
-                {/* NEW CONFIGURATION SECTION: Name & URL */}
                 <div style={{ marginTop: '5px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
                   
                   <div>
