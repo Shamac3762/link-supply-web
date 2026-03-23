@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { createClient } from '../../utils/supabase/client'
 import { useRouter } from 'next/navigation'
 
@@ -7,40 +7,52 @@ export default function UpdatePassword() {
   const [password, setPassword] = useState('')
   const [message, setMessage] = useState('Verifying secure link...')
   const [isError, setIsError] = useState(false)
-  
-  // We lock the form (loading = true) until the code is securely exchanged
   const [loading, setLoading] = useState(true) 
+  
+  // 🔥 THE SHIELD: This stops React from double-firing the security code
+  const hasAttempted = useRef(false)
   
   const supabase = createClient()
   const router = useRouter()
 
   useEffect(() => {
     const setupSession = async () => {
-      // 1. Grab the secure PKCE code from the web address
+      // If we already verified the code, stop immediately to prevent the double-fire bug
+      if (hasAttempted.current) return
+      hasAttempted.current = true
+
       const params = new URLSearchParams(window.location.search)
       const code = params.get('code')
 
       if (code) {
-        // 2. Trade the code for a real, secure session!
+        // Trade the single-use code for a real session
         const { error } = await supabase.auth.exchangeCodeForSession(code)
+        
         if (error) {
           setIsError(true)
           setMessage('This reset link is invalid or has expired. Please request a new one.')
+          setLoading(false)
           return
         }
+        
+        // Success! We hide the code from the web address so it stays clean
+        window.history.replaceState({}, document.title, window.location.pathname)
       }
       
-      // 3. Double-check that the session is officially active
-      const { data: { session } } = await supabase.auth.getSession()
-      
-      if (!session) {
-        setIsError(true)
-        setMessage('No active session found. Please request a new reset link.')
-      } else {
-        setIsError(false)
-        setMessage('') // Clear the "Verifying..." message
-        setLoading(false) // Unlock the button!
-      }
+      // Give Supabase a split second to lock in the new session
+      setTimeout(async () => {
+        const { data: { session } } = await supabase.auth.getSession()
+        
+        if (!session) {
+          setIsError(true)
+          setMessage('No active session found. Please request a new reset link.')
+          setLoading(false)
+        } else {
+          setIsError(false)
+          setMessage('') 
+          setLoading(false) // Unlocks the form!
+        }
+      }, 500)
     }
 
     setupSession()
@@ -51,7 +63,6 @@ export default function UpdatePassword() {
     setLoading(true)
     setMessage('')
 
-    // Now that the session is locked in, we can safely update the password!
     const { error } = await supabase.auth.updateUser({
       password: password
     })
@@ -86,7 +97,7 @@ export default function UpdatePassword() {
               minLength="6"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              disabled={loading} // Prevents typing until verification is done
+              disabled={loading}
               style={{ width: '100%', padding: '14px', borderRadius: '10px', border: '1px solid #d1d5db', fontSize: '16px', boxSizing: 'border-box', backgroundColor: loading ? '#f9fafb' : 'white' }}
               placeholder="••••••••"
             />
