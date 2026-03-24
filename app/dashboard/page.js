@@ -18,6 +18,7 @@ export default function PremiumDashboard() {
   const [newLinkUrl, setNewLinkUrl] = useState('')
 
   const [profile, setProfile] = useState(null)
+  const [maxLinks, setMaxLinks] = useState(2) // 🔥 NEW: Tracks their specific limit
   const [loading, setLoading] = useState(true)
   const [saveStatus, setSaveStatus] = useState({}) 
 
@@ -37,7 +38,6 @@ export default function PremiumDashboard() {
   const fetchData = async () => {
     const { data: { session } } = await supabase.auth.getSession()
     
-    // 🔥 THE BATON PASS SENDER: Bounce them to login, but keep the claim ID!
     if (!session) {
       const params = new URLSearchParams(window.location.search)
       const claimParam = params.get('claim')
@@ -49,9 +49,10 @@ export default function PremiumDashboard() {
 
     const firstName = session.user.user_metadata?.first_name
     
+    // 🔥 NEW: We now ask the database for max_links
     const { data: customerData } = await supabase
       .from('customers')
-      .select('username, bio, theme_color')
+      .select('username, bio, theme_color, max_links')
       .eq('id', session.user.id)
       .single()
 
@@ -62,6 +63,9 @@ export default function PremiumDashboard() {
         bio: customerData.bio || '',
         theme_color: customerData.theme_color || '#111111'
       })
+      if (customerData.max_links !== undefined) {
+        setMaxLinks(customerData.max_links)
+      }
     }
 
     const { data: stickerData } = await supabase
@@ -82,7 +86,6 @@ export default function PremiumDashboard() {
   }
 
   const handleActivateTag = async () => {
-    // 🔥 ENFORCING 8 CHARACTERS
     if (!claimId || claimPin.length < 8) return setClaimMessage("Please enter a valid Tag ID and 8-character Activation Code.")
     setIsClaiming(true)
     setClaimMessage("Verifying vault...")
@@ -91,6 +94,7 @@ export default function PremiumDashboard() {
     const { error, data } = await supabase.from('nfc_stickers')
       .update({ owner_id: session.user.id }) 
       .eq('id', claimId.toUpperCase()).eq('activation_code', claimPin).is('owner_id', null).select()
+
     if (error || !data || data.length === 0) {
       setClaimMessage("Error: Invalid Code, wrong ID, or tag is already owned.")
     } else {
@@ -113,7 +117,6 @@ export default function PremiumDashboard() {
   const handleSaveProfile = async () => {
     setSaveStatus({ ...saveStatus, profile: 'Saving...' })
     const { data: { session } } = await supabase.auth.getSession()
-    
     const cleanUsername = pageProfile.username.toLowerCase().replace(/[^a-z0-9_]/g, '')
     
     const { error } = await supabase.from('customers')
@@ -137,6 +140,10 @@ export default function PremiumDashboard() {
   const handleAddLink = async (e) => {
     e.preventDefault()
     if (!newLinkTitle || !newLinkUrl) return
+    
+    // 🔥 SECURITY: Stop them here just in case they try to hack the form
+    if (pageLinks.length >= maxLinks) return alert("Link limit reached.")
+
     const { data: { session } } = await supabase.auth.getSession()
 
     const { error } = await supabase.from('page_links').insert([{ 
@@ -163,6 +170,10 @@ export default function PremiumDashboard() {
     router.push('/login')
   }
 
+  // 🔥 LOGIC: Check if they hit their cap
+  const isAtLimit = pageLinks.length >= maxLinks
+  const displayLimit = maxLinks > 100 ? 'Unlimited' : maxLinks
+
   if (loading) return <div style={{ minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', backgroundColor: '#f3f4f6' }}>Loading Workspace...</div>
 
   return (
@@ -179,16 +190,10 @@ export default function PremiumDashboard() {
       <main style={{ maxWidth: '900px', margin: '40px auto', padding: '0 20px' }}>
         
         <div style={{ display: 'flex', gap: '10px', marginBottom: '30px', backgroundColor: '#e5e7eb', padding: '6px', borderRadius: '12px' }}>
-          <button 
-            onClick={() => setActiveTab('hardware')}
-            style={{ flex: 1, padding: '12px', borderRadius: '8px', border: 'none', fontWeight: '700', fontSize: '15px', cursor: 'pointer', backgroundColor: activeTab === 'hardware' ? 'white' : 'transparent', color: activeTab === 'hardware' ? '#111' : '#6b7280', boxShadow: activeTab === 'hardware' ? '0 2px 4px rgba(0,0,0,0.05)' : 'none', transition: 'all 0.2s' }}
-          >
+          <button onClick={() => setActiveTab('hardware')} style={{ flex: 1, padding: '12px', borderRadius: '8px', border: 'none', fontWeight: '700', fontSize: '15px', cursor: 'pointer', backgroundColor: activeTab === 'hardware' ? 'white' : 'transparent', color: activeTab === 'hardware' ? '#111' : '#6b7280', boxShadow: activeTab === 'hardware' ? '0 2px 4px rgba(0,0,0,0.05)' : 'none', transition: 'all 0.2s' }}>
             My Hardware Tags
           </button>
-          <button 
-            onClick={() => setActiveTab('page')}
-            style={{ flex: 1, padding: '12px', borderRadius: '8px', border: 'none', fontWeight: '700', fontSize: '15px', cursor: 'pointer', backgroundColor: activeTab === 'page' ? 'white' : 'transparent', color: activeTab === 'page' ? '#111' : '#6b7280', boxShadow: activeTab === 'page' ? '0 2px 4px rgba(0,0,0,0.05)' : 'none', transition: 'all 0.2s' }}
-          >
+          <button onClick={() => setActiveTab('page')} style={{ flex: 1, padding: '12px', borderRadius: '8px', border: 'none', fontWeight: '700', fontSize: '15px', cursor: 'pointer', backgroundColor: activeTab === 'page' ? 'white' : 'transparent', color: activeTab === 'page' ? '#111' : '#6b7280', boxShadow: activeTab === 'page' ? '0 2px 4px rgba(0,0,0,0.05)' : 'none', transition: 'all 0.2s' }}>
             My Premium Page
           </button>
         </div>
@@ -197,32 +202,11 @@ export default function PremiumDashboard() {
           <div>
             <div style={{ backgroundColor: '#111', padding: '30px', borderRadius: '16px', marginBottom: '40px', color: 'white', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)' }}>
               <h2 style={{ fontSize: '20px', margin: '0 0 5px 0', fontWeight: '700' }}>Activate a New Tag</h2>
-              
-              {/* 🔥 UPDATED WORDING FOR 8-CHARACTER CODE */}
               <p style={{ color: '#9ca3af', fontSize: '14px', marginBottom: '20px' }}>Enter the Tag ID and the 8-character Activation Code included in your packaging.</p>
-              
               <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap' }}>
-                <input 
-                  type="text" 
-                  placeholder="Tag ID (e.g. LS-005)" 
-                  value={claimId} 
-                  onChange={(e) => setClaimId(e.target.value.toUpperCase())} 
-                  style={{ flex: 1, padding: '12px 16px', borderRadius: '8px', border: 'none', fontSize: '16px', color: '#111', minWidth: '200px' }} 
-                />
-                
-                {/* 🔥 UPDATED INPUT BOX FOR 8 CHARACTERS & AUTO-UPPERCASE */}
-                <input 
-                  type="text" 
-                  maxLength="8" 
-                  placeholder="8-Char Code" 
-                  value={claimPin} 
-                  onChange={(e) => setClaimPin(e.target.value.toUpperCase())} 
-                  style={{ width: '160px', padding: '12px 16px', borderRadius: '8px', border: 'none', fontSize: '16px', color: '#111', textAlign: 'center', letterSpacing: '2px', textTransform: 'uppercase' }} 
-                />
-                
-                <button onClick={handleActivateTag} disabled={isClaiming} style={{ padding: '0 24px', backgroundColor: '#3b82f6', color: 'white', border: 'none', borderRadius: '8px', fontWeight: '700', cursor: 'pointer', minWidth: '140px' }}>
-                  {isClaiming ? 'Verifying...' : 'Link to Account'}
-                </button>
+                <input type="text" placeholder="Tag ID (e.g. LS-005)" value={claimId} onChange={(e) => setClaimId(e.target.value.toUpperCase())} style={{ flex: 1, padding: '12px 16px', borderRadius: '8px', border: 'none', fontSize: '16px', color: '#111', minWidth: '200px' }} />
+                <input type="text" maxLength="8" placeholder="8-Char Code" value={claimPin} onChange={(e) => setClaimPin(e.target.value.toUpperCase())} style={{ width: '160px', padding: '12px 16px', borderRadius: '8px', border: 'none', fontSize: '16px', color: '#111', textAlign: 'center', letterSpacing: '2px', textTransform: 'uppercase' }} />
+                <button onClick={handleActivateTag} disabled={isClaiming} style={{ padding: '0 24px', backgroundColor: '#3b82f6', color: 'white', border: 'none', borderRadius: '8px', fontWeight: '700', cursor: 'pointer', minWidth: '140px' }}>{isClaiming ? 'Verifying...' : 'Link to Account'}</button>
               </div>
               {claimMessage && <p style={{ marginTop: '15px', color: claimMessage.includes('Success') ? '#34d399' : '#f87171', fontWeight: '600', fontSize: '14px' }}>{claimMessage}</p>}
             </div>
@@ -266,7 +250,6 @@ export default function PremiumDashboard() {
             <div style={{ backgroundColor: 'white', padding: '30px', borderRadius: '16px', border: '1px solid #e5e7eb', marginBottom: '30px' }}>
               <h2 style={{ fontSize: '20px', fontWeight: '700', color: '#111', marginBottom: '20px' }}>Page Identity</h2>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                
                 <div>
                   <label style={{ display: 'block', fontSize: '14px', color: '#4b5563', marginBottom: '8px', fontWeight: '600' }}>Public Username (URL)</label>
                   <div style={{ display: 'flex', alignItems: 'center', backgroundColor: '#f9fafb', border: '1px solid #d1d5db', borderRadius: '10px', padding: '0 14px' }}>
@@ -274,12 +257,10 @@ export default function PremiumDashboard() {
                     <input type="text" value={pageProfile.username} placeholder="mybrand" onChange={(e) => setPageProfile({...pageProfile, username: e.target.value})} style={{ flex: 1, padding: '14px 0', border: 'none', backgroundColor: 'transparent', fontSize: '16px', color: '#111', outline: 'none', fontWeight: '600' }} />
                   </div>
                 </div>
-
                 <div>
                   <label style={{ display: 'block', fontSize: '14px', color: '#4b5563', marginBottom: '8px', fontWeight: '600' }}>Short Bio</label>
                   <textarea value={pageProfile.bio} placeholder="Welcome to our restaurant! Check out our menus and socials below." onChange={(e) => setPageProfile({...pageProfile, bio: e.target.value})} rows="3" style={{ width: '100%', padding: '14px', borderRadius: '10px', border: '1px solid #d1d5db', fontSize: '15px', color: '#111', outline: 'none', resize: 'vertical' }} />
                 </div>
-
                 <div>
                   <label style={{ display: 'block', fontSize: '14px', color: '#4b5563', marginBottom: '8px', fontWeight: '600' }}>Brand Color</label>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
@@ -287,12 +268,19 @@ export default function PremiumDashboard() {
                     <button onClick={handleSaveProfile} style={{ padding: '12px 24px', backgroundColor: '#111', color: 'white', border: 'none', borderRadius: '10px', fontWeight: '600', cursor: 'pointer' }}>{saveStatus.profile || 'Save Profile Info'}</button>
                   </div>
                 </div>
-
               </div>
             </div>
 
             <div style={{ backgroundColor: 'white', padding: '30px', borderRadius: '16px', border: '1px solid #e5e7eb' }}>
-              <h2 style={{ fontSize: '20px', fontWeight: '700', color: '#111', marginBottom: '5px' }}>Your Links</h2>
+              
+              {/* 🔥 NEW: The Link Counter header */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '5px' }}>
+                <h2 style={{ fontSize: '20px', fontWeight: '700', color: '#111', margin: 0 }}>Your Links</h2>
+                <span style={{ fontSize: '14px', fontWeight: '600', color: isAtLimit && maxLinks <= 100 ? '#dc2626' : '#6b7280', backgroundColor: '#f3f4f6', padding: '4px 10px', borderRadius: '20px' }}>
+                  {pageLinks.length} / {displayLimit} Used
+                </span>
+              </div>
+              
               <p style={{ color: '#6b7280', fontSize: '14px', marginBottom: '20px' }}>Add all the links you want to display to your customers.</p>
               
               <div style={{ display: 'flex', flexDirection: 'column', gap: '15px', marginBottom: '30px' }}>
@@ -311,13 +299,26 @@ export default function PremiumDashboard() {
                 )}
               </div>
 
-              <form onSubmit={handleAddLink} style={{ display: 'flex', gap: '15px', backgroundColor: '#f3f4f6', padding: '20px', borderRadius: '12px', flexWrap: 'wrap' }}>
-                <input required type="text" placeholder="Link Title (e.g. Dinner Menu)" value={newLinkTitle} onChange={(e) => setNewLinkTitle(e.target.value)} style={{ flex: 1, minWidth: '200px', padding: '12px', borderRadius: '8px', border: '1px solid #d1d5db', fontSize: '15px' }} />
-                <input required type="url" placeholder="https://..." value={newLinkUrl} onChange={(e) => setNewLinkUrl(e.target.value)} style={{ flex: 2, minWidth: '200px', padding: '12px', borderRadius: '8px', border: '1px solid #d1d5db', fontSize: '15px' }} />
-                <button type="submit" style={{ padding: '0 24px', backgroundColor: '#3b82f6', color: 'white', border: 'none', borderRadius: '8px', fontWeight: '700', cursor: 'pointer', minWidth: '120px' }}>+ Add Link</button>
-              </form>
+              {/* 🔥 NEW: The Conditional Render for the Form vs. Upsell */}
+              {isAtLimit ? (
+                <div style={{ padding: '30px', backgroundColor: '#111', color: 'white', borderRadius: '12px', textAlign: 'center', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}>
+                  <div style={{ fontSize: '24px', marginBottom: '10px' }}>🔒</div>
+                  <h3 style={{ margin: '0 0 10px 0', fontSize: '18px', fontWeight: '700' }}>Unlock Unlimited Links</h3>
+                  <p style={{ margin: '0 0 20px 0', color: '#9ca3af', fontSize: '14px', lineHeight: '1.5' }}>
+                    You've reached your limit of {maxLinks} links on the Free plan. Upgrade to Premium for unlimited links, advanced analytics, and custom branding.
+                  </p>
+                  <button onClick={() => alert("Stripe checkout coming soon!")} style={{ padding: '12px 24px', backgroundColor: '#3b82f6', color: 'white', border: 'none', borderRadius: '8px', fontWeight: '700', cursor: 'pointer', fontSize: '15px', transition: '0.2s', width: '100%' }}>
+                    Upgrade to Premium — £5/mo
+                  </button>
+                </div>
+              ) : (
+                <form onSubmit={handleAddLink} style={{ display: 'flex', gap: '15px', backgroundColor: '#f3f4f6', padding: '20px', borderRadius: '12px', flexWrap: 'wrap' }}>
+                  <input required type="text" placeholder="Link Title (e.g. Dinner Menu)" value={newLinkTitle} onChange={(e) => setNewLinkTitle(e.target.value)} style={{ flex: 1, minWidth: '200px', padding: '12px', borderRadius: '8px', border: '1px solid #d1d5db', fontSize: '15px' }} />
+                  <input required type="url" placeholder="https://..." value={newLinkUrl} onChange={(e) => setNewLinkUrl(e.target.value)} style={{ flex: 2, minWidth: '200px', padding: '12px', borderRadius: '8px', border: '1px solid #d1d5db', fontSize: '15px' }} />
+                  <button type="submit" style={{ padding: '0 24px', backgroundColor: '#3b82f6', color: 'white', border: 'none', borderRadius: '8px', fontWeight: '700', cursor: 'pointer', minWidth: '120px' }}>+ Add Link</button>
+                </form>
+              )}
             </div>
-            
           </div>
         )}
 
