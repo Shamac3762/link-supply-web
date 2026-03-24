@@ -90,8 +90,7 @@ export default function PremiumDashboard() {
 
     const { error, data } = await supabase.from('nfc_stickers')
       .update({ owner_id: session.user.id }) 
-      .eq('id', claimId.toUpperCase()).eq('claim_pin', claimPin).is('owner_id', null).select()
-
+      .eq('id', claimId.toUpperCase()).eq('activation_code', claimPin).is('owner_id', null).select()
     if (error || !data || data.length === 0) {
       setClaimMessage("Error: Invalid Code, wrong ID, or tag is already owned.")
     } else {
