@@ -126,7 +126,7 @@ export default function PremiumDashboard() {
       })
 
     if (error) {
-      alert("Username might already be taken. Try another one!")
+      alert("Database Error: " + error.message)
       setSaveStatus({ ...saveStatus, profile: 'Error!' })
     } else {
       setPageProfile({ ...pageProfile, username: cleanUsername })
