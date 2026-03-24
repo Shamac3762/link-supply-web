@@ -4,22 +4,19 @@ import { createClient } from '../../utils/supabase/client'
 import { useRouter } from 'next/navigation'
 
 export default function PremiumDashboard() {
-  const [activeTab, setActiveTab] = useState('hardware') // 'hardware' or 'page'
+  const [activeTab, setActiveTab] = useState('hardware') 
   
-  // Hardware State
   const [stickers, setStickers] = useState([])
   const [claimId, setClaimId] = useState('')
   const [claimPin, setClaimPin] = useState('')
   const [claimMessage, setClaimMessage] = useState('')
   const [isClaiming, setIsClaiming] = useState(false)
   
-  // Premium Page State
   const [pageProfile, setPageProfile] = useState({ username: '', bio: '', theme_color: '#111111' })
   const [pageLinks, setPageLinks] = useState([])
   const [newLinkTitle, setNewLinkTitle] = useState('')
   const [newLinkUrl, setNewLinkUrl] = useState('')
 
-  // Global State
   const [profile, setProfile] = useState(null)
   const [loading, setLoading] = useState(true)
   const [saveStatus, setSaveStatus] = useState({}) 
@@ -33,17 +30,25 @@ export default function PremiumDashboard() {
     const urlClaimId = params.get('claim')
     if (urlClaimId) {
       setClaimId(urlClaimId)
-      setActiveTab('hardware') // Auto-switch to hardware tab if claiming
+      setActiveTab('hardware') 
     }
   }, [])
 
   const fetchData = async () => {
     const { data: { session } } = await supabase.auth.getSession()
-    if (!session) return router.push('/login') 
+    
+    // 🔥 THE BATON PASS SENDER: Bounce them to login, but keep the claim ID!
+    if (!session) {
+      const params = new URLSearchParams(window.location.search)
+      const claimParam = params.get('claim')
+      if (claimParam) {
+        return router.push(`/login?claim=${claimParam}`)
+      }
+      return router.push('/login') 
+    }
 
     const firstName = session.user.user_metadata?.first_name
     
-    // 1. Fetch Customer Profile (including new premium page data)
     const { data: customerData } = await supabase
       .from('customers')
       .select('username, bio, theme_color')
@@ -59,7 +64,6 @@ export default function PremiumDashboard() {
       })
     }
 
-    // 2. Fetch Hardware Tags
     const { data: stickerData } = await supabase
       .from('nfc_stickers')
       .select('id, target_url, product_type, tap_count, last_tapped_at, url_slug, tag_name')
@@ -67,7 +71,6 @@ export default function PremiumDashboard() {
       .order('id', { ascending: true })
     if (stickerData) setStickers(stickerData)
 
-    // 3. Fetch Premium Page Links
     const { data: linksData } = await supabase
       .from('page_links')
       .select('*')
@@ -78,9 +81,9 @@ export default function PremiumDashboard() {
     setLoading(false)
   }
 
-  // --- HARDWARE FUNCTIONS ---
   const handleActivateTag = async () => {
-    if (!claimId || claimPin.length < 4) return setClaimMessage("Please enter a valid Tag ID and 4-digit PIN.")
+    // 🔥 ENFORCING 8 CHARACTERS
+    if (!claimId || claimPin.length < 8) return setClaimMessage("Please enter a valid Tag ID and 8-character Activation Code.")
     setIsClaiming(true)
     setClaimMessage("Verifying vault...")
     const { data: { session } } = await supabase.auth.getSession()
@@ -90,7 +93,7 @@ export default function PremiumDashboard() {
       .eq('id', claimId.toUpperCase()).eq('claim_pin', claimPin).is('owner_id', null).select()
 
     if (error || !data || data.length === 0) {
-      setClaimMessage("Error: Invalid PIN, wrong ID, or tag is already owned.")
+      setClaimMessage("Error: Invalid Code, wrong ID, or tag is already owned.")
     } else {
       setClaimMessage("Success! Tag linked to your account. ✓")
       setClaimId(''); setClaimPin(''); fetchData(); setTimeout(() => setClaimMessage(''), 3000)
@@ -108,15 +111,12 @@ export default function PremiumDashboard() {
     }
   }
 
-  // --- PREMIUM PAGE FUNCTIONS ---
   const handleSaveProfile = async () => {
     setSaveStatus({ ...saveStatus, profile: 'Saving...' })
     const { data: { session } } = await supabase.auth.getSession()
     
-    // Clean username (lowercase, no spaces)
     const cleanUsername = pageProfile.username.toLowerCase().replace(/[^a-z0-9_]/g, '')
     
-    // THE FIX: We use UPSERT to create the row if it doesn't exist yet!
     const { error } = await supabase.from('customers')
       .upsert({ 
         id: session.user.id, 
@@ -150,7 +150,7 @@ export default function PremiumDashboard() {
     if (!error) {
       setNewLinkTitle('')
       setNewLinkUrl('')
-      fetchData() // Refresh list
+      fetchData()
     }
   }
 
@@ -169,7 +169,6 @@ export default function PremiumDashboard() {
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#f3f4f6', fontFamily: 'sans-serif', paddingBottom: '50px' }}>
       
-      {/* NAVBAR */}
       <nav style={{ backgroundColor: 'white', padding: '20px 40px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #e5e7eb' }}>
         <h1 style={{ fontSize: '22px', fontWeight: '800', color: '#111', margin: 0, letterSpacing: '-0.5px' }}>Link Supply.</h1>
         <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
@@ -180,7 +179,6 @@ export default function PremiumDashboard() {
 
       <main style={{ maxWidth: '900px', margin: '40px auto', padding: '0 20px' }}>
         
-        {/* TAB CONTROLS */}
         <div style={{ display: 'flex', gap: '10px', marginBottom: '30px', backgroundColor: '#e5e7eb', padding: '6px', borderRadius: '12px' }}>
           <button 
             onClick={() => setActiveTab('hardware')}
@@ -196,17 +194,33 @@ export default function PremiumDashboard() {
           </button>
         </div>
 
-        {/* ==========================================
-            TAB 1: HARDWARE MANAGEMENT 
-        ========================================== */}
         {activeTab === 'hardware' && (
           <div>
             <div style={{ backgroundColor: '#111', padding: '30px', borderRadius: '16px', marginBottom: '40px', color: 'white', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)' }}>
               <h2 style={{ fontSize: '20px', margin: '0 0 5px 0', fontWeight: '700' }}>Activate a New Tag</h2>
-              <p style={{ color: '#9ca3af', fontSize: '14px', marginBottom: '20px' }}>Enter the Tag ID and the 4-digit PIN included in your packaging.</p>
+              
+              {/* 🔥 UPDATED WORDING FOR 8-CHARACTER CODE */}
+              <p style={{ color: '#9ca3af', fontSize: '14px', marginBottom: '20px' }}>Enter the Tag ID and the 8-character Activation Code included in your packaging.</p>
+              
               <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap' }}>
-                <input type="text" placeholder="Tag ID (e.g. LS-005)" value={claimId} onChange={(e) => setClaimId(e.target.value)} style={{ flex: 1, padding: '12px 16px', borderRadius: '8px', border: 'none', fontSize: '16px', color: '#111', minWidth: '200px' }} />
-                <input type="text" maxLength="4" placeholder="4-Digit PIN" value={claimPin} onChange={(e) => setClaimPin(e.target.value)} style={{ width: '150px', padding: '12px 16px', borderRadius: '8px', border: 'none', fontSize: '16px', color: '#111', textAlign: 'center', letterSpacing: '3px' }} />
+                <input 
+                  type="text" 
+                  placeholder="Tag ID (e.g. LS-005)" 
+                  value={claimId} 
+                  onChange={(e) => setClaimId(e.target.value.toUpperCase())} 
+                  style={{ flex: 1, padding: '12px 16px', borderRadius: '8px', border: 'none', fontSize: '16px', color: '#111', minWidth: '200px' }} 
+                />
+                
+                {/* 🔥 UPDATED INPUT BOX FOR 8 CHARACTERS & AUTO-UPPERCASE */}
+                <input 
+                  type="text" 
+                  maxLength="8" 
+                  placeholder="8-Char Code" 
+                  value={claimPin} 
+                  onChange={(e) => setClaimPin(e.target.value.toUpperCase())} 
+                  style={{ width: '160px', padding: '12px 16px', borderRadius: '8px', border: 'none', fontSize: '16px', color: '#111', textAlign: 'center', letterSpacing: '2px', textTransform: 'uppercase' }} 
+                />
+                
                 <button onClick={handleActivateTag} disabled={isClaiming} style={{ padding: '0 24px', backgroundColor: '#3b82f6', color: 'white', border: 'none', borderRadius: '8px', fontWeight: '700', cursor: 'pointer', minWidth: '140px' }}>
                   {isClaiming ? 'Verifying...' : 'Link to Account'}
                 </button>
@@ -248,9 +262,6 @@ export default function PremiumDashboard() {
           </div>
         )}
 
-        {/* ==========================================
-            TAB 2: PREMIUM PAGE EDITOR 
-        ========================================== */}
         {activeTab === 'page' && (
           <div>
             <div style={{ backgroundColor: 'white', padding: '30px', borderRadius: '16px', border: '1px solid #e5e7eb', marginBottom: '30px' }}>
