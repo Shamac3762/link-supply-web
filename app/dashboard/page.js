@@ -116,9 +116,14 @@ export default function PremiumDashboard() {
     // Clean username (lowercase, no spaces)
     const cleanUsername = pageProfile.username.toLowerCase().replace(/[^a-z0-9_]/g, '')
     
+    // THE FIX: We use UPSERT to create the row if it doesn't exist yet!
     const { error } = await supabase.from('customers')
-      .update({ username: cleanUsername, bio: pageProfile.bio, theme_color: pageProfile.theme_color })
-      .eq('id', session.user.id)
+      .upsert({ 
+        id: session.user.id, 
+        username: cleanUsername, 
+        bio: pageProfile.bio, 
+        theme_color: pageProfile.theme_color 
+      })
 
     if (error) {
       alert("Username might already be taken. Try another one!")
@@ -233,7 +238,7 @@ export default function PremiumDashboard() {
                           <input type="url" defaultValue={sticker.target_url || ''} placeholder="https://your-link.com" onChange={(e) => { const updated = stickers.map(s => s.id === sticker.id ? { ...s, target_url: e.target.value } : s); setStickers(updated) }} style={{ flex: 1, padding: '14px', borderRadius: '10px', border: '1px solid #d1d5db', fontSize: '16px', color: '#111', outline: 'none' }} />
                           <button onClick={() => handleSaveHardwareChanges(sticker.id, sticker.target_url, sticker.tag_name)} style={{ padding: '0 24px', backgroundColor: '#111', color: 'white', border: 'none', borderRadius: '10px', fontWeight: '600', cursor: 'pointer', minWidth: '140px' }}>{saveStatus[sticker.id] || 'Save Changes'}</button>
                         </div>
-                        <p style={{ fontSize: '12px', color: '#6b7280', marginTop: '10px' }}>💡 Pro Tip: Point this to <b>linksupply.com/u/{pageProfile.username || 'your-username'}</b> to use your new Premium Page!</p>
+                        <p style={{ fontSize: '12px', color: '#6b7280', marginTop: '10px' }}>💡 Pro Tip: Point this to <b>{typeof window !== 'undefined' ? window.location.host : 'linksupply.com'}/u/{pageProfile.username || 'your-username'}</b> to use your new Premium Page!</p>
                       </div>
                     </div>
                   </div>
@@ -255,7 +260,7 @@ export default function PremiumDashboard() {
                 <div>
                   <label style={{ display: 'block', fontSize: '14px', color: '#4b5563', marginBottom: '8px', fontWeight: '600' }}>Public Username (URL)</label>
                   <div style={{ display: 'flex', alignItems: 'center', backgroundColor: '#f9fafb', border: '1px solid #d1d5db', borderRadius: '10px', padding: '0 14px' }}>
-                    <span style={{ color: '#6b7280', fontSize: '16px' }}>linksupply.com/u/</span>
+                    <span style={{ color: '#6b7280', fontSize: '16px' }}>{typeof window !== 'undefined' ? window.location.host : 'linksupply.com'}/u/</span>
                     <input type="text" value={pageProfile.username} placeholder="mybrand" onChange={(e) => setPageProfile({...pageProfile, username: e.target.value})} style={{ flex: 1, padding: '14px 0', border: 'none', backgroundColor: 'transparent', fontSize: '16px', color: '#111', outline: 'none', fontWeight: '600' }} />
                   </div>
                 </div>
