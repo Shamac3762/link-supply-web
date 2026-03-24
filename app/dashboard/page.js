@@ -12,13 +12,17 @@ export default function PremiumDashboard() {
   const [claimMessage, setClaimMessage] = useState('')
   const [isClaiming, setIsClaiming] = useState(false)
   
-  const [pageProfile, setPageProfile] = useState({ username: '', bio: '', theme_color: '#111111' })
+  // 🔥 NEW: State now holds the Business Card fields
+  const [pageProfile, setPageProfile] = useState({ 
+    username: '', bio: '', theme_color: '#111111',
+    profile_picture_url: '', job_title: '', company: '', phone_number: '', display_email: ''
+  })
   const [pageLinks, setPageLinks] = useState([])
   const [newLinkTitle, setNewLinkTitle] = useState('')
   const [newLinkUrl, setNewLinkUrl] = useState('')
 
   const [profile, setProfile] = useState(null)
-  const [maxLinks, setMaxLinks] = useState(2) // 🔥 NEW: Tracks their specific limit
+  const [maxLinks, setMaxLinks] = useState(2)
   const [loading, setLoading] = useState(true)
   const [saveStatus, setSaveStatus] = useState({}) 
 
@@ -41,45 +45,39 @@ export default function PremiumDashboard() {
     if (!session) {
       const params = new URLSearchParams(window.location.search)
       const claimParam = params.get('claim')
-      if (claimParam) {
-        return router.push(`/login?claim=${claimParam}`)
-      }
+      if (claimParam) return router.push(`/login?claim=${claimParam}`)
       return router.push('/login') 
     }
 
     const firstName = session.user.user_metadata?.first_name
     
-    // 🔥 NEW: We now ask the database for max_links
+    // 🔥 NEW: Ask the database for the new Business Card fields
     const { data: customerData } = await supabase
       .from('customers')
-      .select('username, bio, theme_color, max_links')
+      .select('username, bio, theme_color, max_links, profile_picture_url, job_title, company, phone_number, display_email')
       .eq('id', session.user.id)
       .single()
 
     setProfile({ first_name: firstName })
+    
     if (customerData) {
       setPageProfile({
         username: customerData.username || '',
         bio: customerData.bio || '',
-        theme_color: customerData.theme_color || '#111111'
+        theme_color: customerData.theme_color || '#111111',
+        profile_picture_url: customerData.profile_picture_url || '',
+        job_title: customerData.job_title || '',
+        company: customerData.company || '',
+        phone_number: customerData.phone_number || '',
+        display_email: customerData.display_email || ''
       })
-      if (customerData.max_links !== undefined) {
-        setMaxLinks(customerData.max_links)
-      }
+      if (customerData.max_links !== undefined) setMaxLinks(customerData.max_links)
     }
 
-    const { data: stickerData } = await supabase
-      .from('nfc_stickers')
-      .select('id, target_url, product_type, tap_count, last_tapped_at, url_slug, tag_name')
-      .eq('owner_id', session.user.id)
-      .order('id', { ascending: true })
+    const { data: stickerData } = await supabase.from('nfc_stickers').select('*').eq('owner_id', session.user.id).order('id', { ascending: true })
     if (stickerData) setStickers(stickerData)
 
-    const { data: linksData } = await supabase
-      .from('page_links')
-      .select('*')
-      .eq('owner_id', session.user.id)
-      .order('sort_order', { ascending: true })
+    const { data: linksData } = await supabase.from('page_links').select('*').eq('owner_id', session.user.id).order('sort_order', { ascending: true })
     if (linksData) setPageLinks(linksData)
 
     setLoading(false)
@@ -95,9 +93,8 @@ export default function PremiumDashboard() {
       .update({ owner_id: session.user.id }) 
       .eq('id', claimId.toUpperCase()).eq('activation_code', claimPin).is('owner_id', null).select()
 
-    if (error || !data || data.length === 0) {
-      setClaimMessage("Error: Invalid Code, wrong ID, or tag is already owned.")
-    } else {
+    if (error || !data || data.length === 0) setClaimMessage("Error: Invalid Code, wrong ID, or tag is already owned.")
+    else {
       setClaimMessage("Success! Tag linked to your account. ✓")
       setClaimId(''); setClaimPin(''); fetchData(); setTimeout(() => setClaimMessage(''), 3000)
     }
@@ -119,12 +116,18 @@ export default function PremiumDashboard() {
     const { data: { session } } = await supabase.auth.getSession()
     const cleanUsername = pageProfile.username.toLowerCase().replace(/[^a-z0-9_]/g, '')
     
+    // 🔥 NEW: Save all the Business Card data to the database
     const { error } = await supabase.from('customers')
       .upsert({ 
         id: session.user.id, 
         username: cleanUsername, 
         bio: pageProfile.bio, 
-        theme_color: pageProfile.theme_color 
+        theme_color: pageProfile.theme_color,
+        profile_picture_url: pageProfile.profile_picture_url,
+        job_title: pageProfile.job_title,
+        company: pageProfile.company,
+        phone_number: pageProfile.phone_number,
+        display_email: pageProfile.display_email
       })
 
     if (error) {
@@ -140,24 +143,11 @@ export default function PremiumDashboard() {
   const handleAddLink = async (e) => {
     e.preventDefault()
     if (!newLinkTitle || !newLinkUrl) return
-    
-    // 🔥 SECURITY: Stop them here just in case they try to hack the form
     if (pageLinks.length >= maxLinks) return alert("Link limit reached.")
-
     const { data: { session } } = await supabase.auth.getSession()
 
-    const { error } = await supabase.from('page_links').insert([{ 
-      owner_id: session.user.id, 
-      title: newLinkTitle, 
-      url: newLinkUrl,
-      sort_order: pageLinks.length 
-    }])
-
-    if (!error) {
-      setNewLinkTitle('')
-      setNewLinkUrl('')
-      fetchData()
-    }
+    const { error } = await supabase.from('page_links').insert([{ owner_id: session.user.id, title: newLinkTitle, url: newLinkUrl, sort_order: pageLinks.length }])
+    if (!error) { setNewLinkTitle(''); setNewLinkUrl(''); fetchData() }
   }
 
   const handleDeleteLink = async (linkId) => {
@@ -170,9 +160,11 @@ export default function PremiumDashboard() {
     router.push('/login')
   }
 
-  // 🔥 LOGIC: Check if they hit their cap
   const isAtLimit = pageLinks.length >= maxLinks
   const displayLimit = maxLinks > 100 ? 'Unlimited' : maxLinks
+
+  const inputStyle = { width: '100%', padding: '12px 14px', borderRadius: '10px', border: '1px solid #d1d5db', fontSize: '15px', color: '#111', outline: 'none', boxSizing: 'border-box' }
+  const labelStyle = { display: 'block', fontSize: '14px', color: '#4b5563', marginBottom: '8px', fontWeight: '600' }
 
   if (loading) return <div style={{ minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', backgroundColor: '#f3f4f6' }}>Loading Workspace...</div>
 
@@ -190,15 +182,12 @@ export default function PremiumDashboard() {
       <main style={{ maxWidth: '900px', margin: '40px auto', padding: '0 20px' }}>
         
         <div style={{ display: 'flex', gap: '10px', marginBottom: '30px', backgroundColor: '#e5e7eb', padding: '6px', borderRadius: '12px' }}>
-          <button onClick={() => setActiveTab('hardware')} style={{ flex: 1, padding: '12px', borderRadius: '8px', border: 'none', fontWeight: '700', fontSize: '15px', cursor: 'pointer', backgroundColor: activeTab === 'hardware' ? 'white' : 'transparent', color: activeTab === 'hardware' ? '#111' : '#6b7280', boxShadow: activeTab === 'hardware' ? '0 2px 4px rgba(0,0,0,0.05)' : 'none', transition: 'all 0.2s' }}>
-            My Hardware Tags
-          </button>
-          <button onClick={() => setActiveTab('page')} style={{ flex: 1, padding: '12px', borderRadius: '8px', border: 'none', fontWeight: '700', fontSize: '15px', cursor: 'pointer', backgroundColor: activeTab === 'page' ? 'white' : 'transparent', color: activeTab === 'page' ? '#111' : '#6b7280', boxShadow: activeTab === 'page' ? '0 2px 4px rgba(0,0,0,0.05)' : 'none', transition: 'all 0.2s' }}>
-            My Premium Page
-          </button>
+          <button onClick={() => setActiveTab('hardware')} style={{ flex: 1, padding: '12px', borderRadius: '8px', border: 'none', fontWeight: '700', fontSize: '15px', cursor: 'pointer', backgroundColor: activeTab === 'hardware' ? 'white' : 'transparent', color: activeTab === 'hardware' ? '#111' : '#6b7280', boxShadow: activeTab === 'hardware' ? '0 2px 4px rgba(0,0,0,0.05)' : 'none', transition: 'all 0.2s' }}>My Hardware Tags</button>
+          <button onClick={() => setActiveTab('page')} style={{ flex: 1, padding: '12px', borderRadius: '8px', border: 'none', fontWeight: '700', fontSize: '15px', cursor: 'pointer', backgroundColor: activeTab === 'page' ? 'white' : 'transparent', color: activeTab === 'page' ? '#111' : '#6b7280', boxShadow: activeTab === 'page' ? '0 2px 4px rgba(0,0,0,0.05)' : 'none', transition: 'all 0.2s' }}>My Premium Page</button>
         </div>
 
         {activeTab === 'hardware' && (
+          // ... (Hardware Tab Remains Unchanged) ...
           <div>
             <div style={{ backgroundColor: '#111', padding: '30px', borderRadius: '16px', marginBottom: '40px', color: 'white', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)' }}>
               <h2 style={{ fontSize: '20px', margin: '0 0 5px 0', fontWeight: '700' }}>Activate a New Tag</h2>
@@ -219,23 +208,21 @@ export default function PremiumDashboard() {
                 {stickers.map((sticker) => (
                   <div key={sticker.id} style={{ backgroundColor: 'white', padding: '30px', borderRadius: '16px', border: '1px solid #e5e7eb', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)', display: 'flex', flexDirection: 'column', gap: '20px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                        <span style={{ fontSize: '20px', fontWeight: '700', color: '#111' }}>{sticker.id}</span>
-                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}><span style={{ fontSize: '20px', fontWeight: '700', color: '#111' }}>{sticker.id}</span></div>
                       <a href={`/go/${sticker.url_slug}`} target="_blank" rel="noreferrer" style={{ fontSize: '14px', color: '#4f46e5', textDecoration: 'none', fontWeight: '600', padding: '8px 16px', backgroundColor: '#e0e7ff', borderRadius: '8px' }}>Preview Link ↗</a>
                     </div>
                     <div style={{ marginTop: '5px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
                       <div>
-                        <label style={{ display: 'block', fontSize: '14px', color: '#4b5563', marginBottom: '8px', fontWeight: '600' }}>Tag Name (Optional)</label>
-                        <input type="text" defaultValue={sticker.tag_name || ''} placeholder="e.g., Table 5" onChange={(e) => { const updated = stickers.map(s => s.id === sticker.id ? { ...s, tag_name: e.target.value } : s); setStickers(updated) }} style={{ width: '100%', padding: '12px 14px', borderRadius: '10px', border: '1px solid #d1d5db', fontSize: '15px', color: '#111', outline: 'none' }} />
+                        <label style={labelStyle}>Tag Name (Optional)</label>
+                        <input type="text" defaultValue={sticker.tag_name || ''} placeholder="e.g., Table 5" onChange={(e) => { const updated = stickers.map(s => s.id === sticker.id ? { ...s, tag_name: e.target.value } : s); setStickers(updated) }} style={inputStyle} />
                       </div>
                       <div>
-                        <label style={{ display: 'block', fontSize: '14px', color: '#4b5563', marginBottom: '8px', fontWeight: '600' }}>Destination URL</label>
+                        <label style={labelStyle}>Destination URL</label>
                         <div style={{ display: 'flex', gap: '12px' }}>
                           <input type="url" defaultValue={sticker.target_url || ''} placeholder="https://your-link.com" onChange={(e) => { const updated = stickers.map(s => s.id === sticker.id ? { ...s, target_url: e.target.value } : s); setStickers(updated) }} style={{ flex: 1, padding: '14px', borderRadius: '10px', border: '1px solid #d1d5db', fontSize: '16px', color: '#111', outline: 'none' }} />
                           <button onClick={() => handleSaveHardwareChanges(sticker.id, sticker.target_url, sticker.tag_name)} style={{ padding: '0 24px', backgroundColor: '#111', color: 'white', border: 'none', borderRadius: '10px', fontWeight: '600', cursor: 'pointer', minWidth: '140px' }}>{saveStatus[sticker.id] || 'Save Changes'}</button>
                         </div>
-                        <p style={{ fontSize: '12px', color: '#6b7280', marginTop: '10px' }}>💡 Pro Tip: Point this to <b>{typeof window !== 'undefined' ? window.location.host : 'linksupply.com'}/u/{pageProfile.username || 'your-username'}</b> to use your new Premium Page!</p>
+                        <p style={{ fontSize: '12px', color: '#6b7280', marginTop: '10px' }}>💡 Pro Tip: Point this to <b>{typeof window !== 'undefined' ? window.location.host : 'linksupply.com'}/u/{pageProfile.username || 'your-username'}</b></p>
                       </div>
                     </div>
                   </div>
@@ -246,41 +233,74 @@ export default function PremiumDashboard() {
         )}
 
         {activeTab === 'page' && (
-          <div>
-            <div style={{ backgroundColor: 'white', padding: '30px', borderRadius: '16px', border: '1px solid #e5e7eb', marginBottom: '30px' }}>
-              <h2 style={{ fontSize: '20px', fontWeight: '700', color: '#111', marginBottom: '20px' }}>Page Identity</h2>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: '14px', color: '#4b5563', marginBottom: '8px', fontWeight: '600' }}>Public Username (URL)</label>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
+            
+            {/* 🔥 NEW: Splitting the Page into two clear cards (Identity & Contact) */}
+            <div style={{ backgroundColor: 'white', padding: '30px', borderRadius: '16px', border: '1px solid #e5e7eb' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                <h2 style={{ fontSize: '20px', fontWeight: '700', color: '#111', margin: 0 }}>Page Identity</h2>
+                <button onClick={handleSaveProfile} style={{ padding: '10px 20px', backgroundColor: '#111', color: 'white', border: 'none', borderRadius: '8px', fontWeight: '600', cursor: 'pointer' }}>{saveStatus.profile || 'Save All Profile Info'}</button>
+              </div>
+              
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                <div style={{ gridColumn: '1 / -1' }}>
+                  <label style={labelStyle}>Public Username (URL)</label>
                   <div style={{ display: 'flex', alignItems: 'center', backgroundColor: '#f9fafb', border: '1px solid #d1d5db', borderRadius: '10px', padding: '0 14px' }}>
                     <span style={{ color: '#6b7280', fontSize: '16px' }}>{typeof window !== 'undefined' ? window.location.host : 'linksupply.com'}/u/</span>
                     <input type="text" value={pageProfile.username} placeholder="mybrand" onChange={(e) => setPageProfile({...pageProfile, username: e.target.value})} style={{ flex: 1, padding: '14px 0', border: 'none', backgroundColor: 'transparent', fontSize: '16px', color: '#111', outline: 'none', fontWeight: '600' }} />
                   </div>
                 </div>
+
+                <div style={{ gridColumn: '1 / -1' }}>
+                  <label style={labelStyle}>Profile Picture URL (Optional)</label>
+                  <input type="text" value={pageProfile.profile_picture_url} placeholder="https://example.com/my-photo.jpg" onChange={(e) => setPageProfile({...pageProfile, profile_picture_url: e.target.value})} style={inputStyle} />
+                  <p style={{ fontSize: '12px', color: '#6b7280', marginTop: '6px' }}>Paste a link to an image. (Direct photo uploads coming soon!)</p>
+                </div>
+
+                <div style={{ gridColumn: '1 / -1' }}>
+                  <label style={labelStyle}>Short Bio</label>
+                  <textarea value={pageProfile.bio} placeholder="Welcome to my profile!" onChange={(e) => setPageProfile({...pageProfile, bio: e.target.value})} rows="2" style={{ ...inputStyle, resize: 'vertical' }} />
+                </div>
+                
                 <div>
-                  <label style={{ display: 'block', fontSize: '14px', color: '#4b5563', marginBottom: '8px', fontWeight: '600' }}>Short Bio</label>
-                  <textarea value={pageProfile.bio} placeholder="Welcome to our restaurant! Check out our menus and socials below." onChange={(e) => setPageProfile({...pageProfile, bio: e.target.value})} rows="3" style={{ width: '100%', padding: '14px', borderRadius: '10px', border: '1px solid #d1d5db', fontSize: '15px', color: '#111', outline: 'none', resize: 'vertical' }} />
+                  <label style={labelStyle}>Brand Color</label>
+                  <input type="color" value={pageProfile.theme_color} onChange={(e) => setPageProfile({...pageProfile, theme_color: e.target.value})} style={{ width: '50px', height: '50px', padding: '0', border: 'none', borderRadius: '8px', cursor: 'pointer' }} />
+                </div>
+              </div>
+            </div>
+
+            {/* 🔥 NEW: Digital Business Card Section */}
+            <div style={{ backgroundColor: 'white', padding: '30px', borderRadius: '16px', border: '1px solid #e5e7eb' }}>
+              <h2 style={{ fontSize: '20px', fontWeight: '700', color: '#111', marginBottom: '5px' }}>Digital Business Card</h2>
+              <p style={{ color: '#6b7280', fontSize: '14px', marginBottom: '20px' }}>Fill these out to add a "Save to Contacts" button to your profile. Leave blank for a standard link page.</p>
+              
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                <div>
+                  <label style={labelStyle}>Job Title</label>
+                  <input type="text" value={pageProfile.job_title} placeholder="e.g. Sales Director" onChange={(e) => setPageProfile({...pageProfile, job_title: e.target.value})} style={inputStyle} />
                 </div>
                 <div>
-                  <label style={{ display: 'block', fontSize: '14px', color: '#4b5563', marginBottom: '8px', fontWeight: '600' }}>Brand Color</label>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                    <input type="color" value={pageProfile.theme_color} onChange={(e) => setPageProfile({...pageProfile, theme_color: e.target.value})} style={{ width: '50px', height: '50px', padding: '0', border: 'none', borderRadius: '8px', cursor: 'pointer' }} />
-                    <button onClick={handleSaveProfile} style={{ padding: '12px 24px', backgroundColor: '#111', color: 'white', border: 'none', borderRadius: '10px', fontWeight: '600', cursor: 'pointer' }}>{saveStatus.profile || 'Save Profile Info'}</button>
-                  </div>
+                  <label style={labelStyle}>Company</label>
+                  <input type="text" value={pageProfile.company} placeholder="e.g. Acme Corp" onChange={(e) => setPageProfile({...pageProfile, company: e.target.value})} style={inputStyle} />
+                </div>
+                <div>
+                  <label style={labelStyle}>Phone Number</label>
+                  <input type="tel" value={pageProfile.phone_number} placeholder="+44 7700 900077" onChange={(e) => setPageProfile({...pageProfile, phone_number: e.target.value})} style={inputStyle} />
+                </div>
+                <div>
+                  <label style={labelStyle}>Display Email</label>
+                  <input type="email" value={pageProfile.display_email} placeholder="hello@example.com" onChange={(e) => setPageProfile({...pageProfile, display_email: e.target.value})} style={inputStyle} />
                 </div>
               </div>
             </div>
 
             <div style={{ backgroundColor: 'white', padding: '30px', borderRadius: '16px', border: '1px solid #e5e7eb' }}>
-              
-              {/* 🔥 NEW: The Link Counter header */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '5px' }}>
                 <h2 style={{ fontSize: '20px', fontWeight: '700', color: '#111', margin: 0 }}>Your Links</h2>
                 <span style={{ fontSize: '14px', fontWeight: '600', color: isAtLimit && maxLinks <= 100 ? '#dc2626' : '#6b7280', backgroundColor: '#f3f4f6', padding: '4px 10px', borderRadius: '20px' }}>
                   {pageLinks.length} / {displayLimit} Used
                 </span>
               </div>
-              
               <p style={{ color: '#6b7280', fontSize: '14px', marginBottom: '20px' }}>Add all the links you want to display to your customers.</p>
               
               <div style={{ display: 'flex', flexDirection: 'column', gap: '15px', marginBottom: '30px' }}>
@@ -299,17 +319,12 @@ export default function PremiumDashboard() {
                 )}
               </div>
 
-              {/* 🔥 NEW: The Conditional Render for the Form vs. Upsell */}
               {isAtLimit ? (
                 <div style={{ padding: '30px', backgroundColor: '#111', color: 'white', borderRadius: '12px', textAlign: 'center', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}>
                   <div style={{ fontSize: '24px', marginBottom: '10px' }}>🔒</div>
                   <h3 style={{ margin: '0 0 10px 0', fontSize: '18px', fontWeight: '700' }}>Unlock Unlimited Links</h3>
-                  <p style={{ margin: '0 0 20px 0', color: '#9ca3af', fontSize: '14px', lineHeight: '1.5' }}>
-                    You've reached your limit of {maxLinks} links on the Free plan. Upgrade to Premium for unlimited links, advanced analytics, and custom branding.
-                  </p>
-                  <button onClick={() => alert("Stripe checkout coming soon!")} style={{ padding: '12px 24px', backgroundColor: '#3b82f6', color: 'white', border: 'none', borderRadius: '8px', fontWeight: '700', cursor: 'pointer', fontSize: '15px', transition: '0.2s', width: '100%' }}>
-                    Upgrade to Premium — £5/mo
-                  </button>
+                  <p style={{ margin: '0 0 20px 0', color: '#9ca3af', fontSize: '14px', lineHeight: '1.5' }}>You've reached your limit of {maxLinks} links on the Free plan. Upgrade to Premium for unlimited links, advanced analytics, and custom branding.</p>
+                  <button onClick={() => alert("Stripe checkout coming soon!")} style={{ padding: '12px 24px', backgroundColor: '#3b82f6', color: 'white', border: 'none', borderRadius: '8px', fontWeight: '700', cursor: 'pointer', fontSize: '15px', transition: '0.2s', width: '100%' }}>Upgrade to Premium — £5/mo</button>
                 </div>
               ) : (
                 <form onSubmit={handleAddLink} style={{ display: 'flex', gap: '15px', backgroundColor: '#f3f4f6', padding: '20px', borderRadius: '12px', flexWrap: 'wrap' }}>
