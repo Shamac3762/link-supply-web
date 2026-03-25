@@ -131,8 +131,9 @@ export default function PremiumDashboard() {
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#f3f4f6', fontFamily: 'sans-serif', paddingBottom: '50px' }}>
       
-      {/* 🔥 NEW: Mobile-First CSS Rules */}
+      {/* 🔥 FIX: Added global box-sizing rule so all inputs stay perfectly symmetrical */}
       <style>{`
+        * { box-sizing: border-box; }
         .responsive-nav { padding: 20px 40px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e5e7eb; background-color: white; }
         .responsive-tabs { display: flex; gap: 10px; margin-bottom: 30px; background-color: #e5e7eb; padding: 6px; border-radius: 12px; }
         .responsive-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
@@ -146,6 +147,7 @@ export default function PremiumDashboard() {
           .responsive-stack { flex-direction: column; align-items: stretch; }
           .responsive-stack > input, .responsive-stack > button { width: 100% !important; max-width: 100% !important; }
           .header-stack { flex-direction: column; align-items: flex-start !important; gap: 15px; }
+          .header-stack button { width: 100% !important; max-width: 100% !important; }
           .link-row { flex-direction: column; align-items: flex-start; gap: 15px; }
           .link-row button { width: 100%; }
         }
@@ -171,8 +173,8 @@ export default function PremiumDashboard() {
               <h2 style={{ fontSize: '20px', margin: '0 0 5px 0', fontWeight: '700' }}>Activate a New Tag</h2>
               <p style={{ color: '#9ca3af', fontSize: '14px', marginBottom: '20px' }}>Enter the Tag ID and the 8-character Activation Code.</p>
               <div className="responsive-stack">
-                <input type="text" placeholder="Tag ID (e.g. LS-005)" value={claimId} onChange={(e) => setClaimId(e.target.value.toUpperCase())} style={{ flex: 1, padding: '12px 16px', borderRadius: '8px', border: 'none', fontSize: '16px', color: '#111' }} />
-                <input type="text" maxLength="8" placeholder="8-Char Code" value={claimPin} onChange={(e) => setClaimPin(e.target.value.toUpperCase())} style={{ width: '160px', padding: '12px 16px', borderRadius: '8px', border: 'none', fontSize: '16px', color: '#111', textAlign: 'center', letterSpacing: '2px' }} />
+                <input type="text" placeholder="Tag ID (e.g. LS-005)" value={claimId} onChange={(e) => setClaimId(e.target.value.toUpperCase())} style={{ flex: 1, padding: '14px 16px', borderRadius: '8px', border: 'none', fontSize: '16px', color: '#111' }} />
+                <input type="text" maxLength="8" placeholder="8-Char Code" value={claimPin} onChange={(e) => setClaimPin(e.target.value.toUpperCase())} style={{ width: '160px', padding: '14px 16px', borderRadius: '8px', border: 'none', fontSize: '16px', color: '#111', textAlign: 'center', letterSpacing: '2px' }} />
                 <button onClick={handleActivateTag} disabled={isClaiming} style={{ padding: '14px 24px', backgroundColor: '#3b82f6', color: 'white', border: 'none', borderRadius: '8px', fontWeight: '700', cursor: 'pointer' }}>{isClaiming ? 'Verifying...' : 'Link to Account'}</button>
               </div>
               {claimMessage && <p style={{ marginTop: '15px', color: claimMessage.includes('Success') ? '#34d399' : '#f87171', fontWeight: '600', fontSize: '14px' }}>{claimMessage}</p>}
@@ -225,7 +227,7 @@ export default function PremiumDashboard() {
                 <div style={{ gridColumn: '1 / -1' }}>
                   <label style={labelStyle}>Public Username (URL)</label>
                   <div style={{ display: 'flex', alignItems: 'center', backgroundColor: '#f9fafb', border: '1px solid #d1d5db', borderRadius: '10px', padding: '0 14px' }}>
-                    <span style={{ color: '#6b7280', fontSize: '16px', display: 'none' }}>/u/</span> {/* Hidden on very small screens implicitly, but let's just let it shrink */}
+                    <span style={{ color: '#6b7280', fontSize: '16px', display: 'none' }}>/u/</span>
                     <input type="text" value={pageProfile.username} placeholder="mybrand" onChange={(e) => setPageProfile({...pageProfile, username: e.target.value})} style={{ flex: 1, padding: '14px 0', border: 'none', backgroundColor: 'transparent', fontSize: '16px', color: '#111', outline: 'none', fontWeight: '600' }} />
                   </div>
                 </div>
