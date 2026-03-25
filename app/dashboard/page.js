@@ -280,8 +280,8 @@ export default function PremiumDashboard() {
                   <input type="text" value={pageProfile.job_title} placeholder="e.g. Sales Director" onChange={(e) => setPageProfile({...pageProfile, job_title: e.target.value})} style={inputStyle} />
                 </div>
                 <div>
-                  <label style={labelStyle}>Company</label>
-                  <input type="text" value={pageProfile.company} placeholder="e.g. Acme Corp" onChange={(e) => setPageProfile({...pageProfile, company: e.target.value})} style={inputStyle} />
+                  <label style={labelStyle}>Company / Business Name</label>
+                  <input type="text" value={pageProfile.company} placeholder="e.g. Acme Corp or Freelance" onChange={(e) => setPageProfile({...pageProfile, company: e.target.value})} style={inputStyle} />
                 </div>
                 <div>
                   <label style={labelStyle}>Phone Number</label>
