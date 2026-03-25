@@ -10,10 +10,10 @@ export default async function PublicProfilePage({ params }) {
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
   const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
-  // 🔥 NEW: Fetching the new Business Card fields
+  // 🔥 FETCH: Added display_name to the data pull
   const { data: profile, error: profileError } = await supabase
     .from('customers')
-    .select('id, username, bio, theme_color, profile_picture_url, job_title, company, phone_number, display_email')
+    .select('id, username, display_name, bio, theme_color, profile_picture_url, job_title, company, phone_number, display_email')
     .eq('username', username.toLowerCase())
     .single()
 
@@ -32,12 +32,12 @@ export default async function PublicProfilePage({ params }) {
   // 🔥 LOGIC: Check if this should act as a Business Card
   const isBusinessCard = profile.phone_number || profile.display_email
   
-  // 🔥 ENGINE: Instantly generate the .vcf contact file string
+  // 🔥 ENGINE: Ensure the vCard uses the proper Full Name (FN:)
   let vcardData = ''
   if (isBusinessCard) {
     const vcard = `BEGIN:VCARD
 VERSION:3.0
-FN:${profile.company || profile.username}
+FN:${profile.display_name || profile.username}
 TITLE:${profile.job_title || ''}
 ORG:${profile.company || ''}
 TEL;TYPE=CELL:${profile.phone_number || ''}
@@ -76,20 +76,21 @@ END:VCARD`.replace(/\n/g, '\r\n')
         {profile.profile_picture_url ? (
           <img 
             src={profile.profile_picture_url} 
-            alt={profile.username}
+            alt={profile.display_name || profile.username}
             style={{ width: '110px', height: '110px', borderRadius: '50%', objectFit: 'cover', border: '3px solid rgba(255,255,255,0.4)', marginBottom: '20px', boxShadow: '0 8px 16px rgba(0,0,0,0.1)' }}
           />
         ) : (
           <div style={{ width: '96px', height: '96px', borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.15)', border: '2px solid rgba(255,255,255,0.3)', display: 'flex', justifyContent: 'center', alignItems: 'center', fontSize: '36px', fontWeight: '800', marginBottom: '20px', textTransform: 'uppercase', boxShadow: '0 8px 16px rgba(0,0,0,0.1)' }}>
-            {profile.username.charAt(0)}
+            {(profile.display_name || profile.username).charAt(0)}
           </div>
         )}
 
+        {/* 🔥 UI: Display the Full Name, fallback to username if blank */}
         <h1 style={{ fontSize: '24px', fontWeight: '800', margin: '0 0 5px 0', letterSpacing: '-0.5px', textShadow: '0 2px 4px rgba(0,0,0,0.2)' }}>
-          {profile.username}
+          {profile.display_name || profile.username}
         </h1>
 
-    {/* 🔥 UI: Conditionally render Job Title and Company cleanly */}
+        {/* 🔥 UI: Conditionally render Job Title and Company cleanly */}
         {(profile.job_title || profile.company) && (
           <h2 style={{ fontSize: '15px', fontWeight: '600', opacity: 0.9, margin: '0 0 15px 0', textTransform: 'uppercase', letterSpacing: '1px' }}>
             {profile.job_title}
@@ -108,7 +109,7 @@ END:VCARD`.replace(/\n/g, '\r\n')
           
           {/* 🔥 UI: The Magic "Save to Contacts" Button */}
           {isBusinessCard && (
-            <a href={vcardData} download={`${profile.username}.vcf`} className="contact-btn">
+            <a href={vcardData} download={`${profile.display_name || profile.username}.vcf`} className="contact-btn">
               📥 Save to Contacts
             </a>
           )}
