@@ -89,10 +89,12 @@ END:VCARD`.replace(/\n/g, '\r\n')
           {profile.username}
         </h1>
 
-        {/* 🔥 UI: Conditionally render Job Title and Company */}
+    {/* 🔥 UI: Conditionally render Job Title and Company cleanly */}
         {(profile.job_title || profile.company) && (
           <h2 style={{ fontSize: '15px', fontWeight: '600', opacity: 0.9, margin: '0 0 15px 0', textTransform: 'uppercase', letterSpacing: '1px' }}>
-            {profile.job_title} {profile.job_title && profile.company ? 'at' : ''} {profile.company}
+            {profile.job_title}
+            {profile.job_title && profile.company && <span style={{ margin: '0 8px', opacity: 0.5 }}>•</span>}
+            {profile.company}
           </h2>
         )}
         
