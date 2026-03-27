@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { createClient } from '../../utils/supabase/client'
 import { useRouter } from 'next/navigation'
 
@@ -15,12 +15,19 @@ export default function PremiumLoginPage() {
   const supabase = createClient()
   const router = useRouter()
 
+  // 🔥 UX FIX: Listen for the ?view=signup parameter and flip the UI
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('view') === 'signup') {
+      setIsSignUp(true)
+    }
+  }, [])
+
   const handleAuth = async (e) => {
     e.preventDefault()
     setLoading(true)
     setMessage('')
 
-    // 🔥 THE BATON PASS: Check if they brought a Tag ID with them!
     const params = new URLSearchParams(window.location.search)
     const claimId = params.get('claim')
     const redirectUrl = claimId ? `/dashboard?claim=${claimId}` : '/dashboard'
@@ -38,7 +45,7 @@ export default function PremiumLoginPage() {
     } else {
       const { error } = await supabase.auth.signInWithPassword({ email, password })
       if (error) setMessage("Invalid email or password.")
-      else router.push(redirectUrl) // Send them to the dashboard, WITH their Tag ID!
+      else router.push(redirectUrl) 
     }
     setLoading(false)
   }
