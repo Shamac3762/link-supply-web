@@ -63,7 +63,6 @@ export default function PremiumDashboard() {
       if (customerData.max_links !== undefined) setMaxLinks(customerData.max_links)
     }
 
-    // Pulling all sticker data, including tap_count
     const { data: stickerData } = await supabase.from('nfc_stickers').select('*').eq('owner_id', session.user.id).order('id', { ascending: true })
     if (stickerData) setStickers(stickerData)
 
@@ -89,6 +88,23 @@ export default function PremiumDashboard() {
     const { error } = await supabase.from('nfc_stickers').update({ target_url: newUrl, tag_name: newName }).eq('id', id)
     if (error) setSaveStatus({ ...saveStatus, [id]: 'Error!' })
     else { setSaveStatus({ ...saveStatus, [id]: 'Saved! ✓' }); setTimeout(() => setSaveStatus((prev) => ({ ...prev, [id]: '' })), 2000) }
+  }
+
+  // 🔥 NEW INSTANT TOGGLE FUNCTION
+  const handleToggleActive = async (id, currentState) => {
+    const newState = !currentState // Flip the switch
+    
+    // Optimistically update the UI so it feels instant to the user
+    setStickers(stickers.map(s => s.id === id ? { ...s, is_active: newState } : s))
+    
+    // Update Supabase in the background
+    const { error } = await supabase.from('nfc_stickers').update({ is_active: newState }).eq('id', id)
+    
+    if (error) {
+      // Revert if database fails
+      setStickers(stickers.map(s => s.id === id ? { ...s, is_active: currentState } : s))
+      alert("Failed to update hardware status.")
+    }
   }
 
   const handleSaveProfile = async () => {
@@ -185,35 +201,58 @@ export default function PremiumDashboard() {
               <div style={{ backgroundColor: 'white', padding: '60px', borderRadius: '16px', textAlign: 'center', border: '1px solid #e5e7eb' }}><p style={{ color: '#6b7280' }}>Activate your first tag above to get started.</p></div>
             ) : (
               <div style={{ display: 'grid', gap: '25px' }}>
-                {stickers.map((sticker) => (
-                  <div key={sticker.id} style={{ backgroundColor: 'white', padding: '30px', borderRadius: '16px', border: '1px solid #e5e7eb', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)', display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                    
-                    {/* UPGRADE 1: Analytics Badge Added Here */}
-                    <div className="header-stack" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                        <span style={{ fontSize: '20px', fontWeight: '700', color: '#111' }}>{sticker.id}</span>
-                        <span style={{ fontSize: '13px', fontWeight: '600', color: '#4b5563', backgroundColor: '#f3f4f6', padding: '4px 10px', borderRadius: '20px' }}>
-                          {sticker.tap_count || 0} Taps
-                        </span>
-                      </div>
-                      <a href={`/go/${sticker.url_slug}`} target="_blank" rel="noreferrer" style={{ fontSize: '14px', color: '#4f46e5', textDecoration: 'none', fontWeight: '600', padding: '8px 16px', backgroundColor: '#e0e7ff', borderRadius: '8px', textAlign: 'center', width: 'auto' }}>Preview Link ↗</a>
-                    </div>
+                {stickers.map((sticker) => {
+                  // Determine status (defaulting to true if column is empty)
+                  const isEnabled = sticker.is_active !== false;
 
-                    <div style={{ marginTop: '5px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                      <div>
-                        <label style={labelStyle}>Tag Name (Optional)</label>
-                        <input type="text" defaultValue={sticker.tag_name || ''} placeholder="e.g., Table 5" onChange={(e) => { const updated = stickers.map(s => s.id === sticker.id ? { ...s, tag_name: e.target.value } : s); setStickers(updated) }} style={inputStyle} />
+                  return (
+                    <div key={sticker.id} style={{ backgroundColor: 'white', padding: '30px', borderRadius: '16px', border: '1px solid #e5e7eb', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)', display: 'flex', flexDirection: 'column', gap: '20px', opacity: isEnabled ? 1 : 0.6, transition: 'opacity 0.2s' }}>
+                      
+                      <div className="header-stack" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                          <span style={{ fontSize: '20px', fontWeight: '700', color: '#111', textDecoration: isEnabled ? 'none' : 'line-through' }}>{sticker.id}</span>
+                          <span style={{ fontSize: '13px', fontWeight: '600', color: '#4b5563', backgroundColor: '#f3f4f6', padding: '4px 10px', borderRadius: '20px' }}>
+                            {sticker.tap_count || 0} Taps
+                          </span>
+                        </div>
+                        <a href={`/go/${sticker.url_slug}`} target="_blank" rel="noreferrer" style={{ fontSize: '14px', color: '#4f46e5', textDecoration: 'none', fontWeight: '600', padding: '8px 16px', backgroundColor: '#e0e7ff', borderRadius: '8px', textAlign: 'center', width: 'auto' }}>Preview Link ↗</a>
                       </div>
-                      <div>
-                        <label style={labelStyle}>Destination URL</label>
-                        <div className="responsive-stack">
-                          <input type="url" defaultValue={sticker.target_url || ''} placeholder="https://your-link.com" onChange={(e) => { const updated = stickers.map(s => s.id === sticker.id ? { ...s, target_url: e.target.value } : s); setStickers(updated) }} style={{ flex: 1, padding: '14px', borderRadius: '10px', border: '1px solid #d1d5db', fontSize: '16px', color: '#111', outline: 'none' }} />
-                          <button onClick={() => handleSaveHardwareChanges(sticker.id, sticker.target_url, sticker.tag_name)} style={{ padding: '14px 24px', backgroundColor: '#111', color: 'white', border: 'none', borderRadius: '10px', fontWeight: '600', cursor: 'pointer' }}>{saveStatus[sticker.id] || 'Save Changes'}</button>
+
+                      <div style={{ marginTop: '5px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                        <div>
+                          <label style={labelStyle}>Tag Name (Optional)</label>
+                          <input disabled={!isEnabled} type="text" defaultValue={sticker.tag_name || ''} placeholder="e.g., Table 5" onChange={(e) => { const updated = stickers.map(s => s.id === sticker.id ? { ...s, tag_name: e.target.value } : s); setStickers(updated) }} style={inputStyle} />
+                        </div>
+                        <div>
+                          {/* 🔥 NEW TOGGLE UI ADDED HERE */}
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                            <label style={{...labelStyle, marginBottom: 0}}>Destination URL</label>
+                            <button
+                              onClick={() => handleToggleActive(sticker.id, isEnabled)}
+                              style={{
+                                padding: '6px 14px',
+                                borderRadius: '20px',
+                                border: 'none',
+                                fontSize: '12px',
+                                fontWeight: '700',
+                                cursor: 'pointer',
+                                backgroundColor: isEnabled ? '#d1fae5' : '#fee2e2',
+                                color: isEnabled ? '#059669' : '#dc2626',
+                                transition: 'all 0.2s'
+                              }}
+                            >
+                              {isEnabled ? '🟢 Active' : '🔴 Disabled'}
+                            </button>
+                          </div>
+                          <div className="responsive-stack">
+                            <input disabled={!isEnabled} type="url" defaultValue={sticker.target_url || ''} placeholder="https://your-link.com" onChange={(e) => { const updated = stickers.map(s => s.id === sticker.id ? { ...s, target_url: e.target.value } : s); setStickers(updated) }} style={{ flex: 1, padding: '14px', borderRadius: '10px', border: '1px solid #d1d5db', fontSize: '16px', color: '#111', outline: 'none' }} />
+                            <button disabled={!isEnabled} onClick={() => handleSaveHardwareChanges(sticker.id, sticker.target_url, sticker.tag_name)} style={{ padding: '14px 24px', backgroundColor: isEnabled ? '#111' : '#9ca3af', color: 'white', border: 'none', borderRadius: '10px', fontWeight: '600', cursor: isEnabled ? 'pointer' : 'not-allowed' }}>{saveStatus[sticker.id] || 'Save Changes'}</button>
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
@@ -221,8 +260,6 @@ export default function PremiumDashboard() {
 
         {activeTab === 'page' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
-            
-            {/* UPGRADE 3: Removed the top-right button from here */}
             <div style={{ backgroundColor: 'white', padding: '30px', borderRadius: '16px', border: '1px solid #e5e7eb' }}>
               <div className="header-stack" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
                 <h2 style={{ fontSize: '20px', fontWeight: '700', color: '#111', margin: 0 }}>Page Identity</h2>
@@ -234,7 +271,6 @@ export default function PremiumDashboard() {
                   <input type="text" value={pageProfile.display_name} placeholder="e.g. John Doe" onChange={(e) => setPageProfile({...pageProfile, display_name: e.target.value})} style={inputStyle} />
                 </div>
                 
-                {/* UPGRADE 2: Locked the URL Prefix box */}
                 <div style={{ gridColumn: '1 / -1' }}>
                   <label style={labelStyle}>Public Username (URL)</label>
                   <div style={{ display: 'flex', alignItems: 'center', backgroundColor: '#f9fafb', border: '1px solid #d1d5db', borderRadius: '10px', overflow: 'hidden' }}>
@@ -259,13 +295,11 @@ export default function PremiumDashboard() {
                 </div>
               </div>
 
-              {/* UPGRADE 3: Button moved to the bottom of the card, full width */}
               <div style={{ marginTop: '25px', borderTop: '1px solid #e5e7eb', paddingTop: '20px' }}>
                 <button onClick={handleSaveProfile} style={{ padding: '14px 20px', backgroundColor: '#111', color: 'white', border: 'none', borderRadius: '8px', fontWeight: '600', cursor: 'pointer', width: '100%', fontSize: '16px' }}>
                   {saveStatus.profile || 'Save Profile Info'}
                 </button>
               </div>
-
             </div>
 
             <div style={{ backgroundColor: 'white', padding: '30px', borderRadius: '16px', border: '1px solid #e5e7eb' }}>
