@@ -32,7 +32,7 @@ export default async function PublicProfilePage({ params }) {
   // 🔥 LOGIC: Check if this should act as a Business Card
   const isBusinessCard = profile.phone_number || profile.display_email
   
-  // 🔥 ENGINE: Ensure the vCard uses the proper Full Name (FN:)
+  // 🔥 ENGINE: Ensure the vCard uses the proper Full Name and EXACT Domain
   let vcardData = ''
   if (isBusinessCard) {
     const vcard = `BEGIN:VCARD
@@ -42,7 +42,7 @@ TITLE:${profile.job_title || ''}
 ORG:${profile.company || ''}
 TEL;TYPE=CELL:${profile.phone_number || ''}
 EMAIL;TYPE=WORK:${profile.display_email || ''}
-URL:https://${process.env.NEXT_PUBLIC_VERCEL_URL || 'linksupply.com'}/u/${profile.username}
+URL:https://linksupply.co.uk/u/${profile.username}
 END:VCARD`.replace(/\n/g, '\r\n')
     vcardData = `data:text/vcard;charset=utf-8,${encodeURIComponent(vcard)}`
   }
