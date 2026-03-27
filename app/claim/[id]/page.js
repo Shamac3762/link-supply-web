@@ -7,7 +7,7 @@ export default function SecureClaimPage() {
   const params = useParams()
   const stickerId = params?.id 
   
-  const [pin, setPin] = useState('')
+  const [activationCode, setActivationCode] = useState('')
   const [status, setStatus] = useState('')
   const [checking, setChecking] = useState(true)
   const supabase = createClient()
@@ -27,26 +27,32 @@ export default function SecureClaimPage() {
   }, [router])
 
   const handleClaim = async () => {
-    if (!pin || pin.length < 4) {
-      return setStatus("Please enter your 4-digit PIN.")
+    if (!activationCode || activationCode.length < 6) {
+      return setStatus("Please enter your full Activation Code.")
     }
 
-    setStatus("Verifying PIN...")
+    setStatus("Verifying Activation Code...")
     const { data: { user } } = await supabase.auth.getUser()
 
-    // THE VAULT DOOR: We now check the ID *and* the exact PIN
+    // 🔥 THE DEFAULT URL: Hardcoded to your homepage for all new tags
+    const defaultUrl = 'https://www.linksupply.co.uk/'
+
+    // 🔥 THE VAULT DOOR: Checks url_slug and activation_code, then assigns the target_url
     const { error, data } = await supabase
       .from('nfc_stickers')
-      .update({ owner_id: user.id })
-      .eq('id', stickerId)
-      .eq('claim_pin', pin) // Must match the PIN exactly
+      .update({ 
+        owner_id: user.id,
+        target_url: defaultUrl
+      })
+      .eq('url_slug', stickerId) 
+      .eq('activation_code', activationCode.toUpperCase()) 
       .is('owner_id', null) 
-      .select() // Ask Supabase to return the row if successful
+      .select() 
 
     if (error || !data || data.length === 0) {
-      setStatus("Error: Invalid PIN or this sticker is already claimed.")
+      setStatus("Error: Invalid Code or this item is already claimed.")
     } else {
-      setStatus("Success! PIN accepted. Taking you to your dashboard...")
+      setStatus("Success! Item secured. Taking you to your dashboard...")
       setTimeout(() => router.push('/dashboard'), 2000)
     }
   }
@@ -61,18 +67,20 @@ export default function SecureClaimPage() {
       <div style={{ marginBottom: '20px' }}>
         <input 
           type="text"
-          maxLength="4"
-          placeholder="Enter 4-Digit PIN" 
-          onChange={(e) => setPin(e.target.value)}
+          maxLength="8"
+          placeholder="e.g. DEF9BFC0" 
+          value={activationCode}
+          onChange={(e) => setActivationCode(e.target.value.toUpperCase())}
           style={{ 
             padding: '12px', 
             width: '200px', 
             textAlign: 'center', 
             fontSize: '18px', 
-            letterSpacing: '5px',
+            letterSpacing: '2px',
             color: 'black',
             borderRadius: '5px',
-            border: 'none'
+            border: 'none',
+            textTransform: 'uppercase'
           }}
         />
       </div>
