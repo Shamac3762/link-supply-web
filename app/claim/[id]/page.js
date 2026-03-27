@@ -17,14 +17,15 @@ export default function SecureClaimPage() {
     const checkUser = async () => {
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) {
-        setStatus("Redirecting to login...")
-        router.push('/login')
+        setStatus("Redirecting to account creation...")
+        // 🔥 UX FIX: Routing them directly to the "Sign Up" tab
+        router.push(`/login?view=signup&claim=${stickerId}`) 
       } else {
         setChecking(false)
       }
     }
     checkUser()
-  }, [router])
+  }, [router, stickerId]) // Added stickerId to dependency array
 
   const handleClaim = async () => {
     if (!activationCode || activationCode.length < 6) {
@@ -34,10 +35,10 @@ export default function SecureClaimPage() {
     setStatus("Verifying Activation Code...")
     const { data: { user } } = await supabase.auth.getUser()
 
-    // 🔥 THE DEFAULT URL: Hardcoded to your homepage for all new tags
+    // THE DEFAULT URL: Hardcoded to your homepage for all new tags
     const defaultUrl = 'https://www.linksupply.co.uk/'
 
-    // 🔥 THE VAULT DOOR: Checks url_slug and activation_code, then assigns the target_url
+    // THE VAULT DOOR: Checks url_slug and activation_code, then assigns the target_url
     const { error, data } = await supabase
       .from('nfc_stickers')
       .update({ 
