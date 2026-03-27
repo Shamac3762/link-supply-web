@@ -63,6 +63,7 @@ export default function PremiumDashboard() {
       if (customerData.max_links !== undefined) setMaxLinks(customerData.max_links)
     }
 
+    // Pulling all sticker data, including tap_count
     const { data: stickerData } = await supabase.from('nfc_stickers').select('*').eq('owner_id', session.user.id).order('id', { ascending: true })
     if (stickerData) setStickers(stickerData)
 
@@ -131,7 +132,6 @@ export default function PremiumDashboard() {
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#f3f4f6', fontFamily: 'sans-serif', paddingBottom: '50px' }}>
       
-      {/* 🔥 FIX: Added global box-sizing rule so all inputs stay perfectly symmetrical */}
       <style>{`
         * { box-sizing: border-box; }
         .responsive-nav { padding: 20px 40px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e5e7eb; background-color: white; }
@@ -147,7 +147,7 @@ export default function PremiumDashboard() {
           .responsive-stack { flex-direction: column; align-items: stretch; }
           .responsive-stack > input, .responsive-stack > button { width: 100% !important; max-width: 100% !important; }
           .header-stack { flex-direction: column; align-items: flex-start !important; gap: 15px; }
-          .header-stack button { width: 100% !important; max-width: 100% !important; }
+          .header-stack .actions { width: 100%; display: flex; justify-content: space-between; }
           .link-row { flex-direction: column; align-items: flex-start; gap: 15px; }
           .link-row button { width: 100%; }
         }
@@ -187,10 +187,18 @@ export default function PremiumDashboard() {
               <div style={{ display: 'grid', gap: '25px' }}>
                 {stickers.map((sticker) => (
                   <div key={sticker.id} style={{ backgroundColor: 'white', padding: '30px', borderRadius: '16px', border: '1px solid #e5e7eb', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                    
+                    {/* UPGRADE 1: Analytics Badge Added Here */}
                     <div className="header-stack" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}><span style={{ fontSize: '20px', fontWeight: '700', color: '#111' }}>{sticker.id}</span></div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <span style={{ fontSize: '20px', fontWeight: '700', color: '#111' }}>{sticker.id}</span>
+                        <span style={{ fontSize: '13px', fontWeight: '600', color: '#4b5563', backgroundColor: '#f3f4f6', padding: '4px 10px', borderRadius: '20px' }}>
+                          {sticker.tap_count || 0} Taps
+                        </span>
+                      </div>
                       <a href={`/go/${sticker.url_slug}`} target="_blank" rel="noreferrer" style={{ fontSize: '14px', color: '#4f46e5', textDecoration: 'none', fontWeight: '600', padding: '8px 16px', backgroundColor: '#e0e7ff', borderRadius: '8px', textAlign: 'center', width: 'auto' }}>Preview Link ↗</a>
                     </div>
+
                     <div style={{ marginTop: '5px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
                       <div>
                         <label style={labelStyle}>Tag Name (Optional)</label>
@@ -213,10 +221,11 @@ export default function PremiumDashboard() {
 
         {activeTab === 'page' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
+            
+            {/* UPGRADE 3: Removed the top-right button from here */}
             <div style={{ backgroundColor: 'white', padding: '30px', borderRadius: '16px', border: '1px solid #e5e7eb' }}>
               <div className="header-stack" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
                 <h2 style={{ fontSize: '20px', fontWeight: '700', color: '#111', margin: 0 }}>Page Identity</h2>
-                <button onClick={handleSaveProfile} style={{ padding: '10px 20px', backgroundColor: '#111', color: 'white', border: 'none', borderRadius: '8px', fontWeight: '600', cursor: 'pointer', width: '100%', maxWidth: '200px' }}>{saveStatus.profile || 'Save Profile Info'}</button>
               </div>
               
               <div className="responsive-grid">
@@ -224,13 +233,18 @@ export default function PremiumDashboard() {
                   <label style={labelStyle}>Full Name / Display Name</label>
                   <input type="text" value={pageProfile.display_name} placeholder="e.g. John Doe" onChange={(e) => setPageProfile({...pageProfile, display_name: e.target.value})} style={inputStyle} />
                 </div>
+                
+                {/* UPGRADE 2: Locked the URL Prefix box */}
                 <div style={{ gridColumn: '1 / -1' }}>
                   <label style={labelStyle}>Public Username (URL)</label>
-                  <div style={{ display: 'flex', alignItems: 'center', backgroundColor: '#f9fafb', border: '1px solid #d1d5db', borderRadius: '10px', padding: '0 14px' }}>
-                    <span style={{ color: '#6b7280', fontSize: '16px', display: 'none' }}>/u/</span>
-                    <input type="text" value={pageProfile.username} placeholder="mybrand" onChange={(e) => setPageProfile({...pageProfile, username: e.target.value})} style={{ flex: 1, padding: '14px 0', border: 'none', backgroundColor: 'transparent', fontSize: '16px', color: '#111', outline: 'none', fontWeight: '600' }} />
+                  <div style={{ display: 'flex', alignItems: 'center', backgroundColor: '#f9fafb', border: '1px solid #d1d5db', borderRadius: '10px', overflow: 'hidden' }}>
+                    <span style={{ color: '#6b7280', fontSize: '15px', padding: '14px 0 14px 14px', fontWeight: '500', borderRight: '1px solid #e5e7eb', backgroundColor: '#f3f4f6' }}>
+                      linksupply.co.uk/u/
+                    </span>
+                    <input type="text" value={pageProfile.username} placeholder="mybrand" onChange={(e) => setPageProfile({...pageProfile, username: e.target.value})} style={{ flex: 1, padding: '14px', border: 'none', backgroundColor: 'transparent', fontSize: '16px', color: '#111', outline: 'none', fontWeight: '600' }} />
                   </div>
                 </div>
+
                 <div style={{ gridColumn: '1 / -1' }}>
                   <label style={labelStyle}>Profile Picture URL (Optional)</label>
                   <input type="text" value={pageProfile.profile_picture_url} placeholder="https://example.com/my-photo.jpg" onChange={(e) => setPageProfile({...pageProfile, profile_picture_url: e.target.value})} style={inputStyle} />
@@ -244,6 +258,14 @@ export default function PremiumDashboard() {
                   <input type="color" value={pageProfile.theme_color} onChange={(e) => setPageProfile({...pageProfile, theme_color: e.target.value})} style={{ width: '50px', height: '50px', padding: '0', border: 'none', borderRadius: '8px', cursor: 'pointer' }} />
                 </div>
               </div>
+
+              {/* UPGRADE 3: Button moved to the bottom of the card, full width */}
+              <div style={{ marginTop: '25px', borderTop: '1px solid #e5e7eb', paddingTop: '20px' }}>
+                <button onClick={handleSaveProfile} style={{ padding: '14px 20px', backgroundColor: '#111', color: 'white', border: 'none', borderRadius: '8px', fontWeight: '600', cursor: 'pointer', width: '100%', fontSize: '16px' }}>
+                  {saveStatus.profile || 'Save Profile Info'}
+                </button>
+              </div>
+
             </div>
 
             <div style={{ backgroundColor: 'white', padding: '30px', borderRadius: '16px', border: '1px solid #e5e7eb' }}>
