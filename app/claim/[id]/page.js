@@ -5,8 +5,9 @@ import { useRouter, useParams } from 'next/navigation'
 
 export default function SecureClaimPage() {
   const params = useParams()
-  const stickerId = params?.id 
+  const stickerId = params?.id // This is the ugly url_slug from the URL
   
+  const [displayId, setDisplayId] = useState('') // 🔥 NEW: Stores the clean LS-005 ID
   const [activationCode, setActivationCode] = useState('')
   const [status, setStatus] = useState('')
   const [checking, setChecking] = useState(true)
@@ -14,18 +15,30 @@ export default function SecureClaimPage() {
   const router = useRouter()
 
   useEffect(() => {
-    const checkUser = async () => {
+    const initializeClaim = async () => {
+      // 1. Check if user is logged in
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) {
         setStatus("Redirecting to account creation...")
-        // 🔥 UX FIX: Routing them directly to the "Sign Up" tab
-        router.push(`/login?view=signup&claim=${stickerId}`) 
-      } else {
-        setChecking(false)
+        return router.push(`/login?view=signup&claim=${stickerId}`) 
       }
+
+      // 🔥 2. UX FIX: Fetch the clean, human-readable ID to display to the customer
+      const { data: tagData } = await supabase
+        .from('nfc_stickers')
+        .select('id')
+        .eq('url_slug', stickerId)
+        .single()
+        
+      if (tagData) {
+        setDisplayId(tagData.id) // e.g., LS-005
+      }
+
+      setChecking(false)
     }
-    checkUser()
-  }, [router, stickerId]) // Added stickerId to dependency array
+    
+    initializeClaim()
+  }, [router, stickerId]) 
 
   const handleClaim = async () => {
     if (!activationCode || activationCode.length < 6) {
@@ -63,7 +76,11 @@ export default function SecureClaimPage() {
   return (
     <div style={{ padding: '50px', textAlign: 'center', background: '#111', color: 'white', minHeight: '100vh', fontFamily: 'sans-serif' }}>
       <h1 style={{ fontSize: '2rem', marginBottom: '10px' }}>Claim Your Tag</h1>
-      <h2 style={{ color: '#0070f3', marginBottom: '30px' }}>ID: {stickerId}</h2>
+      
+      {/* 🔥 UX FIX: Now displays LS-005 instead of the ugly slug! */}
+      <h2 style={{ color: '#0070f3', marginBottom: '30px', letterSpacing: '1px' }}>
+        TAG: {displayId || 'Loading...'}
+      </h2>
       
       <div style={{ marginBottom: '20px' }}>
         <input 
