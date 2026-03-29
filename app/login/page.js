@@ -15,7 +15,7 @@ export default function PremiumLoginPage() {
   const supabase = createClient()
   const router = useRouter()
 
-  // 🔥 UX FIX: Listen for the ?view=signup parameter and flip the UI
+  // Listen for the ?view=signup parameter and flip the UI
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     if (params.get('view') === 'signup') {
@@ -33,15 +33,30 @@ export default function PremiumLoginPage() {
     const redirectUrl = claimId ? `/dashboard?claim=${claimId}` : '/dashboard'
 
     if (isSignUp) {
-      const { error } = await supabase.auth.signUp({ 
+      const { data, error } = await supabase.auth.signUp({ 
         email, 
         password,
         options: {
           data: { first_name: firstName, last_name: lastName } 
         }
       })
-      if (error) setMessage(error.message)
-      else setMessage('Success! Welcome to Link Supply. You can now log in.')
+      
+      if (error) {
+        setMessage(error.message)
+      } else {
+        // 🔥 THE UX FIX: Instant Auto-Login
+        setMessage('Account created! Securing your vault...')
+        
+        // Silently log them in right after creation
+        const { error: signInError } = await supabase.auth.signInWithPassword({ email, password })
+        
+        if (!signInError) {
+          router.push(redirectUrl) // Teleport to dashboard with the Tag ID!
+        } else {
+          // Fallback in case your Supabase requires Email Verification first
+          setMessage('Success! Please check your email to verify your account.')
+        }
+      }
     } else {
       const { error } = await supabase.auth.signInWithPassword({ email, password })
       if (error) setMessage("Invalid email or password.")
@@ -93,7 +108,7 @@ export default function PremiumLoginPage() {
           </button>
         </form>
 
-        {message && <p style={{ color: message.includes('Success') ? '#059669' : '#dc2626', marginTop: '15px', fontSize: '14px', fontWeight: '500' }}>{message}</p>}
+        {message && <p style={{ color: message.includes('Securing') || message.includes('Success') ? '#059669' : '#dc2626', marginTop: '15px', fontSize: '14px', fontWeight: '500' }}>{message}</p>}
 
         <div style={{ marginTop: '30px', borderTop: '1px solid #e5e7eb', paddingTop: '20px' }}>
           <p style={{ color: '#6b7280', fontSize: '14px' }}>
