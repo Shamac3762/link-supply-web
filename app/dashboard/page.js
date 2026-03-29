@@ -35,18 +35,32 @@ export default function PremiumDashboard() {
 
   useEffect(() => {
     fetchData()
-    const params = new URLSearchParams(window.location.search)
-    const urlClaimId = params.get('claim')
-    if (urlClaimId) { setClaimId(urlClaimId); setActiveTab('hardware') }
   }, [])
 
   const fetchData = async () => {
     const { data: { session } } = await supabase.auth.getSession()
+    
+    const params = new URLSearchParams(window.location.search)
+    const claimParam = params.get('claim')
+
     if (!session) {
-      const params = new URLSearchParams(window.location.search)
-      const claimParam = params.get('claim')
-      if (claimParam) return router.push(`/login?claim=${claimParam}`)
+      if (claimParam) return router.push(`/login?view=signup&claim=${claimParam}`)
       return router.push('/login') 
+    }
+
+    // 🔥 THE UX FIX: The Translation Layer
+    if (claimParam) {
+      setActiveTab('hardware')
+      // Secretly look up the real ID using the slug
+      const { data: tagData } = await supabase
+        .from('nfc_stickers')
+        .select('id')
+        .eq('url_slug', claimParam)
+        .single()
+        
+      if (tagData) {
+        setClaimId(tagData.id) // Pre-fills the box with the beautiful ID!
+      }
     }
 
     const firstName = session.user.user_metadata?.first_name
@@ -136,7 +150,6 @@ export default function PremiumDashboard() {
 
   const handleLogout = async () => { await supabase.auth.signOut(); router.push('/login') }
 
-  // 🔥 NEW LOGIC FOR SETTINGS
   const handleUpdatePassword = async () => {
     if (newPassword.length < 6) return setSettingsMessage("Password must be at least 6 characters.")
     setSettingsMessage("Updating...")
@@ -152,10 +165,7 @@ export default function PremiumDashboard() {
     
     if (confirmDelete) {
       setSettingsMessage("Deleting account...")
-      // Supabase Edge Functions or RPC are usually required to delete a user from the auth schema for security reasons.
-      // For now, we will log them out and redirect to a contact page, OR you can implement a Supabase RPC delete function.
       alert("Account scheduled for deletion. Please contact support to finalize.")
-      // handleLogout()
     }
   }
 
@@ -190,7 +200,6 @@ export default function PremiumDashboard() {
         }
       `}</style>
 
-      {/* 🔥 SETTINGS MODAL UI */}
       {showSettings && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, padding: '20px' }}>
           <div style={{ backgroundColor: 'white', padding: '30px', borderRadius: '16px', width: '100%', maxWidth: '400px', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)' }}>
@@ -220,7 +229,6 @@ export default function PremiumDashboard() {
         <h1 style={{ fontSize: '22px', fontWeight: '800', color: '#111', margin: 0, letterSpacing: '-0.5px' }}>Link Supply.</h1>
         <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
           <span style={{ color: '#4b5563', fontWeight: '500', fontSize: '15px', display: 'none' }}>Hello, {profile?.first_name || 'User'}</span>
-          {/* 🔥 SETTINGS BUTTON ADDED HERE */}
           <button onClick={() => setShowSettings(true)} style={{ padding: '8px 16px', backgroundColor: '#f3f4f6', color: '#111', border: '1px solid #d1d5db', borderRadius: '6px', fontWeight: '600', cursor: 'pointer', fontSize: '14px' }}>⚙️ Settings</button>
           <button onClick={handleLogout} style={{ padding: '8px 16px', backgroundColor: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca', borderRadius: '6px', fontWeight: '600', cursor: 'pointer', fontSize: '14px' }}>Log Out</button>
         </div>
