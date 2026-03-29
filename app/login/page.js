@@ -12,6 +12,9 @@ export default function PremiumLoginPage() {
   const [message, setMessage] = useState('')
   const [loading, setLoading] = useState(false)
   
+  // 🔥 NEW: State to track the Terms & Conditions checkbox
+  const [agreedToTerms, setAgreedToTerms] = useState(false)
+  
   const supabase = createClient()
   const router = useRouter()
 
@@ -25,6 +28,13 @@ export default function PremiumLoginPage() {
 
   const handleAuth = async (e) => {
     e.preventDefault()
+    
+    // 🔥 NEW: Validation check for the Terms & Conditions during Sign Up
+    if (isSignUp && !agreedToTerms) {
+      setMessage('Please agree to the Terms & Conditions to create your account.')
+      return
+    }
+
     setLoading(true)
     setMessage('')
 
@@ -44,7 +54,6 @@ export default function PremiumLoginPage() {
       if (error) {
         setMessage(error.message)
       } else {
-        // 🔥 THE UX FIX: Instant Auto-Login
         setMessage('Account created! Securing your vault...')
         
         // Silently log them in right after creation
@@ -91,7 +100,7 @@ export default function PremiumLoginPage() {
           )}
           
           <input required type="email" placeholder="Email Address" onChange={(e) => setEmail(e.target.value)} style={inputStyle} />
-          <input required type="password" placeholder="Password" onChange={(e) => setPassword(e.target.value)} style={inputStyle} />
+          <input required type="password" placeholder="Password" onChange={(e) => setPassword(e.target.value)} style={{ ...inputStyle, marginBottom: isSignUp ? '5px' : '15px' }} />
 
           {!isSignUp && (
             <div style={{ textAlign: 'right', marginTop: '-10px', marginBottom: '15px' }}>
@@ -99,23 +108,47 @@ export default function PremiumLoginPage() {
             </div>
           )}
 
+          {/* 🔥 NEW: The Legal/Compliance UI Blocks */}
+          {isSignUp ? (
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', marginTop: '10px', marginBottom: '20px', textAlign: 'left' }}>
+              <input 
+                type="checkbox" 
+                id="terms" 
+                checked={agreedToTerms}
+                onChange={(e) => setAgreedToTerms(e.target.checked)}
+                style={{ marginTop: '3px', cursor: 'pointer', minWidth: '16px', minHeight: '16px' }}
+              />
+              <label htmlFor="terms" style={{ fontSize: '13px', color: '#6b7280', lineHeight: '1.4' }}>
+                I agree to the Link Supply <a href="/terms" target="_blank" style={{ color: '#111', textDecoration: 'underline', fontWeight: '500' }}>Terms & Conditions</a> and <a href="/privacy" target="_blank" style={{ color: '#111', textDecoration: 'underline', fontWeight: '500' }}>Privacy Policy</a>.
+              </label>
+            </div>
+          ) : (
+            <p style={{ fontSize: '12px', color: '#9ca3af', marginTop: '0', marginBottom: '20px' }}>
+              By logging in, you agree to our <a href="/terms" target="_blank" style={{ color: '#6b7280', textDecoration: 'underline' }}>Terms of Service</a>.
+            </p>
+          )}
+
           <button disabled={loading} type="submit" style={{ 
             width: '100%', padding: '14px', backgroundColor: '#111', color: 'white', 
             border: 'none', borderRadius: '8px', fontSize: '16px', fontWeight: '700', 
-            cursor: 'pointer', transition: '0.2s', marginTop: '10px' 
+            cursor: loading ? 'not-allowed' : 'pointer', transition: '0.2s', marginTop: '5px' 
           }}>
             {loading ? 'Processing...' : (isSignUp ? 'Sign Up' : 'Log In')}
           </button>
         </form>
 
-        {message && <p style={{ color: message.includes('Securing') || message.includes('Success') ? '#059669' : '#dc2626', marginTop: '15px', fontSize: '14px', fontWeight: '500' }}>{message}</p>}
+        {message && <p style={{ color: message.includes('Securing') || message.includes('Success') ? '#059669' : '#dc2626', marginTop: '15px', fontSize: '14px', fontWeight: '500', padding: '10px', backgroundColor: message.includes('Securing') || message.includes('Success') ? '#d1fae5' : '#fee2e2', borderRadius: '8px' }}>{message}</p>}
 
         <div style={{ marginTop: '30px', borderTop: '1px solid #e5e7eb', paddingTop: '20px' }}>
           <p style={{ color: '#6b7280', fontSize: '14px' }}>
             {isSignUp ? 'Already have an account?' : "Don't have an account?"}
             <button 
               type="button"
-              onClick={() => { setIsSignUp(!isSignUp); setMessage(''); }} 
+              onClick={() => { 
+                setIsSignUp(!isSignUp); 
+                setMessage(''); 
+                setAgreedToTerms(false); // Reset terms checkbox when toggling
+              }} 
               style={{ background: 'none', border: 'none', color: '#4f46e5', fontWeight: '700', cursor: 'pointer', marginLeft: '5px', fontSize: '14px' }}
             >
               {isSignUp ? 'Log in here' : 'Sign up here'}
