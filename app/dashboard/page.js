@@ -25,7 +25,6 @@ export default function PremiumDashboard() {
   const [loading, setLoading] = useState(true)
   const [saveStatus, setSaveStatus] = useState({}) 
 
-  // 🔥 NEW STATE FOR SETTINGS MODAL
   const [showSettings, setShowSettings] = useState(false)
   const [newPassword, setNewPassword] = useState('')
   const [settingsMessage, setSettingsMessage] = useState('')
@@ -37,7 +36,6 @@ export default function PremiumDashboard() {
     fetchData()
   }, [])
 
-  // 🔥 NEW: Username Auto-Generator Helper
   const generateDefaultUsername = (firstName, lastName) => {
     const f = (firstName || '').charAt(0).toLowerCase();
     const l = (lastName || '').substring(0, 5).toLowerCase();
@@ -57,10 +55,8 @@ export default function PremiumDashboard() {
       return router.push('/login') 
     }
 
-    // 🔥 THE UX FIX: The Translation Layer
     if (claimParam) {
       setActiveTab('hardware')
-      // Secretly look up the real ID using the slug
       const { data: tagData } = await supabase
         .from('nfc_stickers')
         .select('id')
@@ -68,12 +64,13 @@ export default function PremiumDashboard() {
         .single()
         
       if (tagData) {
-        setClaimId(tagData.id) // Pre-fills the box with the beautiful ID!
+        setClaimId(tagData.id) 
       }
     }
 
     const firstName = session.user.user_metadata?.first_name || '';
     const lastName = session.user.user_metadata?.last_name || '';
+    const defaultDisplayName = `${firstName} ${lastName}`.trim();
     
     const { data: customerData } = await supabase
       .from('customers')
@@ -83,22 +80,43 @@ export default function PremiumDashboard() {
 
     setProfile({ first_name: firstName })
 
-    // 🔥 UPDATED: Check for existing username, or generate one automatically
+    // 🔥 THE FIX: Setup variables to check if we need a background save
     let currentUsername = customerData?.username;
+    let currentDisplayName = customerData?.display_name;
+    let requiresBackgroundSave = false;
+
+    // Generate username if missing
     if (!currentUsername) {
       currentUsername = generateDefaultUsername(firstName, lastName);
+      requiresBackgroundSave = true;
     }
 
-    if (customerData) {
-      setPageProfile({
-        username: currentUsername, 
-        display_name: customerData.display_name || '',
-        bio: customerData.bio || '', theme_color: customerData.theme_color || '#111111',
-        profile_picture_url: customerData.profile_picture_url || '', job_title: customerData.job_title || '',
-        company: customerData.company || '', phone_number: customerData.phone_number || '', display_email: customerData.display_email || ''
-      })
-      if (customerData.max_links !== undefined) setMaxLinks(customerData.max_links)
+    // Generate display name if missing
+    if (!currentDisplayName && defaultDisplayName) {
+      currentDisplayName = defaultDisplayName;
+      requiresBackgroundSave = true;
     }
+
+    // 🔥 BACKGROUND SAVE: Lock in the generated data immediately so it's seamless
+    if (requiresBackgroundSave) {
+      await supabase.from('customers').upsert({
+        id: session.user.id,
+        username: currentUsername,
+        display_name: currentDisplayName,
+        theme_color: customerData?.theme_color || '#111111'
+      });
+    }
+
+    // Set the state using our locked-in variables
+    setPageProfile({
+      username: currentUsername, 
+      display_name: currentDisplayName || '',
+      bio: customerData?.bio || '', theme_color: customerData?.theme_color || '#111111',
+      profile_picture_url: customerData?.profile_picture_url || '', job_title: customerData?.job_title || '',
+      company: customerData?.company || '', phone_number: customerData?.phone_number || '', display_email: customerData?.display_email || ''
+    })
+    
+    if (customerData?.max_links !== undefined) setMaxLinks(customerData.max_links)
 
     const { data: stickerData } = await supabase.from('nfc_stickers').select('*').eq('owner_id', session.user.id).order('id', { ascending: true })
     if (stickerData) setStickers(stickerData)
@@ -114,7 +132,6 @@ export default function PremiumDashboard() {
     setIsClaiming(true); setClaimMessage("Verifying vault...")
     const { data: { session } } = await supabase.auth.getSession()
 
-    // 🔥 UPDATED: Automatically set the target_url to their public profile when activating
     const defaultUrl = `https://linksupply.co.uk/u/${pageProfile.username}`;
 
     const { error, data } = await supabase.from('nfc_stickers')
@@ -214,7 +231,6 @@ export default function PremiumDashboard() {
         .responsive-stack { display: flex; gap: 12px; }
         .link-row { display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; background-color: #f9fafb; border: 1px solid #e5e7eb; border-radius: 10px; }
         
-        /* 🔥 MOBILE FIX: URL Container CSS */
         .url-input-container { display: flex; align-items: center; background-color: #f9fafb; border: 1px solid #d1d5db; border-radius: 10px; overflow: hidden; width: 100%; }
         .url-prefix { color: #6b7280; font-size: 15px; padding: 14px; font-weight: 500; border-right: 1px solid #e5e7eb; background-color: #f3f4f6; white-space: nowrap; }
 
@@ -229,7 +245,6 @@ export default function PremiumDashboard() {
           .link-row { flex-direction: column; align-items: flex-start; gap: 15px; }
           .link-row button { width: 100%; }
           
-          /* 🔥 MOBILE FIX: Stack the URL inputs */
           .url-input-container { flex-direction: column; align-items: stretch; }
           .url-prefix { border-right: none; border-bottom: 1px solid #e5e7eb; font-size: 13px; padding: 10px 14px; }
         }
@@ -327,7 +342,6 @@ export default function PremiumDashboard() {
                             <input disabled={!isEnabled} type="url" defaultValue={sticker.target_url || ''} placeholder="https://your-link.com" onChange={(e) => { const updated = stickers.map(s => s.id === sticker.id ? { ...s, target_url: e.target.value } : s); setStickers(updated) }} style={{ flex: 1, padding: '14px', borderRadius: '10px', border: '1px solid #d1d5db', fontSize: '16px', color: '#111', outline: 'none' }} />
                             <button disabled={!isEnabled} onClick={() => handleSaveHardwareChanges(sticker.id, sticker.target_url, sticker.tag_name)} style={{ padding: '14px 24px', backgroundColor: isEnabled ? '#111' : '#9ca3af', color: 'white', border: 'none', borderRadius: '10px', fontWeight: '600', cursor: isEnabled ? 'pointer' : 'not-allowed' }}>{saveStatus[sticker.id] || 'Save Changes'}</button>
                           </div>
-                          {/* 🔥 NEW: Professional Tip */}
                           <p style={{ fontSize: '13px', color: '#6b7280', marginTop: '10px', lineHeight: '1.4' }}>
                             <strong>💡 Tip:</strong> Keep this link set to your profile (<code>https://linksupply.co.uk/u/{pageProfile.username || 'username'}</code>) to share your digital business card and contact details, or change it to redirect straight to any other website.
                           </p>
@@ -356,7 +370,6 @@ export default function PremiumDashboard() {
                 
                 <div style={{ gridColumn: '1 / -1' }}>
                   <label style={labelStyle}>Public Username (URL)</label>
-                  {/* 🔥 MOBILE FIX: Applied the CSS classes here */}
                   <div className="url-input-container">
                     <span className="url-prefix">
                       linksupply.co.uk/u/
