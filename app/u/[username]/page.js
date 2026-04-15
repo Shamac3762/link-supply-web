@@ -47,11 +47,13 @@ export default function PublicProfilePage({ params }) {
   }
 
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: bgColor, display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '60px 20px', fontFamily: 'sans-serif', color: 'white', position: 'relative' }}>
+    <div style={{ minHeight: '100vh', backgroundColor: bgColor, display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '60px 20px', fontFamily: 'sans-serif', color: 'white', position: 'relative', overflowX: 'hidden' }}>
       
       <style>{`
+        * { box-sizing: border-box; } /* CRITICAL FIX: Forces padding inside width */
+        
         .premium-link {
-          display: flex; align-items: center; justify-content: center; gap: 12px; width: 100%; padding: 18px 20px;
+          display: flex; align-items: center; justify-content: center; gap: 12px; width: 100%; max-width: 100%; padding: 18px 20px;
           background-color: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.15);
           border-radius: 16px; color: white; text-decoration: none; font-size: 16px; font-weight: 600;
           transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px);
@@ -59,23 +61,21 @@ export default function PublicProfilePage({ params }) {
         .premium-link:active { transform: scale(0.96); background-color: rgba(255, 255, 255, 0.2); }
         
         .contact-btn {
-          display: block; width: 100%; padding: 18px 20px; background-color: white; color: ${bgColor}; 
+          display: block; width: 100%; max-width: 100%; padding: 18px 20px; background-color: white; color: ${bgColor}; 
           border-radius: 16px; text-decoration: none; font-size: 16px; font-weight: 800; text-align: center;
           margin-bottom: 30px; box-shadow: 0 10px 20px rgba(0,0,0,0.2); transition: all 0.2s ease;
         }
         .contact-btn:active { transform: scale(0.96); }
 
         .share-trigger {
-          position: absolute; top: 25px; right: 25px; width: 44px; height: 44px;
+          position: absolute; top: 20px; right: 20px; width: 44px; height: 44px;
           display: flex; align-items: center; justify-content: center;
           background: rgba(255, 255, 255, 0.12); border: 1px solid rgba(255, 255, 255, 0.2);
           border-radius: 50%; cursor: pointer; backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
-          z-index: 10; transition: all 0.2s ease;
+          z-index: 10;
         }
-        .share-trigger:active { background: rgba(255, 255, 255, 0.3); transform: scale(0.9); }
       `}</style>
 
-      {/* FIXED POSITION SHARE ICON */}
       <div onClick={handleShare} className="share-trigger">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
           <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/>
@@ -85,14 +85,14 @@ export default function PublicProfilePage({ params }) {
       <main style={{ width: '100%', maxWidth: '400px', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
         
         {profile.profile_picture_url ? (
-          <img src={profile.profile_picture_url} alt="Profile" style={{ width: '120px', height: '120px', borderRadius: '50%', objectFit: 'cover', border: '4px solid rgba(255,255,255,0.3)', marginBottom: '20px', boxShadow: '0 10px 25px rgba(0,0,0,0.2)' }} />
+          <img src={profile.profile_picture_url} alt="Profile" style={{ width: '120px', height: '120px', borderRadius: '50%', objectFit: 'cover', border: '4px solid rgba(255,255,255,0.3)', marginBottom: '20px' }} />
         ) : (
           <div style={{ width: '100px', height: '100px', borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.1)', border: '2px solid rgba(255,255,255,0.2)', display: 'flex', justifyContent: 'center', alignItems: 'center', fontSize: '40px', fontWeight: '800', marginBottom: '20px' }}>
             {(profile.display_name || profile.username).charAt(0)}
           </div>
         )}
 
-        <h1 style={{ fontSize: '26px', fontWeight: '800', margin: '0 0 8px 0', letterSpacing: '-0.5px' }}>{profile.display_name || profile.username}</h1>
+        <h1 style={{ fontSize: '26px', fontWeight: '800', margin: '0 0 8px 0' }}>{profile.display_name || profile.username}</h1>
 
         {(profile.job_title || profile.company) && (
           <h2 style={{ fontSize: '14px', fontWeight: '600', opacity: 0.8, margin: '0 0 20px 0', textTransform: 'uppercase', letterSpacing: '1.5px' }}>
@@ -100,7 +100,7 @@ export default function PublicProfilePage({ params }) {
           </h2>
         )}
         
-        {profile.bio && <p style={{ fontSize: '16px', lineHeight: '1.5', opacity: 0.9, marginBottom: '35px', padding: '0 15px' }}>{profile.bio}</p>}
+        {profile.bio && <p style={{ fontSize: '16px', lineHeight: '1.5', opacity: 0.9, marginBottom: '35px' }}>{profile.bio}</p>}
 
         <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '16px' }}>
           {isBusinessCard && (
@@ -112,13 +112,13 @@ export default function PublicProfilePage({ params }) {
           {links.map((link, index) => (
             <a key={index} href={link.url} target="_blank" rel="noreferrer" className="premium-link">
               <span style={{ display: 'flex', opacity: 0.9 }}>{getLinkIcon(link.url)}</span>
-              <span>{link.title}</span>
+              <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{link.title}</span>
             </a>
           ))}
         </div>
       </main>
 
-      <footer style={{ marginTop: 'auto', paddingTop: '60px', opacity: 0.5, fontSize: '12px', fontWeight: '700', letterSpacing: '1px' }}>
+      <footer style={{ marginTop: 'auto', paddingTop: '60px', opacity: 0.5, fontSize: '12px', fontWeight: '700' }}>
         <a href="/" style={{ color: 'white', textDecoration: 'none' }}>⚡ POWERED BY LINKSUPPLY</a>
       </footer>
     </div>
