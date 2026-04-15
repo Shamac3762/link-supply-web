@@ -14,93 +14,110 @@ function getLinkIcon(url) {
 }
 
 export default function PublicProfilePage({ params }) {
-  const [profile, setProfile] = useState(null)
-  const [links, setLinks] = useState([])
-  const [loading, setLoading] = useState(true)
-  const supabase = createClient()
+  const [profile, setProfile] = useState(null);
+  const [links, setLinks] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const supabase = createClient();
 
   useEffect(() => {
     async function loadProfile() {
-      const { username } = await params
-      const { data: profileData } = await supabase.from('customers').select('*').eq('username', username.toLowerCase()).single()
-      if (!profileData) return setProfile('not_found')
-      const { data: linksData } = await supabase.from('page_links').select('*').eq('owner_id', profileData.id).order('sort_order', { ascending: true })
-      setProfile(profileData); setLinks(linksData || []); setLoading(false)
+      const { username } = await params;
+      const { data: profileData } = await supabase.from('customers').select('*').eq('username', username.toLowerCase()).single();
+      if (!profileData) return setProfile('not_found');
+      const { data: linksData } = await supabase.from('page_links').select('*').eq('owner_id', profileData.id).order('sort_order', { ascending: true });
+      setProfile(profileData); setLinks(linksData || []); setLoading(false);
     }
-    loadProfile()
-  }, [params])
+    loadProfile();
+  }, [params]);
 
-  if (profile === 'not_found') return notFound()
-  if (loading) return <div style={{ minHeight: '100vh', backgroundColor: '#111', display: 'flex', justifyContent: 'center', alignItems: 'center', color: 'white' }}>Loading...</div>
+  if (profile === 'not_found') return notFound();
+  if (loading) return <div style={{ minHeight: '100vh', backgroundColor: '#0a0a0a', display: 'flex', justifyContent: 'center', alignItems: 'center', color: 'white' }}>Loading...</div>;
 
-  const bgColor = profile.theme_color || '#111111'
-  const isBusinessCard = profile.phone_number || profile.display_email
-  const vcard = `BEGIN:VCARD\r\nVERSION:3.0\r\nFN:${profile.display_name || profile.username}\r\nTITLE:${profile.job_title || ''}\r\nORG:${profile.company || ''}\r\nTEL;TYPE=CELL:${profile.phone_number || ''}\r\nEMAIL;TYPE=WORK:${profile.display_email || ''}\r\nURL:https://linksupply.co.uk/u/${profile.username}\r\nEND:VCARD`
-  const vcardData = `data:text/vcard;charset=utf-8,${encodeURIComponent(vcard)}`
+  const baseColor = profile.theme_color || '#111111';
+  const isBusinessCard = profile.phone_number || profile.display_email;
+  const vcard = `BEGIN:VCARD\r\nVERSION:3.0\r\nFN:${profile.display_name || profile.username}\r\nTITLE:${profile.job_title || ''}\r\nORG:${profile.company || ''}\r\nTEL;TYPE=CELL:${profile.phone_number || ''}\r\nEMAIL;TYPE=WORK:${profile.display_email || ''}\r\nURL:https://linksupply.co.uk/u/${profile.username}\r\nEND:VCARD`;
+  const vcardData = `data:text/vcard;charset=utf-8,${encodeURIComponent(vcard)}`;
 
   const handleShare = async () => {
     if (navigator.share) {
-      navigator.share({ title: profile.display_name || profile.username, url: window.location.href })
+      navigator.share({ title: profile.display_name || profile.username, url: window.location.href });
     } else {
-      navigator.clipboard.writeText(window.location.href); alert("Link copied!")
+      navigator.clipboard.writeText(window.location.href); alert("Link copied!");
     }
-  }
+  };
 
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: bgColor, display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '60px 20px', fontFamily: 'sans-serif', color: 'white', position: 'relative', overflowX: 'hidden' }}>
+    <div style={{ 
+      minHeight: '100vh', 
+      backgroundColor: baseColor,
+      // MESH GRADIENT LOGIC: Blends the theme color with deep shadows
+      backgroundImage: `radial-gradient(at 0% 0%, rgba(0,0,0,0.4) 0px, transparent 50%), radial-gradient(at 100% 100%, rgba(0,0,0,0.3) 0px, transparent 50%)`,
+      display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '60px 20px', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif', color: 'white', position: 'relative', overflowX: 'hidden' 
+    }}>
       
       <style>{`
-        * { box-sizing: border-box; } /* CRITICAL FIX: Forces padding inside width */
+        * { box-sizing: border-box; }
         
+        /* Smooth Entrance Animation */
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        main { animation: fadeIn 0.8s ease-out forwards; }
+
         .premium-link {
           display: flex; align-items: center; justify-content: center; gap: 12px; width: 100%; max-width: 100%; padding: 18px 20px;
-          background-color: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.15);
-          border-radius: 16px; color: white; text-decoration: none; font-size: 16px; font-weight: 600;
-          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px);
+          background-color: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.12);
+          border-radius: 18px; color: white; text-decoration: none; font-size: 16px; font-weight: 600;
+          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
         }
-        .premium-link:active { transform: scale(0.96); background-color: rgba(255, 255, 255, 0.2); }
+        .premium-link:active { transform: scale(0.97); background-color: rgba(255, 255, 255, 0.15); }
         
         .contact-btn {
-          display: block; width: 100%; max-width: 100%; padding: 18px 20px; background-color: white; color: ${bgColor}; 
-          border-radius: 16px; text-decoration: none; font-size: 16px; font-weight: 800; text-align: center;
-          margin-bottom: 30px; box-shadow: 0 10px 20px rgba(0,0,0,0.2); transition: all 0.2s ease;
+          display: block; width: 100%; max-width: 100%; padding: 18px 20px; background-color: white; color: ${baseColor}; 
+          border-radius: 18px; text-decoration: none; font-size: 16px; font-weight: 800; text-align: center;
+          margin-bottom: 30px; box-shadow: 0 15px 30px rgba(0,0,0,0.25); transition: all 0.2s ease;
         }
-        .contact-btn:active { transform: scale(0.96); }
+        .contact-btn:active { transform: scale(0.97); }
 
         .share-trigger {
           position: absolute; top: 20px; right: 20px; width: 44px; height: 44px;
           display: flex; align-items: center; justify-content: center;
-          background: rgba(255, 255, 255, 0.12); border: 1px solid rgba(255, 255, 255, 0.2);
+          background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.1);
           border-radius: 50%; cursor: pointer; backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
           z-index: 10;
         }
       `}</style>
 
       <div onClick={handleShare} className="share-trigger">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/>
-        </svg>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
       </div>
 
       <main style={{ width: '100%', maxWidth: '400px', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
         
         {profile.profile_picture_url ? (
-          <img src={profile.profile_picture_url} alt="Profile" style={{ width: '120px', height: '120px', borderRadius: '50%', objectFit: 'cover', border: '4px solid rgba(255,255,255,0.3)', marginBottom: '20px' }} />
+          <img src={profile.profile_picture_url} alt="Profile" style={{ width: '120px', height: '120px', borderRadius: '50%', objectFit: 'cover', border: '4px solid rgba(255,255,255,0.2)', marginBottom: '22px', boxShadow: '0 10px 30px rgba(0,0,0,0.3)' }} />
         ) : (
-          <div style={{ width: '100px', height: '100px', borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.1)', border: '2px solid rgba(255,255,255,0.2)', display: 'flex', justifyContent: 'center', alignItems: 'center', fontSize: '40px', fontWeight: '800', marginBottom: '20px' }}>
+          <div style={{ width: '100px', height: '100px', borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.08)', border: '2px solid rgba(255,255,255,0.15)', display: 'flex', justifyContent: 'center', alignItems: 'center', fontSize: '40px', fontWeight: '800', marginBottom: '22px' }}>
             {(profile.display_name || profile.username).charAt(0)}
           </div>
         )}
 
-        <h1 style={{ fontSize: '26px', fontWeight: '800', margin: '0 0 8px 0' }}>{profile.display_name || profile.username}</h1>
+        {/* VERIFIED BADGE LOGIC */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+          <h1 style={{ fontSize: '28px', fontWeight: '800', margin: 0, letterSpacing: '-0.5px' }}>
+            {profile.display_name || profile.username}
+          </h1>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M12 2L14.47 4.89L18.24 4.56L19.47 8.16L23 9.7L21.84 13.33L23.75 16.63L20.35 18.27L18.89 21.73L15.19 20.81L12 23L8.81 20.81L5.11 21.73L3.65 18.27L0.25 16.63L2.16 13.33L1 9.7L4.53 8.16L5.76 4.56L9.53 4.89L12 2Z" fill="white" fillOpacity="0.2" stroke="white" strokeWidth="1.5"/>
+            <path d="M9 12L11 14L15 10" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        </div>
 
         {(profile.job_title || profile.company) && (
-          <h2 style={{ fontSize: '14px', fontWeight: '600', opacity: 0.8, margin: '0 0 20px 0', textTransform: 'uppercase', letterSpacing: '1.5px' }}>
+          <h2 style={{ fontSize: '13px', fontWeight: '700', opacity: 0.7, margin: '0 0 25px 0', textTransform: 'uppercase', letterSpacing: '2px' }}>
             {profile.job_title} {profile.job_title && profile.company && '•'} {profile.company}
           </h2>
         )}
         
-        {profile.bio && <p style={{ fontSize: '16px', lineHeight: '1.5', opacity: 0.9, marginBottom: '35px' }}>{profile.bio}</p>}
+        {profile.bio && <p style={{ fontSize: '16px', lineHeight: '1.6', opacity: 0.85, marginBottom: '40px', padding: '0 20px' }}>{profile.bio}</p>}
 
         <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '16px' }}>
           {isBusinessCard && (
@@ -111,14 +128,14 @@ export default function PublicProfilePage({ params }) {
 
           {links.map((link, index) => (
             <a key={index} href={link.url} target="_blank" rel="noreferrer" className="premium-link">
-              <span style={{ display: 'flex', opacity: 0.9 }}>{getLinkIcon(link.url)}</span>
+              <span style={{ display: 'flex', opacity: 0.8 }}>{getLinkIcon(link.url)}</span>
               <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{link.title}</span>
             </a>
           ))}
         </div>
       </main>
 
-      <footer style={{ marginTop: 'auto', paddingTop: '60px', opacity: 0.5, fontSize: '12px', fontWeight: '700' }}>
+      <footer style={{ marginTop: 'auto', paddingTop: '80px', opacity: 0.4, fontSize: '11px', fontWeight: '800', letterSpacing: '2px' }}>
         <a href="/" style={{ color: 'white', textDecoration: 'none' }}>⚡ POWERED BY LINKSUPPLY</a>
       </footer>
     </div>
