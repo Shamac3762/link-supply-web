@@ -14,9 +14,10 @@ function getLinkIcon(url) {
 }
 
 function getContrastColor(hexcolor) {
+  // If the background is an AI-generated gradient, default to white text for luxury
   if (!hexcolor || hexcolor.startsWith('linear') || hexcolor.startsWith('radial')) return 'white';
   
-  // If it's a hex color, calculate brightness
+  // Calculate brightness for hex colors
   const r = parseInt(hexcolor.slice(1, 3), 16);
   const g = parseInt(hexcolor.slice(3, 5), 16);
   const b = parseInt(hexcolor.slice(5, 7), 16);
@@ -34,6 +35,7 @@ export default function PublicProfilePage({ params }) {
   useEffect(() => {
     async function loadProfile() {
       const { username } = await params;
+      // FETCH: Now including the 'bg_css' column
       const { data: profileData } = await supabase.from('customers').select('*').eq('username', username.toLowerCase()).single();
       if (!profileData) return setProfile('not_found');
       const { data: linksData } = await supabase.from('page_links').select('*').eq('owner_id', profileData.id).order('sort_order', { ascending: true });
@@ -46,6 +48,9 @@ export default function PublicProfilePage({ params }) {
   if (loading) return <div style={{ minHeight: '100vh', backgroundColor: '#0a0a0a', display: 'flex', justifyContent: 'center', alignItems: 'center', color: 'white' }}>Loading...</div>;
 
   const baseColor = profile.theme_color || '#111111';
+  // DYNAMIC TEXT COLOR: Uses the contrast engine
+  const textColor = getContrastColor(baseColor);
+  
   const isBusinessCard = profile.phone_number || profile.display_email;
   const vcard = `BEGIN:VCARD\r\nVERSION:3.0\r\nFN:${profile.display_name || profile.username}\r\nTITLE:${profile.job_title || ''}\r\nORG:${profile.company || ''}\r\nTEL;TYPE=CELL:${profile.phone_number || ''}\r\nEMAIL;TYPE=WORK:${profile.display_email || ''}\r\nURL:https://linksupply.co.uk/u/${profile.username}\r\nEND:VCARD`;
   const vcardData = `data:text/vcard;charset=utf-8,${encodeURIComponent(vcard)}`;
@@ -62,28 +67,32 @@ export default function PublicProfilePage({ params }) {
     <div style={{ 
       minHeight: '100vh', 
       backgroundColor: baseColor,
-      // MESH GRADIENT LOGIC: Blends the theme color with deep shadows
-      backgroundImage: `radial-gradient(at 0% 0%, rgba(0,0,0,0.4) 0px, transparent 50%), radial-gradient(at 100% 100%, rgba(0,0,0,0.3) 0px, transparent 50%)`,
-      display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '60px 20px', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif', color: 'white', position: 'relative', overflowX: 'hidden' 
+      // AI BACKGROUND ENGINE: Uses the 'bg_css' from Supabase if available
+      backgroundImage: profile.bg_css || `radial-gradient(at 0% 0%, rgba(0,0,0,0.4) 0px, transparent 50%), radial-gradient(at 100% 100%, rgba(0,0,0,0.3) 0px, transparent 50%)`,
+      display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '60px 20px', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif', 
+      color: textColor, // APPLIES DYNAMIC TEXT COLOR
+      position: 'relative', overflowX: 'hidden' 
     }}>
       
       <style>{`
         * { box-sizing: border-box; }
-        
-        /* Smooth Entrance Animation */
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         main { animation: fadeIn 0.8s ease-out forwards; }
 
         .premium-link {
           display: flex; align-items: center; justify-content: center; gap: 12px; width: 100%; max-width: 100%; padding: 18px 20px;
-          background-color: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.12);
-          border-radius: 18px; color: white; text-decoration: none; font-size: 16px; font-weight: 600;
+          /* BUTTON COLOR: Adaptive transparency based on text color */
+          background-color: ${textColor === 'white' ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.05)'}; 
+          border: 1px solid ${textColor === 'white' ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.1)'};
+          border-radius: 18px; color: ${textColor}; text-decoration: none; font-size: 16px; font-weight: 600;
           transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
         }
         .premium-link:active { transform: scale(0.97); background-color: rgba(255, 255, 255, 0.15); }
         
         .contact-btn {
-          display: block; width: 100%; max-width: 100%; padding: 18px 20px; background-color: white; color: ${baseColor}; 
+          display: block; width: 100%; max-width: 100%; padding: 18px 20px; 
+          background-color: ${textColor === 'white' ? 'white' : '#111111'}; 
+          color: ${textColor === 'white' ? baseColor : 'white'}; 
           border-radius: 18px; text-decoration: none; font-size: 16px; font-weight: 800; text-align: center;
           margin-bottom: 30px; box-shadow: 0 15px 30px rgba(0,0,0,0.25); transition: all 0.2s ease;
         }
@@ -92,9 +101,10 @@ export default function PublicProfilePage({ params }) {
         .share-trigger {
           position: absolute; top: 20px; right: 20px; width: 44px; height: 44px;
           display: flex; align-items: center; justify-content: center;
-          background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.1);
+          background: ${textColor === 'white' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'}; 
+          border: 1px solid ${textColor === 'white' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'};
           border-radius: 50%; cursor: pointer; backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
-          z-index: 10;
+          z-index: 10; color: ${textColor};
         }
       `}</style>
 
@@ -105,20 +115,20 @@ export default function PublicProfilePage({ params }) {
       <main style={{ width: '100%', maxWidth: '400px', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
         
         {profile.profile_picture_url ? (
-          <img src={profile.profile_picture_url} alt="Profile" style={{ width: '120px', height: '120px', borderRadius: '50%', objectFit: 'cover', border: '4px solid rgba(255,255,255,0.2)', marginBottom: '22px', boxShadow: '0 10px 30px rgba(0,0,0,0.3)' }} />
+          <img src={profile.profile_picture_url} alt="Profile" style={{ width: '120px', height: '120px', borderRadius: '50%', objectFit: 'cover', border: `4px solid ${textColor === 'white' ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.1)'}`, marginBottom: '22px', boxShadow: '0 10px 30px rgba(0,0,0,0.3)' }} />
         ) : (
-          <div style={{ width: '100px', height: '100px', borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.08)', border: '2px solid rgba(255,255,255,0.15)', display: 'flex', justifyContent: 'center', alignItems: 'center', fontSize: '40px', fontWeight: '800', marginBottom: '22px' }}>
+          <div style={{ width: '100px', height: '100px', borderRadius: '50%', backgroundColor: `${textColor === 'white' ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)'}`, border: `2px solid ${textColor === 'white' ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.1)'}`, display: 'flex', justifyContent: 'center', alignItems: 'center', fontSize: '40px', fontWeight: '800', marginBottom: '22px' }}>
             {(profile.display_name || profile.username).charAt(0)}
           </div>
         )}
 
-        {/* VERIFIED BADGE LOGIC */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
           <h1 style={{ fontSize: '28px', fontWeight: '800', margin: 0, letterSpacing: '-0.5px' }}>
             {profile.display_name || profile.username}
           </h1>
+          {/* THE BLUE TICK: Stays blue for trust, but stroke adapts to text color */}
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M12 2L14.47 4.89L18.24 4.56L19.47 8.16L23 9.7L21.84 13.33L23.75 16.63L20.35 18.27L18.89 21.73L15.19 20.81L12 23L8.81 20.81L5.11 21.73L3.65 18.27L0.25 16.63L2.16 13.33L1 9.7L4.53 8.16L5.76 4.56L9.53 4.89L12 2Z" fill="#3b82f6" fillOpacity="1" stroke="white" strokeWidth="1.5"/>
+            <path d="M12 2L14.47 4.89L18.24 4.56L19.47 8.16L23 9.7L21.84 13.33L23.75 16.63L20.35 18.27L18.89 21.73L15.19 20.81L12 23L8.81 20.81L5.11 21.73L3.65 18.27L0.25 16.63L2.16 13.33L1 9.7L4.53 8.16L5.76 4.56L9.53 4.89L12 2Z" fill="#3b82f6" fillOpacity="1" stroke={textColor} strokeWidth="1.5"/>
             <path d="M9 12L11 14L15 10" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
           </svg>
         </div>
@@ -148,7 +158,7 @@ export default function PublicProfilePage({ params }) {
       </main>
 
       <footer style={{ marginTop: 'auto', paddingTop: '80px', opacity: 0.4, fontSize: '11px', fontWeight: '800', letterSpacing: '2px' }}>
-        <a href="/" style={{ color: 'white', textDecoration: 'none' }}>⚡ POWERED BY LINKSUPPLY</a>
+        <a href="/" style={{ color: textColor, textDecoration: 'none' }}>⚡ POWERED BY LINKSUPPLY</a>
       </footer>
     </div>
   )
