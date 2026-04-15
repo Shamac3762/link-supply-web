@@ -1,6 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { createClient } from '../../utils/supabase/client'
+import { createClient } from '../../../utils/supabase/client'
 import { notFound } from 'next/navigation'
 
 // This function detects the platform and returns a clean, white SVG icon
@@ -67,7 +67,7 @@ export default function PublicProfilePage({ params }) {
   }
 
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: bgColor, display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '40px 20px', fontFamily: 'sans-serif', color: 'white' }}>
+    <div style={{ minHeight: '100vh', backgroundColor: bgColor, display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '40px 20px', fontFamily: 'sans-serif', color: 'white', position: 'relative' }}>
       
       <style>{`
         .premium-link {
