@@ -51,6 +51,49 @@ export default function PublicProfilePage({ params }) {
   // DYNAMIC TEXT COLOR: Uses the contrast engine
   const textColor = getContrastColor(baseColor);
   
+  // 🔥 INTERCEPT: THE PREMIUM "COMING SOON" SCREEN
+  if (profile.profile_status === 'coming_soon') {
+    return (
+      <div style={{ 
+        minHeight: '100vh', 
+        backgroundColor: baseColor,
+        backgroundImage: profile.bg_css || `radial-gradient(at 0% 0%, rgba(0,0,0,0.4) 0px, transparent 50%), radial-gradient(at 100% 100%, rgba(0,0,0,0.3) 0px, transparent 50%)`,
+        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', 
+        padding: '20px', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif', 
+        color: textColor, position: 'relative', overflowX: 'hidden' 
+      }}>
+        <style>{`
+          @keyframes subtlePulse {
+            0% { opacity: 0.5; transform: scale(0.95); }
+            50% { opacity: 1; transform: scale(1); }
+            100% { opacity: 0.5; transform: scale(0.95); }
+          }
+          .premium-lock { animation: subtlePulse 3.5s infinite ease-in-out; margin-bottom: 30px; }
+        `}</style>
+        
+        <div className="premium-lock" style={{ 
+          width: '80px', height: '80px', borderRadius: '50%', 
+          backgroundColor: textColor === 'white' ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)', 
+          border: `1px solid ${textColor === 'white' ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.1)'}`,
+          display: 'flex', justifyContent: 'center', alignItems: 'center', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)'
+        }}>
+          <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+        </div>
+        
+        <h1 style={{ fontSize: '24px', fontWeight: '800', margin: '0 0 12px 0', letterSpacing: '-0.5px', textAlign: 'center' }}>
+          @{profile.username}
+        </h1>
+        <p style={{ fontSize: '15px', fontWeight: '500', opacity: 0.7, margin: 0, textAlign: 'center', maxWidth: '280px', lineHeight: '1.6' }}>
+          This page is currently being prepared. Please check back soon.
+        </p>
+
+        <footer style={{ position: 'absolute', bottom: '40px', opacity: 0.4, fontSize: '11px', fontWeight: '800', letterSpacing: '2px' }}>
+          <a href="/" style={{ color: textColor, textDecoration: 'none' }}>⚡ POWERED BY LINKSUPPLY</a>
+        </footer>
+      </div>
+    )
+  }
+
   const isBusinessCard = profile.phone_number || profile.display_email;
   const vcard = `BEGIN:VCARD\r\nVERSION:3.0\r\nFN:${profile.display_name || profile.username}\r\nTITLE:${profile.job_title || ''}\r\nORG:${profile.company || ''}\r\nTEL;TYPE=CELL:${profile.phone_number || ''}\r\nEMAIL;TYPE=WORK:${profile.display_email || ''}\r\nURL:https://linksupply.co.uk/u/${profile.username}\r\nEND:VCARD`;
   const vcardData = `data:text/vcard;charset=utf-8,${encodeURIComponent(vcard)}`;
