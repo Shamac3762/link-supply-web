@@ -26,7 +26,7 @@ export default function PremiumDashboard() {
     username: '', display_name: '', bio: '', theme_color: '#111111',
     profile_picture_url: '', job_title: '', company: '', phone_number: '', display_email: '',
     profile_status: 'live',
-    remember_me: false // 🔥 SECURE LOGIN: Added state
+    remember_me: false
   })
   const [pageLinks, setPageLinks] = useState([])
   const [newLinkTitle, setNewLinkTitle] = useState('')
@@ -86,7 +86,6 @@ export default function PremiumDashboard() {
     
     const { data: customerData } = await supabase
       .from('customers')
-      // 🔥 SECURE LOGIN: Included remember_me in the select
       .select('username, display_name, bio, theme_color, max_links, profile_picture_url, job_title, company, phone_number, display_email, profile_status, remember_me')
       .eq('id', session.user.id)
       .single()
@@ -123,7 +122,7 @@ export default function PremiumDashboard() {
       profile_picture_url: customerData?.profile_picture_url || '', job_title: customerData?.job_title || '',
       company: customerData?.company || '', phone_number: customerData?.phone_number || '', display_email: customerData?.display_email || '',
       profile_status: customerData?.profile_status || 'live',
-      remember_me: customerData?.remember_me || false // 🔥 SECURE LOGIN: Set state
+      remember_me: customerData?.remember_me || false
     })
     
     if (customerData?.max_links !== undefined) setMaxLinks(customerData.max_links)
@@ -137,7 +136,6 @@ export default function PremiumDashboard() {
     setLoading(false)
   }
 
-  // 🔥 SECURE LOGIN: Auto-save function for the toggle switch
   const handleToggleRememberMe = async (currentValue) => {
     const newValue = !currentValue;
     setPageProfile({ ...pageProfile, remember_me: newValue });
@@ -191,7 +189,7 @@ export default function PremiumDashboard() {
         bio: pageProfile.bio, theme_color: pageProfile.theme_color, profile_picture_url: pageProfile.profile_picture_url,
         job_title: pageProfile.job_title, company: pageProfile.company, phone_number: pageProfile.phone_number, display_email: pageProfile.display_email,
         profile_status: pageProfile.profile_status,
-        remember_me: pageProfile.remember_me // Keep state in sync
+        remember_me: pageProfile.remember_me 
       })
 
     if (error) { alert("Database Error: " + error.message); setSaveStatus({ ...saveStatus, profile: 'Error!' }) } 
@@ -284,7 +282,6 @@ export default function PremiumDashboard() {
               <button onClick={handleUpdatePassword} style={{ width: '100%', padding: '10px', backgroundColor: '#111', color: 'white', border: 'none', borderRadius: '8px', fontWeight: '600', cursor: 'pointer' }}>Update Password</button>
             </div>
 
-            {/* 🔥 SECURE LOGIN UI: iOS Style Toggle */}
             <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: '20px', paddingBottom: '10px' }}>
               <h3 style={{ fontSize: '16px', color: '#111', margin: '0 0 15px 0' }}>Security Preferences</h3>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -403,25 +400,31 @@ export default function PremiumDashboard() {
         {activeTab === 'page' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '30px', width: '100%' }}>
             
+            {/* 🔥 PREMIUM FEATURE: Profile Status Toggle + Preview Button */}
             <div style={{ backgroundColor: 'white', padding: '25px 30px', borderRadius: '16px', border: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '15px' }}>
               <div>
                 <h2 style={{ fontSize: '20px', fontWeight: '700', color: '#111', margin: '0 0 5px 0' }}>Profile Status</h2>
                 <p style={{ color: '#6b7280', fontSize: '14px', margin: 0 }}>Control if your page is visible to the public.</p>
               </div>
               
-              <div style={{ display: 'flex', backgroundColor: '#f3f4f6', padding: '6px', borderRadius: '100px' }}>
-                <button 
-                  onClick={() => { setPageProfile({...pageProfile, profile_status: 'live'}); }}
-                  style={{ padding: '10px 24px', borderRadius: '100px', border: 'none', fontWeight: '700', fontSize: '14px', cursor: 'pointer', transition: 'all 0.2s ease', backgroundColor: pageProfile.profile_status === 'live' ? 'white' : 'transparent', color: pageProfile.profile_status === 'live' ? '#111' : '#6b7280', boxShadow: pageProfile.profile_status === 'live' ? '0 2px 8px rgba(0,0,0,0.1)' : 'none' }}
-                >
-                  🟢 Live
-                </button>
-                <button 
-                  onClick={() => { setPageProfile({...pageProfile, profile_status: 'coming_soon'}); }}
-                  style={{ padding: '10px 24px', borderRadius: '100px', border: 'none', fontWeight: '700', fontSize: '14px', cursor: 'pointer', transition: 'all 0.2s ease', backgroundColor: pageProfile.profile_status === 'coming_soon' ? 'white' : 'transparent', color: pageProfile.profile_status === 'coming_soon' ? '#111' : '#6b7280', boxShadow: pageProfile.profile_status === 'coming_soon' ? '0 2px 8px rgba(0,0,0,0.1)' : 'none' }}
-                >
-                  🚧 Coming Soon
-                </button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '15px', flexWrap: 'wrap' }}>
+                <a href={`/u/${pageProfile.username}`} target="_blank" rel="noreferrer" style={{ fontSize: '14px', color: '#4f46e5', textDecoration: 'none', fontWeight: '600', padding: '10px 18px', backgroundColor: '#e0e7ff', borderRadius: '100px', textAlign: 'center', whiteSpace: 'nowrap', transition: 'all 0.2s ease' }}>
+                  Preview Page ↗
+                </a>
+                <div style={{ display: 'flex', backgroundColor: '#f3f4f6', padding: '6px', borderRadius: '100px' }}>
+                  <button 
+                    onClick={() => { setPageProfile({...pageProfile, profile_status: 'live'}); }}
+                    style={{ padding: '10px 24px', borderRadius: '100px', border: 'none', fontWeight: '700', fontSize: '14px', cursor: 'pointer', transition: 'all 0.2s ease', backgroundColor: pageProfile.profile_status === 'live' ? 'white' : 'transparent', color: pageProfile.profile_status === 'live' ? '#111' : '#6b7280', boxShadow: pageProfile.profile_status === 'live' ? '0 2px 8px rgba(0,0,0,0.1)' : 'none' }}
+                  >
+                    🟢 Live
+                  </button>
+                  <button 
+                    onClick={() => { setPageProfile({...pageProfile, profile_status: 'coming_soon'}); }}
+                    style={{ padding: '10px 24px', borderRadius: '100px', border: 'none', fontWeight: '700', fontSize: '14px', cursor: 'pointer', transition: 'all 0.2s ease', backgroundColor: pageProfile.profile_status === 'coming_soon' ? 'white' : 'transparent', color: pageProfile.profile_status === 'coming_soon' ? '#111' : '#6b7280', boxShadow: pageProfile.profile_status === 'coming_soon' ? '0 2px 8px rgba(0,0,0,0.1)' : 'none' }}
+                  >
+                    🚧 Coming Soon
+                  </button>
+                </div>
               </div>
             </div>
 
