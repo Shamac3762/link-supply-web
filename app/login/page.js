@@ -12,13 +12,13 @@ export default function PremiumLoginPage() {
   const [message, setMessage] = useState('')
   const [loading, setLoading] = useState(false)
   
-  // 🔥 NEW: State to track the Terms & Conditions checkbox
+  // Compliance States
   const [agreedToTerms, setAgreedToTerms] = useState(false)
+  const [rememberMe, setRememberMe] = useState(false) // 🔥 NEW: Track Remember Me choice
   
   const supabase = createClient()
   const router = useRouter()
 
-  // Listen for the ?view=signup parameter and flip the UI
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     if (params.get('view') === 'signup') {
@@ -29,7 +29,6 @@ export default function PremiumLoginPage() {
   const handleAuth = async (e) => {
     e.preventDefault()
     
-    // 🔥 NEW: Validation check for the Terms & Conditions during Sign Up
     if (isSignUp && !agreedToTerms) {
       setMessage('Please agree to the Terms & Conditions to create your account.')
       return
@@ -56,20 +55,27 @@ export default function PremiumLoginPage() {
       } else {
         setMessage('Account created! Securing your vault...')
         
-        // Silently log them in right after creation
+        // Log them in
         const { error: signInError } = await supabase.auth.signInWithPassword({ email, password })
         
         if (!signInError) {
-          router.push(redirectUrl) // Teleport to dashboard with the Tag ID!
+          // 🔥 NEW: Store their 'Remember Me' preference right away
+          await supabase.from('customers').upsert({ id: data.user.id, remember_me: rememberMe });
+          router.push(redirectUrl)
         } else {
-          // Fallback in case your Supabase requires Email Verification first
           setMessage('Success! Please check your email to verify your account.')
         }
       }
     } else {
-      const { error } = await supabase.auth.signInWithPassword({ email, password })
-      if (error) setMessage("Invalid email or password.")
-      else router.push(redirectUrl) 
+      // Logic for standard Log In
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password })
+      if (error) {
+        setMessage("Invalid email or password.")
+      } else {
+        // 🔥 NEW: Update their 'Remember Me' preference upon login
+        await supabase.from('customers').upsert({ id: data.user.id, remember_me: rememberMe });
+        router.push(redirectUrl) 
+      }
     }
     setLoading(false)
   }
@@ -108,25 +114,42 @@ export default function PremiumLoginPage() {
             </div>
           )}
 
-          {/* 🔥 NEW: The Legal/Compliance UI Blocks */}
-          {isSignUp ? (
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', marginTop: '10px', marginBottom: '20px', textAlign: 'left' }}>
+          {/* 🔥 LEGAL UI: Terms & Remember Me Blocks */}
+          <div style={{ textAlign: 'left', marginBottom: '20px' }}>
+            
+            {/* Remember Me Toggle (Visible on both Login and Signup) */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: isSignUp ? '10px' : '0' }}>
               <input 
                 type="checkbox" 
-                id="terms" 
-                checked={agreedToTerms}
-                onChange={(e) => setAgreedToTerms(e.target.checked)}
-                style={{ marginTop: '3px', cursor: 'pointer', minWidth: '16px', minHeight: '16px' }}
+                id="rememberMe" 
+                checked={rememberMe}
+                onChange={(e) => setRememberMe(e.target.checked)}
+                style={{ cursor: 'pointer', minWidth: '16px', minHeight: '16px' }}
               />
-              <label htmlFor="terms" style={{ fontSize: '13px', color: '#6b7280', lineHeight: '1.4' }}>
-                I agree to the Link Supply <a href="/terms" target="_blank" style={{ color: '#111', textDecoration: 'underline', fontWeight: '500' }}>Terms & Conditions</a> and <a href="/privacy" target="_blank" style={{ color: '#111', textDecoration: 'underline', fontWeight: '500' }}>Privacy Policy</a>.
+              <label htmlFor="rememberMe" style={{ fontSize: '13px', color: '#4b5563', fontWeight: '500', cursor: 'pointer' }}>
+                Keep me signed in
               </label>
             </div>
-          ) : (
-            <p style={{ fontSize: '12px', color: '#9ca3af', marginTop: '0', marginBottom: '20px' }}>
-              By logging in, you agree to our <a href="/terms" target="_blank" style={{ color: '#6b7280', textDecoration: 'underline' }}>Terms of Service</a>.
-            </p>
-          )}
+
+            {isSignUp ? (
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', marginTop: '10px' }}>
+                <input 
+                  type="checkbox" 
+                  id="terms" 
+                  checked={agreedToTerms}
+                  onChange={(e) => setAgreedToTerms(e.target.checked)}
+                  style={{ marginTop: '3px', cursor: 'pointer', minWidth: '16px', minHeight: '16px' }}
+                />
+                <label htmlFor="terms" style={{ fontSize: '13px', color: '#6b7280', lineHeight: '1.4' }}>
+                  I agree to the Link Supply <a href="/terms" target="_blank" style={{ color: '#111', textDecoration: 'underline', fontWeight: '500' }}>Terms & Conditions</a> and <a href="/privacy" target="_blank" style={{ color: '#111', textDecoration: 'underline', fontWeight: '500' }}>Privacy Policy</a>.
+                </label>
+              </div>
+            ) : (
+               <p style={{ fontSize: '12px', color: '#9ca3af', marginTop: '15px', marginBottom: '0' }}>
+                 By logging in, you agree to our <a href="/terms" target="_blank" style={{ color: '#6b7280', textDecoration: 'underline' }}>Terms of Service</a>.
+               </p>
+            )}
+          </div>
 
           <button disabled={loading} type="submit" style={{ 
             width: '100%', padding: '14px', backgroundColor: '#111', color: 'white', 
@@ -147,7 +170,8 @@ export default function PremiumLoginPage() {
               onClick={() => { 
                 setIsSignUp(!isSignUp); 
                 setMessage(''); 
-                setAgreedToTerms(false); // Reset terms checkbox when toggling
+                setAgreedToTerms(false);
+                setRememberMe(false); // Reset on flip
               }} 
               style={{ background: 'none', border: 'none', color: '#4f46e5', fontWeight: '700', cursor: 'pointer', marginLeft: '5px', fontSize: '14px' }}
             >
