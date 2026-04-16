@@ -25,7 +25,8 @@ export default function PremiumDashboard() {
   const [pageProfile, setPageProfile] = useState({ 
     username: '', display_name: '', bio: '', theme_color: '#111111',
     profile_picture_url: '', job_title: '', company: '', phone_number: '', display_email: '',
-    profile_status: 'live' // Added Profile Status State
+    profile_status: 'live',
+    remember_me: false // 🔥 SECURE LOGIN: Added state
   })
   const [pageLinks, setPageLinks] = useState([])
   const [newLinkTitle, setNewLinkTitle] = useState('')
@@ -85,8 +86,8 @@ export default function PremiumDashboard() {
     
     const { data: customerData } = await supabase
       .from('customers')
-      // Included profile_status in the select
-      .select('username, display_name, bio, theme_color, max_links, profile_picture_url, job_title, company, phone_number, display_email, profile_status')
+      // 🔥 SECURE LOGIN: Included remember_me in the select
+      .select('username, display_name, bio, theme_color, max_links, profile_picture_url, job_title, company, phone_number, display_email, profile_status, remember_me')
       .eq('id', session.user.id)
       .single()
 
@@ -121,7 +122,8 @@ export default function PremiumDashboard() {
       bio: customerData?.bio || '', theme_color: customerData?.theme_color || '#111111',
       profile_picture_url: customerData?.profile_picture_url || '', job_title: customerData?.job_title || '',
       company: customerData?.company || '', phone_number: customerData?.phone_number || '', display_email: customerData?.display_email || '',
-      profile_status: customerData?.profile_status || 'live' // Locked in
+      profile_status: customerData?.profile_status || 'live',
+      remember_me: customerData?.remember_me || false // 🔥 SECURE LOGIN: Set state
     })
     
     if (customerData?.max_links !== undefined) setMaxLinks(customerData.max_links)
@@ -133,6 +135,14 @@ export default function PremiumDashboard() {
     if (linksData) setPageLinks(linksData)
 
     setLoading(false)
+  }
+
+  // 🔥 SECURE LOGIN: Auto-save function for the toggle switch
+  const handleToggleRememberMe = async (currentValue) => {
+    const newValue = !currentValue;
+    setPageProfile({ ...pageProfile, remember_me: newValue });
+    const { data: { session } } = await supabase.auth.getSession();
+    await supabase.from('customers').update({ remember_me: newValue }).eq('id', session.user.id);
   }
 
   const handleActivateTag = async () => {
@@ -180,7 +190,8 @@ export default function PremiumDashboard() {
         id: session.user.id, username: cleanUsername, display_name: pageProfile.display_name,
         bio: pageProfile.bio, theme_color: pageProfile.theme_color, profile_picture_url: pageProfile.profile_picture_url,
         job_title: pageProfile.job_title, company: pageProfile.company, phone_number: pageProfile.phone_number, display_email: pageProfile.display_email,
-        profile_status: pageProfile.profile_status // Pushed to Database
+        profile_status: pageProfile.profile_status,
+        remember_me: pageProfile.remember_me // Keep state in sync
       })
 
     if (error) { alert("Database Error: " + error.message); setSaveStatus({ ...saveStatus, profile: 'Error!' }) } 
@@ -229,7 +240,6 @@ export default function PremiumDashboard() {
 
   if (loading) return <div style={{ minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', backgroundColor: '#f3f4f6' }}>Loading Workspace...</div>
 
-  // overflowX hidden ensures the screen never scrolls horizontally
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#f3f4f6', fontFamily: 'sans-serif', paddingBottom: '50px', overflowX: 'hidden', width: '100%' }}>
       
@@ -238,7 +248,6 @@ export default function PremiumDashboard() {
         .responsive-nav { padding: 20px 40px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e5e7eb; background-color: white; }
         .responsive-tabs { display: flex; gap: 10px; margin-bottom: 30px; background-color: #e5e7eb; padding: 6px; border-radius: 12px; }
         .responsive-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; width: 100%; }
-        /* Forced width to 100% to contain elements */
         .responsive-stack { display: flex; gap: 12px; width: 100%; max-width: 100%; }
         .link-row { display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; background-color: #f9fafb; border: 1px solid #e5e7eb; border-radius: 10px; }
         
@@ -275,7 +284,32 @@ export default function PremiumDashboard() {
               <button onClick={handleUpdatePassword} style={{ width: '100%', padding: '10px', backgroundColor: '#111', color: 'white', border: 'none', borderRadius: '8px', fontWeight: '600', cursor: 'pointer' }}>Update Password</button>
             </div>
 
-            <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: '20px' }}>
+            {/* 🔥 SECURE LOGIN UI: iOS Style Toggle */}
+            <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: '20px', paddingBottom: '10px' }}>
+              <h3 style={{ fontSize: '16px', color: '#111', margin: '0 0 15px 0' }}>Security Preferences</h3>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div>
+                  <p style={{ margin: '0 0 4px 0', fontSize: '14px', fontWeight: '600', color: '#111' }}>Keep me signed in</p>
+                  <p style={{ margin: 0, fontSize: '12px', color: '#6b7280' }}>Remember this device for future visits.</p>
+                </div>
+                <button 
+                  onClick={() => handleToggleRememberMe(pageProfile.remember_me)}
+                  style={{
+                    width: '44px', height: '24px', borderRadius: '12px', border: 'none', cursor: 'pointer',
+                    backgroundColor: pageProfile.remember_me ? '#059669' : '#e5e7eb',
+                    position: 'relative', transition: 'background-color 0.2s ease'
+                  }}
+                >
+                  <div style={{
+                    width: '20px', height: '20px', borderRadius: '50%', backgroundColor: 'white',
+                    position: 'absolute', top: '2px', left: pageProfile.remember_me ? '22px' : '2px',
+                    transition: 'left 0.2s cubic-bezier(0.4, 0, 0.2, 1)', boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                  }} />
+                </button>
+              </div>
+            </div>
+
+            <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: '20px', marginTop: '10px' }}>
               <h3 style={{ fontSize: '16px', color: '#dc2626', margin: '0 0 10px 0' }}>Danger Zone</h3>
               <p style={{ fontSize: '13px', color: '#6b7280', marginBottom: '15px' }}>Permanently delete your account and data to comply with GDPR data privacy regulations.</p>
               <button onClick={handleDeleteAccount} style={{ width: '100%', padding: '10px', backgroundColor: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca', borderRadius: '8px', fontWeight: '600', cursor: 'pointer' }}>Delete Account</button>
@@ -369,7 +403,6 @@ export default function PremiumDashboard() {
         {activeTab === 'page' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '30px', width: '100%' }}>
             
-            {/* 🔥 PREMIUM FEATURE: Profile Status Toggle */}
             <div style={{ backgroundColor: 'white', padding: '25px 30px', borderRadius: '16px', border: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '15px' }}>
               <div>
                 <h2 style={{ fontSize: '20px', fontWeight: '700', color: '#111', margin: '0 0 5px 0' }}>Profile Status</h2>
@@ -392,7 +425,6 @@ export default function PremiumDashboard() {
               </div>
             </div>
 
-            {/* CONTAINER 1: IDENTITY */}
             <div style={{ backgroundColor: 'white', padding: '30px', borderRadius: '16px', border: '1px solid #e5e7eb' }}>
               <div className="header-stack" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
                 <h2 style={{ fontSize: '20px', fontWeight: '700', color: '#111', margin: 0 }}>Page Identity</h2>
@@ -440,7 +472,6 @@ export default function PremiumDashboard() {
               </div>
             </div>
 
-            {/* CONTAINER 2: BUSINESS CARD */}
             <div style={{ backgroundColor: 'white', padding: '30px', borderRadius: '16px', border: '1px solid #e5e7eb' }}>
               <h2 style={{ fontSize: '20px', fontWeight: '700', color: '#111', marginBottom: '5px' }}>Digital Business Card</h2>
               <p style={{ color: '#6b7280', fontSize: '14px', marginBottom: '20px' }}>Fill these out to add a "Save to Contacts" button to your profile.</p>
