@@ -24,7 +24,8 @@ export default function PremiumDashboard() {
   
   const [pageProfile, setPageProfile] = useState({ 
     username: '', display_name: '', bio: '', theme_color: '#111111',
-    profile_picture_url: '', job_title: '', company: '', phone_number: '', display_email: ''
+    profile_picture_url: '', job_title: '', company: '', phone_number: '', display_email: '',
+    profile_status: 'live' // Added Profile Status State
   })
   const [pageLinks, setPageLinks] = useState([])
   const [newLinkTitle, setNewLinkTitle] = useState('')
@@ -84,7 +85,8 @@ export default function PremiumDashboard() {
     
     const { data: customerData } = await supabase
       .from('customers')
-      .select('username, display_name, bio, theme_color, max_links, profile_picture_url, job_title, company, phone_number, display_email')
+      // Included profile_status in the select
+      .select('username, display_name, bio, theme_color, max_links, profile_picture_url, job_title, company, phone_number, display_email, profile_status')
       .eq('id', session.user.id)
       .single()
 
@@ -118,7 +120,8 @@ export default function PremiumDashboard() {
       display_name: currentDisplayName || '',
       bio: customerData?.bio || '', theme_color: customerData?.theme_color || '#111111',
       profile_picture_url: customerData?.profile_picture_url || '', job_title: customerData?.job_title || '',
-      company: customerData?.company || '', phone_number: customerData?.phone_number || '', display_email: customerData?.display_email || ''
+      company: customerData?.company || '', phone_number: customerData?.phone_number || '', display_email: customerData?.display_email || '',
+      profile_status: customerData?.profile_status || 'live' // Locked in
     })
     
     if (customerData?.max_links !== undefined) setMaxLinks(customerData.max_links)
@@ -176,7 +179,8 @@ export default function PremiumDashboard() {
     const { error } = await supabase.from('customers').upsert({ 
         id: session.user.id, username: cleanUsername, display_name: pageProfile.display_name,
         bio: pageProfile.bio, theme_color: pageProfile.theme_color, profile_picture_url: pageProfile.profile_picture_url,
-        job_title: pageProfile.job_title, company: pageProfile.company, phone_number: pageProfile.phone_number, display_email: pageProfile.display_email
+        job_title: pageProfile.job_title, company: pageProfile.company, phone_number: pageProfile.phone_number, display_email: pageProfile.display_email,
+        profile_status: pageProfile.profile_status // Pushed to Database
       })
 
     if (error) { alert("Database Error: " + error.message); setSaveStatus({ ...saveStatus, profile: 'Error!' }) } 
@@ -225,15 +229,17 @@ export default function PremiumDashboard() {
 
   if (loading) return <div style={{ minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', backgroundColor: '#f3f4f6' }}>Loading Workspace...</div>
 
+  // overflowX hidden ensures the screen never scrolls horizontally
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#f3f4f6', fontFamily: 'sans-serif', paddingBottom: '50px' }}>
+    <div style={{ minHeight: '100vh', backgroundColor: '#f3f4f6', fontFamily: 'sans-serif', paddingBottom: '50px', overflowX: 'hidden', width: '100%' }}>
       
       <style>{`
         * { box-sizing: border-box; }
         .responsive-nav { padding: 20px 40px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e5e7eb; background-color: white; }
         .responsive-tabs { display: flex; gap: 10px; margin-bottom: 30px; background-color: #e5e7eb; padding: 6px; border-radius: 12px; }
         .responsive-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; width: 100%; }
-        .responsive-stack { display: flex; gap: 12px; }
+        /* Forced width to 100% to contain elements */
+        .responsive-stack { display: flex; gap: 12px; width: 100%; max-width: 100%; }
         .link-row { display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; background-color: #f9fafb; border: 1px solid #e5e7eb; border-radius: 10px; }
         
         .url-input-container { display: flex; align-items: center; background-color: #f9fafb; border: 1px solid #d1d5db; border-radius: 10px; overflow: hidden; width: 100%; }
@@ -245,7 +251,7 @@ export default function PremiumDashboard() {
           .responsive-grid { grid-template-columns: 1fr; }
           .responsive-stack { flex-direction: column; align-items: stretch; }
           .responsive-stack > input, .responsive-stack > button { width: 100% !important; max-width: 100% !important; }
-          .header-stack { flex-direction: column; align-items: flex-start !important; gap: 15px; }
+          .header-stack { flex-direction: column; align-items: flex-start !important; gap: 15px; width: 100%; flex-wrap: wrap; }
           .header-stack .actions { width: 100%; display: flex; justify-content: space-between; }
           .link-row { flex-direction: column; align-items: flex-start; gap: 15px; }
           .link-row button { width: 100%; }
@@ -289,14 +295,14 @@ export default function PremiumDashboard() {
         </div>
       </nav>
 
-      <main style={{ maxWidth: '900px', margin: '40px auto', padding: '0 20px' }}>
+      <main style={{ maxWidth: '900px', margin: '40px auto', padding: '0 20px', width: '100%' }}>
         <div className="responsive-tabs">
           <button onClick={() => setActiveTab('hardware')} style={{ flex: 1, padding: '12px', borderRadius: '8px', border: 'none', fontWeight: '700', fontSize: '15px', cursor: 'pointer', backgroundColor: activeTab === 'hardware' ? 'white' : 'transparent', color: activeTab === 'hardware' ? '#111' : '#6b7280', boxShadow: activeTab === 'hardware' ? '0 2px 4px rgba(0,0,0,0.05)' : 'none', transition: 'all 0.2s' }}>My Hardware Tags</button>
           <button onClick={() => setActiveTab('page')} style={{ flex: 1, padding: '12px', borderRadius: '8px', border: 'none', fontWeight: '700', fontSize: '15px', cursor: 'pointer', backgroundColor: activeTab === 'page' ? 'white' : 'transparent', color: activeTab === 'page' ? '#111' : '#6b7280', boxShadow: activeTab === 'page' ? '0 2px 4px rgba(0,0,0,0.05)' : 'none', transition: 'all 0.2s' }}>My Premium Page</button>
         </div>
 
         {activeTab === 'hardware' && (
-          <div>
+          <div style={{ width: '100%', maxWidth: '100%' }}>
             <div style={{ backgroundColor: '#111', padding: '30px', borderRadius: '16px', marginBottom: '40px', color: 'white', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)' }}>
               <h2 style={{ fontSize: '20px', margin: '0 0 5px 0', fontWeight: '700' }}>Activate a New Tag</h2>
               <p style={{ color: '#9ca3af', fontSize: '14px', marginBottom: '20px' }}>Enter the Tag ID and the 8-character Activation Code.</p>
@@ -310,35 +316,35 @@ export default function PremiumDashboard() {
 
             <h2 style={{ fontSize: '24px', color: '#111', margin: '0 0 20px 0', fontWeight: '700', letterSpacing: '-0.5px' }}>Your Products</h2>
             {stickers.length === 0 ? (
-              <div style={{ backgroundColor: 'white', padding: '60px', borderRadius: '16px', textAlign: 'center', border: '1px solid #e5e7eb' }}><p style={{ color: '#6b7280' }}>Activate your first tag above to get started.</p></div>
+              <div style={{ backgroundColor: 'white', padding: '60px', borderRadius: '16px', textAlign: 'center', border: '1px solid #e5e7eb', width: '100%' }}><p style={{ color: '#6b7280' }}>Activate your first tag above to get started.</p></div>
             ) : (
-              <div style={{ display: 'grid', gap: '25px' }}>
+              <div style={{ display: 'grid', gap: '25px', width: '100%' }}>
                 {stickers.map((sticker) => {
                   const isEnabled = sticker.is_active !== false;
                   return (
-                    <div key={sticker.id} style={{ backgroundColor: 'white', padding: '30px', borderRadius: '16px', border: '1px solid #e5e7eb', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)', display: 'flex', flexDirection: 'column', gap: '20px', opacity: isEnabled ? 1 : 0.6, transition: 'opacity 0.2s' }}>
+                    <div key={sticker.id} style={{ backgroundColor: 'white', padding: '30px', borderRadius: '16px', border: '1px solid #e5e7eb', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)', display: 'flex', flexDirection: 'column', gap: '20px', opacity: isEnabled ? 1 : 0.6, transition: 'opacity 0.2s', width: '100%', overflow: 'hidden' }}>
                       
-                      <div className="header-stack" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div className="header-stack" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', flexWrap: 'wrap', gap: '10px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                           <span style={{ fontSize: '20px', fontWeight: '700', color: '#111', textDecoration: isEnabled ? 'none' : 'line-through' }}>{sticker.id}</span>
-                          <span style={{ fontSize: '13px', fontWeight: '600', color: '#4b5563', backgroundColor: '#f3f4f6', padding: '4px 10px', borderRadius: '20px' }}>
+                          <span style={{ fontSize: '13px', fontWeight: '600', color: '#4b5563', backgroundColor: '#f3f4f6', padding: '4px 10px', borderRadius: '20px', whiteSpace: 'nowrap' }}>
                             {sticker.tap_count || 0} Taps
                           </span>
                         </div>
-                        <a href={`/go/${sticker.url_slug}`} target="_blank" rel="noreferrer" style={{ fontSize: '14px', color: '#4f46e5', textDecoration: 'none', fontWeight: '600', padding: '8px 16px', backgroundColor: '#e0e7ff', borderRadius: '8px', textAlign: 'center', width: 'auto' }}>Preview Link ↗</a>
+                        <a href={`/go/${sticker.url_slug}`} target="_blank" rel="noreferrer" style={{ fontSize: '14px', color: '#4f46e5', textDecoration: 'none', fontWeight: '600', padding: '8px 16px', backgroundColor: '#e0e7ff', borderRadius: '8px', textAlign: 'center', whiteSpace: 'nowrap' }}>Preview Link ↗</a>
                       </div>
 
-                      <div style={{ marginTop: '5px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                      <div style={{ marginTop: '5px', display: 'flex', flexDirection: 'column', gap: '15px', width: '100%' }}>
                         <div>
                           <label style={labelStyle}>Tag Name (Optional)</label>
                           <input disabled={!isEnabled} type="text" defaultValue={sticker.tag_name || ''} placeholder="e.g., Table 5" onChange={(e) => { const updated = stickers.map(s => s.id === sticker.id ? { ...s, tag_name: e.target.value } : s); setStickers(updated) }} style={inputStyle} />
                         </div>
-                        <div>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                        <div style={{ width: '100%' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', flexWrap: 'wrap', gap: '10px' }}>
                             <label style={{...labelStyle, marginBottom: 0}}>Destination URL</label>
                             <button
                               onClick={() => handleToggleActive(sticker.id, isEnabled)}
-                              style={{ padding: '6px 14px', borderRadius: '20px', border: 'none', fontSize: '12px', fontWeight: '700', cursor: 'pointer', backgroundColor: isEnabled ? '#d1fae5' : '#fee2e2', color: isEnabled ? '#059669' : '#dc2626', transition: 'all 0.2s' }}
+                              style={{ padding: '6px 14px', borderRadius: '20px', border: 'none', fontSize: '12px', fontWeight: '700', cursor: 'pointer', backgroundColor: isEnabled ? '#d1fae5' : '#fee2e2', color: isEnabled ? '#059669' : '#dc2626', transition: 'all 0.2s', whiteSpace: 'nowrap' }}
                             >
                               {isEnabled ? '🟢 Active' : '🔴 Disabled'}
                             </button>
@@ -361,7 +367,31 @@ export default function PremiumDashboard() {
         )}
 
         {activeTab === 'page' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '30px', width: '100%' }}>
+            
+            {/* 🔥 PREMIUM FEATURE: Profile Status Toggle */}
+            <div style={{ backgroundColor: 'white', padding: '25px 30px', borderRadius: '16px', border: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '15px' }}>
+              <div>
+                <h2 style={{ fontSize: '20px', fontWeight: '700', color: '#111', margin: '0 0 5px 0' }}>Profile Status</h2>
+                <p style={{ color: '#6b7280', fontSize: '14px', margin: 0 }}>Control if your page is visible to the public.</p>
+              </div>
+              
+              <div style={{ display: 'flex', backgroundColor: '#f3f4f6', padding: '6px', borderRadius: '100px' }}>
+                <button 
+                  onClick={() => { setPageProfile({...pageProfile, profile_status: 'live'}); }}
+                  style={{ padding: '10px 24px', borderRadius: '100px', border: 'none', fontWeight: '700', fontSize: '14px', cursor: 'pointer', transition: 'all 0.2s ease', backgroundColor: pageProfile.profile_status === 'live' ? 'white' : 'transparent', color: pageProfile.profile_status === 'live' ? '#111' : '#6b7280', boxShadow: pageProfile.profile_status === 'live' ? '0 2px 8px rgba(0,0,0,0.1)' : 'none' }}
+                >
+                  🟢 Live
+                </button>
+                <button 
+                  onClick={() => { setPageProfile({...pageProfile, profile_status: 'coming_soon'}); }}
+                  style={{ padding: '10px 24px', borderRadius: '100px', border: 'none', fontWeight: '700', fontSize: '14px', cursor: 'pointer', transition: 'all 0.2s ease', backgroundColor: pageProfile.profile_status === 'coming_soon' ? 'white' : 'transparent', color: pageProfile.profile_status === 'coming_soon' ? '#111' : '#6b7280', boxShadow: pageProfile.profile_status === 'coming_soon' ? '0 2px 8px rgba(0,0,0,0.1)' : 'none' }}
+                >
+                  🚧 Coming Soon
+                </button>
+              </div>
+            </div>
+
             {/* CONTAINER 1: IDENTITY */}
             <div style={{ backgroundColor: 'white', padding: '30px', borderRadius: '16px', border: '1px solid #e5e7eb' }}>
               <div className="header-stack" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
@@ -392,7 +422,6 @@ export default function PremiumDashboard() {
                 </div>
                 <div>
                   <label style={labelStyle}>Brand Color</label>
-                  {/* PREVIEW BOX: Now uses the Inversion Logic to keep text visible */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
                     <input type="color" value={pageProfile.theme_color} onChange={(e) => setPageProfile({...pageProfile, theme_color: e.target.value})} style={{ width: '50px', height: '50px', padding: '0', border: 'none', borderRadius: '8px', cursor: 'pointer' }} />
                     <div style={{ 
@@ -422,7 +451,6 @@ export default function PremiumDashboard() {
                 <div><label style={labelStyle}>Display Email</label><input type="email" value={pageProfile.display_email} placeholder="hello@example.com" onChange={(e) => setPageProfile({...pageProfile, display_email: e.target.value})} style={inputStyle} /></div>
               </div>
 
-              {/* 🔥 MOVED BUTTON: Now at the bottom of all profile fields */}
               <div style={{ marginTop: '35px', borderTop: '1px solid #e5e7eb', paddingTop: '25px' }}>
                 <button onClick={handleSaveProfile} style={{ padding: '16px 20px', backgroundColor: '#111', color: 'white', border: 'none', borderRadius: '12px', fontWeight: '800', cursor: 'pointer', width: '100%', fontSize: '16px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
                   {saveStatus.profile || '🚀 Update Public Profile'}
