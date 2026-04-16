@@ -3,6 +3,16 @@ import { useEffect, useState } from 'react'
 import { createClient } from '../../utils/supabase/client'
 import { useRouter } from 'next/navigation'
 
+// 🔥 HELPER: This ensures text is always visible regardless of the brand color
+function getContrastColor(hexcolor) {
+  if (!hexcolor || hexcolor.startsWith('linear') || hexcolor.startsWith('radial')) return 'white';
+  const r = parseInt(hexcolor.slice(1, 3), 16);
+  const g = parseInt(hexcolor.slice(3, 5), 16);
+  const b = parseInt(hexcolor.slice(5, 7), 16);
+  const yiq = ((r * 299) + (g * 587) + (b * 114)) / 1000;
+  return (yiq >= 128) ? '#111111' : 'white'; 
+}
+
 export default function PremiumDashboard() {
   const [activeTab, setActiveTab] = useState('hardware') 
   
@@ -80,24 +90,20 @@ export default function PremiumDashboard() {
 
     setProfile({ first_name: firstName })
 
-    // 🔥 THE FIX: Setup variables to check if we need a background save
     let currentUsername = customerData?.username;
     let currentDisplayName = customerData?.display_name;
     let requiresBackgroundSave = false;
 
-    // Generate username if missing
     if (!currentUsername) {
       currentUsername = generateDefaultUsername(firstName, lastName);
       requiresBackgroundSave = true;
     }
 
-    // Generate display name if missing
     if (!currentDisplayName && defaultDisplayName) {
       currentDisplayName = defaultDisplayName;
       requiresBackgroundSave = true;
     }
 
-    // 🔥 BACKGROUND SAVE: Lock in the generated data immediately so it's seamless
     if (requiresBackgroundSave) {
       await supabase.from('customers').upsert({
         id: session.user.id,
@@ -107,7 +113,6 @@ export default function PremiumDashboard() {
       });
     }
 
-    // Set the state using our locked-in variables
     setPageProfile({
       username: currentUsername, 
       display_name: currentDisplayName || '',
@@ -357,6 +362,7 @@ export default function PremiumDashboard() {
 
         {activeTab === 'page' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
+            {/* CONTAINER 1: IDENTITY */}
             <div style={{ backgroundColor: 'white', padding: '30px', borderRadius: '16px', border: '1px solid #e5e7eb' }}>
               <div className="header-stack" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
                 <h2 style={{ fontSize: '20px', fontWeight: '700', color: '#111', margin: 0 }}>Page Identity</h2>
@@ -371,9 +377,7 @@ export default function PremiumDashboard() {
                 <div style={{ gridColumn: '1 / -1' }}>
                   <label style={labelStyle}>Public Username (URL)</label>
                   <div className="url-input-container">
-                    <span className="url-prefix">
-                      linksupply.co.uk/u/
-                    </span>
+                    <span className="url-prefix">linksupply.co.uk/u/</span>
                     <input type="text" value={pageProfile.username} placeholder="mybrand" onChange={(e) => setPageProfile({...pageProfile, username: e.target.value})} style={{ flex: 1, padding: '14px', border: 'none', backgroundColor: 'transparent', fontSize: '16px', color: '#111', outline: 'none', fontWeight: '600' }} />
                   </div>
                 </div>
@@ -388,17 +392,26 @@ export default function PremiumDashboard() {
                 </div>
                 <div>
                   <label style={labelStyle}>Brand Color</label>
-                  <input type="color" value={pageProfile.theme_color} onChange={(e) => setPageProfile({...pageProfile, theme_color: e.target.value})} style={{ width: '50px', height: '50px', padding: '0', border: 'none', borderRadius: '8px', cursor: 'pointer' }} />
+                  {/* PREVIEW BOX: Now uses the Inversion Logic to keep text visible */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                    <input type="color" value={pageProfile.theme_color} onChange={(e) => setPageProfile({...pageProfile, theme_color: e.target.value})} style={{ width: '50px', height: '50px', padding: '0', border: 'none', borderRadius: '8px', cursor: 'pointer' }} />
+                    <div style={{ 
+                      padding: '8px 15px', 
+                      borderRadius: '8px', 
+                      backgroundColor: pageProfile.theme_color, 
+                      color: getContrastColor(pageProfile.theme_color),
+                      fontSize: '12px',
+                      fontWeight: 'bold',
+                      border: '1px solid #e5e7eb'
+                    }}>
+                      Preview Text
+                    </div>
+                  </div>
                 </div>
-              </div>
-
-              <div style={{ marginTop: '25px', borderTop: '1px solid #e5e7eb', paddingTop: '20px' }}>
-                <button onClick={handleSaveProfile} style={{ padding: '14px 20px', backgroundColor: '#111', color: 'white', border: 'none', borderRadius: '8px', fontWeight: '600', cursor: 'pointer', width: '100%', fontSize: '16px' }}>
-                  {saveStatus.profile || 'Save Profile Info'}
-                </button>
               </div>
             </div>
 
+            {/* CONTAINER 2: BUSINESS CARD */}
             <div style={{ backgroundColor: 'white', padding: '30px', borderRadius: '16px', border: '1px solid #e5e7eb' }}>
               <h2 style={{ fontSize: '20px', fontWeight: '700', color: '#111', marginBottom: '5px' }}>Digital Business Card</h2>
               <p style={{ color: '#6b7280', fontSize: '14px', marginBottom: '20px' }}>Fill these out to add a "Save to Contacts" button to your profile.</p>
@@ -407,6 +420,13 @@ export default function PremiumDashboard() {
                 <div><label style={labelStyle}>Company / Business</label><input type="text" value={pageProfile.company} placeholder="e.g. Acme Corp" onChange={(e) => setPageProfile({...pageProfile, company: e.target.value})} style={inputStyle} /></div>
                 <div><label style={labelStyle}>Phone Number</label><input type="tel" value={pageProfile.phone_number} placeholder="+44 7700 900077" onChange={(e) => setPageProfile({...pageProfile, phone_number: e.target.value})} style={inputStyle} /></div>
                 <div><label style={labelStyle}>Display Email</label><input type="email" value={pageProfile.display_email} placeholder="hello@example.com" onChange={(e) => setPageProfile({...pageProfile, display_email: e.target.value})} style={inputStyle} /></div>
+              </div>
+
+              {/* 🔥 MOVED BUTTON: Now at the bottom of all profile fields */}
+              <div style={{ marginTop: '35px', borderTop: '1px solid #e5e7eb', paddingTop: '25px' }}>
+                <button onClick={handleSaveProfile} style={{ padding: '16px 20px', backgroundColor: '#111', color: 'white', border: 'none', borderRadius: '12px', fontWeight: '800', cursor: 'pointer', width: '100%', fontSize: '16px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
+                  {saveStatus.profile || '🚀 Update Public Profile'}
+                </button>
               </div>
             </div>
 
