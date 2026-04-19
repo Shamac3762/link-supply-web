@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react'
 import { createClient } from '../../utils/supabase/client'
 import { useRouter } from 'next/navigation'
-import Link from 'next/link' // 🔥 THIS WAS THE MISSING PIECE!
+import Link from 'next/link' 
 
 // 🔥 HELPER: This ensures text is always visible regardless of the brand color
 function getContrastColor(hexcolor) {
@@ -27,7 +27,8 @@ export default function PremiumDashboard() {
     username: '', display_name: '', bio: '', theme_color: '#111111',
     profile_picture_url: '', job_title: '', company: '', phone_number: '', display_email: '',
     profile_status: 'live',
-    remember_me: false
+    remember_me: false,
+    tier: 'free' // 🔥 Default to free tier
   })
   const [pageLinks, setPageLinks] = useState([])
   const [newLinkTitle, setNewLinkTitle] = useState('')
@@ -85,9 +86,10 @@ export default function PremiumDashboard() {
     const lastName = session.user.user_metadata?.last_name || '';
     const defaultDisplayName = `${firstName} ${lastName}`.trim();
     
+    // 🔥 Fetching the new 'tier' column
     const { data: customerData } = await supabase
       .from('customers')
-      .select('username, display_name, bio, theme_color, max_links, profile_picture_url, job_title, company, phone_number, display_email, profile_status, remember_me')
+      .select('username, display_name, bio, theme_color, max_links, profile_picture_url, job_title, company, phone_number, display_email, profile_status, remember_me, tier')
       .eq('id', session.user.id)
       .single()
 
@@ -123,7 +125,8 @@ export default function PremiumDashboard() {
       profile_picture_url: customerData?.profile_picture_url || '', job_title: customerData?.job_title || '',
       company: customerData?.company || '', phone_number: customerData?.phone_number || '', display_email: customerData?.display_email || '',
       profile_status: customerData?.profile_status || 'live',
-      remember_me: customerData?.remember_me || false
+      remember_me: customerData?.remember_me || false,
+      tier: customerData?.tier || 'free' // 🔥 Load the tier into state
     })
     
     if (customerData?.max_links !== undefined) setMaxLinks(customerData.max_links)
@@ -183,15 +186,25 @@ export default function PremiumDashboard() {
   const handleSaveProfile = async () => {
     setSaveStatus({ ...saveStatus, profile: 'Saving...' })
     const { data: { session } } = await supabase.auth.getSession()
-    const cleanUsername = pageProfile.username.toLowerCase().replace(/[^a-z0-9_]/g, '')
     
-    const { error } = await supabase.from('customers').upsert({ 
-        id: session.user.id, username: cleanUsername, display_name: pageProfile.display_name,
+    // 🔥 TIER LOGIC: Only format and update username if they are on a paid plan
+    let cleanUsername = pageProfile.username;
+    const isPremium = pageProfile.tier !== 'free';
+    
+    const updateData = { 
+        id: session.user.id, display_name: pageProfile.display_name,
         bio: pageProfile.bio, theme_color: pageProfile.theme_color, profile_picture_url: pageProfile.profile_picture_url,
         job_title: pageProfile.job_title, company: pageProfile.company, phone_number: pageProfile.phone_number, display_email: pageProfile.display_email,
         profile_status: pageProfile.profile_status,
         remember_me: pageProfile.remember_me 
-      })
+    }
+
+    if (isPremium) {
+        cleanUsername = pageProfile.username.toLowerCase().replace(/[^a-z0-9_]/g, '');
+        updateData.username = cleanUsername;
+    }
+
+    const { error } = await supabase.from('customers').upsert(updateData)
 
     if (error) { alert("Database Error: " + error.message); setSaveStatus({ ...saveStatus, profile: 'Error!' }) } 
     else { setPageProfile({ ...pageProfile, username: cleanUsername }); setSaveStatus({ ...saveStatus, profile: 'Saved! ✓' }); setTimeout(() => setSaveStatus((prev) => ({ ...prev, profile: '' })), 2000) }
@@ -236,6 +249,9 @@ export default function PremiumDashboard() {
   const displayLimit = maxLinks > 100 ? 'Unlimited' : maxLinks
   const inputStyle = { width: '100%', padding: '12px 14px', borderRadius: '10px', border: '1px solid #d1d5db', fontSize: '15px', color: '#111', outline: 'none', boxSizing: 'border-box' }
   const labelStyle = { display: 'block', fontSize: '14px', color: '#4b5563', marginBottom: '8px', fontWeight: '600' }
+  
+  // Clean variable for rendering the UI locks
+  const isPremium = pageProfile.tier !== 'free';
 
   if (loading) return <div style={{ minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', backgroundColor: '#f3f4f6' }}>Loading Workspace...</div>
 
@@ -320,7 +336,6 @@ export default function PremiumDashboard() {
 
       <nav className="responsive-nav">
         
-        {/* 🔥 THE UPDATED LOGO SECTION WITH NEXT/LINK */}
         <Link href="/" style={{ textDecoration: 'none', display: 'inline-block' }}>
           <div style={{ 
             fontFamily: '"Myriad Pro", "Segoe UI", Roboto, sans-serif', 
@@ -388,8 +403,15 @@ export default function PremiumDashboard() {
                           <input disabled={!isEnabled} type="text" defaultValue={sticker.tag_name || ''} placeholder="e.g., Table 5" onChange={(e) => { const updated = stickers.map(s => s.id === sticker.id ? { ...s, tag_name: e.target.value } : s); setStickers(updated) }} style={inputStyle} />
                         </div>
                         <div style={{ width: '100%' }}>
+                          
+                          {/* 🔥 TIER LOCK: Target URL Labels & Buttons */}
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', flexWrap: 'wrap', gap: '10px' }}>
-                            <label style={{...labelStyle, marginBottom: 0}}>Destination URL</label>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                              <label style={{...labelStyle, marginBottom: 0}}>Destination URL</label>
+                              {!isPremium && (
+                                <span style={{ fontSize: '11px', fontWeight: '700', backgroundColor: '#fef9c3', color: '#854d0e', padding: '2px 8px', borderRadius: '12px' }}>PRO</span>
+                              )}
+                            </div>
                             <button
                               onClick={() => handleToggleActive(sticker.id, isEnabled)}
                               style={{ padding: '6px 14px', borderRadius: '20px', border: 'none', fontSize: '12px', fontWeight: '700', cursor: 'pointer', backgroundColor: isEnabled ? '#d1fae5' : '#fee2e2', color: isEnabled ? '#059669' : '#dc2626', transition: 'all 0.2s', whiteSpace: 'nowrap' }}
@@ -397,12 +419,31 @@ export default function PremiumDashboard() {
                               {isEnabled ? '🟢 Active' : '🔴 Disabled'}
                             </button>
                           </div>
+                          
+                          {/* 🔥 TIER LOCK: Target URL Input */}
                           <div className="responsive-stack">
-                            <input disabled={!isEnabled} type="url" defaultValue={sticker.target_url || ''} placeholder="https://your-link.com" onChange={(e) => { const updated = stickers.map(s => s.id === sticker.id ? { ...s, target_url: e.target.value } : s); setStickers(updated) }} style={{ flex: 1, padding: '14px', borderRadius: '10px', border: '1px solid #d1d5db', fontSize: '16px', color: '#111', outline: 'none' }} />
-                            <button disabled={!isEnabled} onClick={() => handleSaveHardwareChanges(sticker.id, sticker.target_url, sticker.tag_name)} style={{ padding: '14px 24px', backgroundColor: isEnabled ? '#111' : '#9ca3af', color: 'white', border: 'none', borderRadius: '10px', fontWeight: '600', cursor: isEnabled ? 'pointer' : 'not-allowed' }}>{saveStatus[sticker.id] || 'Save Changes'}</button>
+                            <input 
+                              disabled={!isEnabled || !isPremium} 
+                              type="url" 
+                              value={!isPremium ? `https://linksupply.co.uk/u/${pageProfile.username}` : (sticker.target_url || '')} 
+                              onChange={(e) => { const updated = stickers.map(s => s.id === sticker.id ? { ...s, target_url: e.target.value } : s); setStickers(updated) }} 
+                              style={{ flex: 1, padding: '14px', borderRadius: '10px', border: '1px solid #d1d5db', fontSize: '16px', color: !isPremium ? '#6b7280' : '#111', backgroundColor: !isPremium ? '#f3f4f6' : 'white', outline: 'none' }} 
+                            />
+                            {!isPremium ? (
+                              <button onClick={() => alert("Custom hardware routing is a paid feature. Upgrade to unlock!")} style={{ padding: '14px 24px', backgroundColor: '#f59e0b', color: 'white', border: 'none', borderRadius: '10px', fontWeight: '700', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                                Unlock Routing
+                              </button>
+                            ) : (
+                              <button disabled={!isEnabled} onClick={() => handleSaveHardwareChanges(sticker.id, sticker.target_url, sticker.tag_name)} style={{ padding: '14px 24px', backgroundColor: isEnabled ? '#111' : '#9ca3af', color: 'white', border: 'none', borderRadius: '10px', fontWeight: '600', cursor: isEnabled ? 'pointer' : 'not-allowed' }}>
+                                {saveStatus[sticker.id] || 'Save Changes'}
+                              </button>
+                            )}
                           </div>
                           <p style={{ fontSize: '13px', color: '#6b7280', marginTop: '10px', lineHeight: '1.4' }}>
-                            <strong>💡 Tip:</strong> Keep this link set to your profile (<code>https://linksupply.co.uk/u/{pageProfile.username || 'username'}</code>) to share your digital business card and contact details, or change it to redirect straight to any other website.
+                            {!isPremium 
+                              ? <span><strong>💡 Locked:</strong> On the Free tier, your hardware is permanently linked to your digital profile. Upgrade to Pro to route this tag to a custom website or menu.</span>
+                              : <span><strong>💡 Tip:</strong> Keep this link set to your profile to share your digital business card, or change it to redirect straight to any other website.</span>
+                            }
                           </p>
                         </div>
                       </div>
@@ -417,7 +458,6 @@ export default function PremiumDashboard() {
         {activeTab === 'page' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '30px', width: '100%' }}>
             
-            {/* 🔥 PREMIUM FEATURE: Profile Status Toggle + Preview Button */}
             <div style={{ backgroundColor: 'white', padding: '25px 30px', borderRadius: '16px', border: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '15px' }}>
               <div>
                 <h2 style={{ fontSize: '20px', fontWeight: '700', color: '#111', margin: '0 0 5px 0' }}>Profile Status</h2>
@@ -456,12 +496,28 @@ export default function PremiumDashboard() {
                   <input type="text" value={pageProfile.display_name} placeholder="e.g. John Doe" onChange={(e) => setPageProfile({...pageProfile, display_name: e.target.value})} style={inputStyle} />
                 </div>
                 
+                {/* 🔥 TIER LOCK: Username Input */}
                 <div style={{ gridColumn: '1 / -1' }}>
-                  <label style={labelStyle}>Public Username (URL)</label>
-                  <div className="url-input-container">
-                    <span className="url-prefix">linksupply.co.uk/u/</span>
-                    <input type="text" value={pageProfile.username} placeholder="mybrand" onChange={(e) => setPageProfile({...pageProfile, username: e.target.value})} style={{ flex: 1, padding: '14px', border: 'none', backgroundColor: 'transparent', fontSize: '16px', color: '#111', outline: 'none', fontWeight: '600' }} />
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+                    <label style={{...labelStyle, marginBottom: 0}}>Public Username (URL)</label>
+                    {!isPremium && (
+                      <span style={{ fontSize: '11px', fontWeight: '700', backgroundColor: '#fef9c3', color: '#854d0e', padding: '2px 8px', borderRadius: '12px' }}>PRO</span>
+                    )}
                   </div>
+                  <div className="url-input-container" style={{ backgroundColor: !isPremium ? '#f3f4f6' : '#f9fafb' }}>
+                    <span className="url-prefix" style={{ backgroundColor: !isPremium ? '#e5e7eb' : '#f3f4f6' }}>linksupply.co.uk/u/</span>
+                    <input 
+                      disabled={!isPremium}
+                      type="text" 
+                      value={pageProfile.username} 
+                      placeholder="mybrand" 
+                      onChange={(e) => setPageProfile({...pageProfile, username: e.target.value})} 
+                      style={{ flex: 1, padding: '14px', border: 'none', backgroundColor: 'transparent', fontSize: '16px', color: !isPremium ? '#6b7280' : '#111', outline: 'none', fontWeight: '600' }} 
+                    />
+                  </div>
+                  {!isPremium && (
+                    <p style={{ fontSize: '12px', color: '#6b7280', marginTop: '6px' }}>Custom URLs are locked on the Free tier.</p>
+                  )}
                 </div>
 
                 <div style={{ gridColumn: '1 / -1' }}>
@@ -529,7 +585,7 @@ export default function PremiumDashboard() {
                 <div style={{ padding: '30px', backgroundColor: '#111', color: 'white', borderRadius: '12px', textAlign: 'center' }}>
                   <div style={{ fontSize: '24px', marginBottom: '10px' }}>🔒</div>
                   <h3 style={{ margin: '0 0 10px 0', fontSize: '18px', fontWeight: '700' }}>Unlock Unlimited Links</h3>
-                  <button onClick={() => alert("Stripe checkout coming soon!")} style={{ padding: '12px 24px', backgroundColor: '#3b82f6', color: 'white', border: 'none', borderRadius: '8px', fontWeight: '700', cursor: 'pointer', fontSize: '15px', width: '100%' }}>Upgrade to Premium — £5/mo</button>
+                  <button onClick={() => alert("Stripe checkout coming soon!")} style={{ padding: '12px 24px', backgroundColor: '#3b82f6', color: 'white', border: 'none', borderRadius: '8px', fontWeight: '700', cursor: 'pointer', fontSize: '15px', width: '100%' }}>Upgrade to Premium</button>
                 </div>
               ) : (
                 <form onSubmit={handleAddLink} className="responsive-stack" style={{ backgroundColor: '#f3f4f6', padding: '20px', borderRadius: '12px' }}>
