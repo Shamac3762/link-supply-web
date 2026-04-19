@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react'
 import { createClient } from '../../utils/supabase/client'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link' // 🔥 THIS WAS THE MISSING PIECE!
 
 // 🔥 HELPER: This ensures text is always visible regardless of the brand color
 function getContrastColor(hexcolor) {
@@ -318,20 +319,23 @@ export default function PremiumDashboard() {
       )}
 
       <nav className="responsive-nav">
+        
+        {/* 🔥 THE UPDATED LOGO SECTION WITH NEXT/LINK */}
         <Link href="/" style={{ textDecoration: 'none', display: 'inline-block' }}>
-  <div style={{ 
-    fontFamily: '"Myriad Pro", "Segoe UI", Roboto, sans-serif', 
-    fontSize: '22px', 
-    color: '#111', 
-    margin: 0, 
-    letterSpacing: '-0.5px', 
-    display: 'flex', 
-    alignItems: 'baseline' 
-  }}>
-    <span style={{ fontWeight: '700' }}>Link</span>
-    <span style={{ fontWeight: '400' }}>Supply.</span>
-  </div>
-</Link>
+          <div style={{ 
+            fontFamily: '"Myriad Pro", "Segoe UI", Roboto, sans-serif', 
+            fontSize: '22px', 
+            color: '#111', 
+            margin: 0, 
+            letterSpacing: '-0.5px', 
+            display: 'flex', 
+            alignItems: 'baseline' 
+          }}>
+            <span style={{ fontWeight: '700' }}>Link</span>
+            <span style={{ fontWeight: '400' }}>Supply.</span>
+          </div>
+        </Link>
+        
         <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
           <span style={{ color: '#4b5563', fontWeight: '500', fontSize: '15px', display: 'none' }}>Hello, {profile?.first_name || 'User'}</span>
           <button onClick={() => setShowSettings(true)} style={{ padding: '8px 16px', backgroundColor: '#f3f4f6', color: '#111', border: '1px solid #d1d5db', borderRadius: '6px', fontWeight: '600', cursor: 'pointer', fontSize: '14px' }}>⚙️ Settings</button>
