@@ -318,7 +318,20 @@ export default function PremiumDashboard() {
       )}
 
       <nav className="responsive-nav">
-        <h1 style={{ fontSize: '22px', fontWeight: '800', color: '#111', margin: 0, letterSpacing: '-0.5px' }}>Link Supply.</h1>
+        <Link href="/" style={{ textDecoration: 'none', display: 'inline-block' }}>
+  <div style={{ 
+    fontFamily: '"Myriad Pro", "Segoe UI", Roboto, sans-serif', 
+    fontSize: '22px', 
+    color: '#111', 
+    margin: 0, 
+    letterSpacing: '-0.5px', 
+    display: 'flex', 
+    alignItems: 'baseline' 
+  }}>
+    <span style={{ fontWeight: '700' }}>Link</span>
+    <span style={{ fontWeight: '400' }}>Supply.</span>
+  </div>
+</Link>
         <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
           <span style={{ color: '#4b5563', fontWeight: '500', fontSize: '15px', display: 'none' }}>Hello, {profile?.first_name || 'User'}</span>
           <button onClick={() => setShowSettings(true)} style={{ padding: '8px 16px', backgroundColor: '#f3f4f6', color: '#111', border: '1px solid #d1d5db', borderRadius: '6px', fontWeight: '600', cursor: 'pointer', fontSize: '14px' }}>⚙️ Settings</button>
