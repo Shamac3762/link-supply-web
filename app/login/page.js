@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 import { createClient } from '../../utils/supabase/client'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link' // 🔥 Added Link import for the logo
 
 export default function PremiumLoginPage() {
   const [isSignUp, setIsSignUp] = useState(false)
@@ -14,7 +15,7 @@ export default function PremiumLoginPage() {
   
   // Compliance States
   const [agreedToTerms, setAgreedToTerms] = useState(false)
-  const [rememberMe, setRememberMe] = useState(false) // 🔥 NEW: Track Remember Me choice
+  const [rememberMe, setRememberMe] = useState(false) 
   
   const supabase = createClient()
   const router = useRouter()
@@ -59,7 +60,6 @@ export default function PremiumLoginPage() {
         const { error: signInError } = await supabase.auth.signInWithPassword({ email, password })
         
         if (!signInError) {
-          // 🔥 NEW: Store their 'Remember Me' preference right away
           await supabase.from('customers').upsert({ id: data.user.id, remember_me: rememberMe });
           router.push(redirectUrl)
         } else {
@@ -67,12 +67,11 @@ export default function PremiumLoginPage() {
         }
       }
     } else {
-      // Logic for standard Log In
+      // Logic for standard 
       const { data, error } = await supabase.auth.signInWithPassword({ email, password })
       if (error) {
         setMessage("Invalid email or password.")
       } else {
-        // 🔥 NEW: Update their 'Remember Me' preference upon login
         await supabase.from('customers').upsert({ id: data.user.id, remember_me: rememberMe });
         router.push(redirectUrl) 
       }
@@ -90,9 +89,29 @@ export default function PremiumLoginPage() {
     <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', backgroundColor: '#f0f2f5', fontFamily: 'sans-serif' }}>
       
       <div style={{ backgroundColor: 'white', padding: '40px', borderRadius: '16px', boxShadow: '0 10px 25px rgba(0,0,0,0.05)', width: '100%', maxWidth: '400px', textAlign: 'center' }}>
-        <h1 style={{ fontSize: '24px', fontWeight: '800', color: '#111', marginBottom: '5px' }}>
+        
+        {/* 🔥 NEW BRANDING: Centered Logo */}
+        <div style={{ textAlign: 'center', marginBottom: '30px' }}>
+          <Link href="/" style={{ textDecoration: 'none', display: 'inline-block' }}>
+            <h1 style={{ 
+              fontFamily: '"Myriad Pro", "Segoe UI", Roboto, sans-serif', 
+              fontSize: '28px', 
+              color: '#111', 
+              margin: 0, 
+              letterSpacing: '-0.5px', 
+              display: 'flex', 
+              alignItems: 'baseline',
+              justifyContent: 'center'
+            }}>
+              <span style={{ fontWeight: '700' }}>Link</span>
+              <span style={{ fontWeight: '400' }}>Supply.</span>
+            </h1>
+          </Link>
+        </div>
+
+        <h2 style={{ fontSize: '24px', fontWeight: '800', color: '#111', margin: '0 0 5px 0' }}>
           {isSignUp ? 'Create an Account' : 'Welcome Back'}
-        </h1>
+        </h2>
         <p style={{ color: '#6b7280', marginBottom: '30px', fontSize: '14px' }}>
           {isSignUp ? 'Register to manage your NFC tags.' : 'Enter your details to access your dashboard.'}
         </p>
@@ -114,10 +133,10 @@ export default function PremiumLoginPage() {
             </div>
           )}
 
-          {/* 🔥 LEGAL UI: Terms & Remember Me Blocks */}
+          {/* LEGAL UI: Terms & Remember Me Blocks */}
           <div style={{ textAlign: 'left', marginBottom: '20px' }}>
             
-            {/* Remember Me Toggle (Visible on both Login and Signup) */}
+            {/* Remember Me Toggle */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: isSignUp ? '10px' : '0' }}>
               <input 
                 type="checkbox" 
