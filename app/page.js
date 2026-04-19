@@ -19,7 +19,20 @@ export default function Home() {
 
       {/* --- NAVIGATION --- */}
       <nav style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 5%', backgroundColor: 'white', borderBottom: '1px solid #e5e7eb' }}>
-        <div style={{ fontSize: '24px', fontWeight: '800', letterSpacing: '-0.5px' }}>Link Supply.</div>
+        <Link href="/" style={{ textDecoration: 'none', display: 'inline-block' }}>
+  <div style={{ 
+    fontFamily: '"Myriad Pro", "Segoe UI", Roboto, sans-serif', 
+    fontSize: '24px', 
+    color: '#111', 
+    margin: 0, 
+    letterSpacing: '-0.5px', 
+    display: 'flex', 
+    alignItems: 'baseline' 
+  }}>
+    <span style={{ fontWeight: '700' }}>Link</span>
+    <span style={{ fontWeight: '400' }}>Supply.</span>
+  </div>
+</Link>
         <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
           <Link href="/login" style={{ color: '#4b5563', textDecoration: 'none', fontWeight: '600', fontSize: '15px' }}>
             Log In
@@ -135,7 +148,21 @@ export default function Home() {
       {/* --- FOOTER --- */}
       <footer style={{ backgroundColor: 'white', borderTop: '1px solid #e5e7eb', padding: '60px 5%' }}>
         <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
-          <h2 style={{ fontSize: '24px', fontWeight: '800', letterSpacing: '-0.5px', marginBottom: '20px' }}>Link Supply.</h2>
+          <Link href="/" style={{ textDecoration: 'none', display: 'inline-block', marginBottom: '20px' }}>
+  <h2 style={{ 
+    fontFamily: '"Myriad Pro", "Segoe UI", Roboto, sans-serif', 
+    fontSize: '24px', 
+    color: '#111', 
+    margin: 0, 
+    letterSpacing: '-0.5px', 
+    display: 'flex', 
+    alignItems: 'baseline',
+    justifyContent: 'center'
+  }}>
+    <span style={{ fontWeight: '700' }}>Link</span>
+    <span style={{ fontWeight: '400' }}>Supply.</span>
+  </h2>
+</Link>
           <div style={{ display: 'flex', gap: '20px', marginBottom: '30px' }}>
             <Link href="/terms" style={{ color: '#6b7280', textDecoration: 'none', fontSize: '14px' }}>Terms & Conditions</Link>
             <Link href="/privacy" style={{ color: '#6b7280', textDecoration: 'none', fontSize: '14px' }}>Privacy Policy</Link>
