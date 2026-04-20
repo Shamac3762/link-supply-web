@@ -2,7 +2,9 @@
 import { useEffect, useState } from 'react'
 import { createClient } from '../../../utils/supabase/client'
 import { notFound } from 'next/navigation'
+import Link from 'next/link' 
 
+// 🔥 HELPER: This ensures text is always visible regardless of the brand color
 function getLinkIcon(url) {
   const u = url.toLowerCase();
   if (u.includes('instagram.com')) return <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg>;
@@ -35,11 +37,18 @@ export default function PublicProfilePage({ params }) {
   useEffect(() => {
     async function loadProfile() {
       const { username } = await params;
-      // FETCH: Now including the 'bg_css' column
+      // FETCH: Now including the 'bg_css' column and 'tier'
       const { data: profileData } = await supabase.from('customers').select('*').eq('username', username.toLowerCase()).single();
       if (!profileData) return setProfile('not_found');
+      
       const { data: linksData } = await supabase.from('page_links').select('*').eq('owner_id', profileData.id).order('sort_order', { ascending: true });
-      setProfile(profileData); setLinks(linksData || []); setLoading(false);
+      
+      // 🔥 FREE TIER CAP: Enforces a maximum of 2 links if they are on the free tier
+      const linkLimit = profileData.tier === 'free' ? 2 : (profileData.max_links || 100);
+      
+      setProfile(profileData); 
+      setLinks((linksData || []).slice(0, linkLimit)); 
+      setLoading(false);
     }
     loadProfile();
   }, [params]);
@@ -51,7 +60,7 @@ export default function PublicProfilePage({ params }) {
   // DYNAMIC TEXT COLOR: Uses the contrast engine
   const textColor = getContrastColor(baseColor);
   
-  // 🔥 INTERCEPT: THE PREMIUM "COMING SOON" SCREEN
+  // INTERCEPT: THE PREMIUM "COMING SOON" SCREEN
   if (profile.profile_status === 'coming_soon') {
     return (
       <div style={{ 
@@ -87,9 +96,11 @@ export default function PublicProfilePage({ params }) {
           This page is currently being prepared. Please check back soon.
         </p>
 
-        <footer style={{ position: 'absolute', bottom: '40px', opacity: 0.4, fontSize: '11px', fontWeight: '800', letterSpacing: '2px' }}>
-          <a href="/" style={{ color: textColor, textDecoration: 'none' }}>⚡ POWERED BY LINKSUPPLY</a>
-        </footer>
+        {profile.tier === 'free' && (
+          <footer style={{ position: 'absolute', bottom: '40px', opacity: 0.4, fontSize: '11px', fontWeight: '800', letterSpacing: '2px' }}>
+            <a href="/" style={{ color: textColor, textDecoration: 'none' }}>⚡ POWERED BY LINKSUPPLY</a>
+          </footer>
+        )}
       </div>
     )
   }
@@ -128,18 +139,24 @@ export default function PublicProfilePage({ params }) {
           background-color: ${textColor === 'white' ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.05)'}; 
           border: 1px solid ${textColor === 'white' ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.1)'};
           border-radius: 18px; color: ${textColor}; text-decoration: none; font-size: 16px; font-weight: 600;
-          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+          transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
         }
+        /* Smooth Apple squish effect on links */
         .premium-link:active { transform: scale(0.97); background-color: rgba(255, 255, 255, 0.15); }
         
+        /* 🔥 UPGRADED APPLE-STYLE CONTACT BUTTON */
         .contact-btn {
-          display: block; width: 100%; max-width: 100%; padding: 18px 20px; 
+          display: flex; align-items: center; justify-content: center; gap: 10px;
+          width: 100%; max-width: 100%; padding: 18px 20px; 
           background-color: ${textColor === 'white' ? 'white' : '#111111'}; 
           color: ${textColor === 'white' ? baseColor : 'white'}; 
-          border-radius: 18px; text-decoration: none; font-size: 16px; font-weight: 800; text-align: center;
-          margin-bottom: 30px; box-shadow: 0 15px 30px rgba(0,0,0,0.25); transition: all 0.2s ease;
+          border-radius: 100px; /* Apple Pill Shape */
+          text-decoration: none; font-size: 16px; font-weight: 700; text-align: center;
+          margin-bottom: 30px; box-shadow: 0 8px 24px -6px rgba(0,0,0,0.3); 
+          transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
         }
-        .contact-btn:active { transform: scale(0.97); }
+        .contact-btn:hover { transform: translateY(-2px); box-shadow: 0 12px 28px -8px rgba(0,0,0,0.4); }
+        .contact-btn:active { transform: scale(0.96); box-shadow: 0 4px 12px -4px rgba(0,0,0,0.3); } /* The Squish */
 
         .share-trigger {
           position: absolute; top: 20px; right: 20px; width: 44px; height: 44px;
@@ -148,7 +165,9 @@ export default function PublicProfilePage({ params }) {
           border: 1px solid ${textColor === 'white' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'};
           border-radius: 50%; cursor: pointer; backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
           z-index: 10; color: ${textColor};
+          transition: transform 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
         }
+        .share-trigger:active { transform: scale(0.92); }
       `}</style>
 
       <div onClick={handleShare} className="share-trigger">
@@ -187,7 +206,13 @@ export default function PublicProfilePage({ params }) {
         <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '16px' }}>
           {isBusinessCard && (
             <a href={vcardData} download={`${profile.display_name || profile.username}.vcf`} className="contact-btn">
-              📥 Save to Contacts
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+                <circle cx="9" cy="7" r="4" />
+                <line x1="19" y1="8" x2="19" y2="14" />
+                <line x1="22" y1="11" x2="16" y2="11" />
+              </svg>
+              Save to Contacts
             </a>
           )}
 
@@ -200,9 +225,12 @@ export default function PublicProfilePage({ params }) {
         </div>
       </main>
 
-      <footer style={{ marginTop: 'auto', paddingTop: '80px', opacity: 0.4, fontSize: '11px', fontWeight: '800', letterSpacing: '2px' }}>
-        <a href="/" style={{ color: textColor, textDecoration: 'none' }}>⚡ POWERED BY LINKSUPPLY</a>
-      </footer>
+      {/* 🔥 MARKETING: Hidden for Premium Users */}
+      {profile.tier === 'free' && (
+        <footer style={{ marginTop: 'auto', paddingTop: '80px', opacity: 0.4, fontSize: '11px', fontWeight: '800', letterSpacing: '2px' }}>
+          <a href="/" style={{ color: textColor, textDecoration: 'none' }}>⚡ POWERED BY LINKSUPPLY</a>
+        </footer>
+      )}
     </div>
   )
 }
