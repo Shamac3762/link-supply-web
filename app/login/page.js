@@ -61,7 +61,9 @@ export default function PremiumLoginPage() {
         
         if (!signInError) {
           await supabase.from('customers').upsert({ id: data.user.id, remember_me: rememberMe });
-          router.push(redirectUrl)
+          // 🔥 NEW: Route fresh sign-ups to the onboarding screen
+          const onboardingUrl = claimId ? `/onboarding?claim=${claimId}` : '/onboarding';
+          router.push(onboardingUrl);
         } else {
           setMessage('Success! Please check your email to verify your account.')
         }
