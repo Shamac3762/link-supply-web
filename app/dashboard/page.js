@@ -194,6 +194,7 @@ export default function PremiumDashboard() {
     const updateData = { 
         id: session.user.id, display_name: pageProfile.display_name,
         bio: pageProfile.bio, theme_color: pageProfile.theme_color, profile_picture_url: pageProfile.profile_picture_url,
+        // Include job_title and company but UI restricts changing them if free
         job_title: pageProfile.job_title, company: pageProfile.company, phone_number: pageProfile.phone_number, display_email: pageProfile.display_email,
         profile_status: pageProfile.profile_status,
         remember_me: pageProfile.remember_me 
@@ -551,11 +552,38 @@ export default function PremiumDashboard() {
             <div style={{ backgroundColor: 'white', padding: '30px', borderRadius: '16px', border: '1px solid #e5e7eb' }}>
               <h2 style={{ fontSize: '20px', fontWeight: '700', color: '#111', marginBottom: '5px' }}>Digital Business Card</h2>
               <p style={{ color: '#6b7280', fontSize: '14px', marginBottom: '20px' }}>Fill these out to add a "Save to Contacts" button to your profile.</p>
+              
+              {/* 🔥 UPDATED TIER LOCKS FOR CONTACT INFO */}
               <div className="responsive-grid">
-                <div><label style={labelStyle}>Job Title</label><input type="text" value={pageProfile.job_title} placeholder="e.g. Sales Director" onChange={(e) => setPageProfile({...pageProfile, job_title: e.target.value})} style={inputStyle} /></div>
-                <div><label style={labelStyle}>Company / Business</label><input type="text" value={pageProfile.company} placeholder="e.g. Acme Corp" onChange={(e) => setPageProfile({...pageProfile, company: e.target.value})} style={inputStyle} /></div>
-                <div><label style={labelStyle}>Phone Number</label><input type="tel" value={pageProfile.phone_number} placeholder="+44 7700 900077" onChange={(e) => setPageProfile({...pageProfile, phone_number: e.target.value})} style={inputStyle} /></div>
-                <div><label style={labelStyle}>Display Email</label><input type="email" value={pageProfile.display_email} placeholder="hello@example.com" onChange={(e) => setPageProfile({...pageProfile, display_email: e.target.value})} style={inputStyle} /></div>
+                {/* Job Title - PRO ONLY */}
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                    <label style={{...labelStyle, marginBottom: 0}}>Job Title</label>
+                    {!isPremium && <span style={{ fontSize: '10px', fontWeight: '700', backgroundColor: '#fef9c3', color: '#854d0e', padding: '2px 6px', borderRadius: '10px' }}>PRO</span>}
+                  </div>
+                  <input disabled={!isPremium} type="text" value={pageProfile.job_title} placeholder="e.g. Sales Director" onChange={(e) => setPageProfile({...pageProfile, job_title: e.target.value})} style={{...inputStyle, backgroundColor: !isPremium ? '#f3f4f6' : '#f9f9f9', cursor: !isPremium ? 'not-allowed' : 'text'}} />
+                </div>
+
+                {/* Company - PRO ONLY */}
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                    <label style={{...labelStyle, marginBottom: 0}}>Company / Business</label>
+                    {!isPremium && <span style={{ fontSize: '10px', fontWeight: '700', backgroundColor: '#fef9c3', color: '#854d0e', padding: '2px 6px', borderRadius: '10px' }}>PRO</span>}
+                  </div>
+                  <input disabled={!isPremium} type="text" value={pageProfile.company} placeholder="e.g. Acme Corp" onChange={(e) => setPageProfile({...pageProfile, company: e.target.value})} style={{...inputStyle, backgroundColor: !isPremium ? '#f3f4f6' : '#f9f9f9', cursor: !isPremium ? 'not-allowed' : 'text'}} />
+                </div>
+
+                {/* Phone - ALWAYS FREE */}
+                <div>
+                  <label style={labelStyle}>Phone Number</label>
+                  <input type="tel" value={pageProfile.phone_number} placeholder="+44 7700 900077" onChange={(e) => setPageProfile({...pageProfile, phone_number: e.target.value})} style={inputStyle} />
+                </div>
+                
+                {/* Email - ALWAYS FREE */}
+                <div>
+                  <label style={labelStyle}>Display Email</label>
+                  <input type="email" value={pageProfile.display_email} placeholder="hello@example.com" onChange={(e) => setPageProfile({...pageProfile, display_email: e.target.value})} style={inputStyle} />
+                </div>
               </div>
 
               <div style={{ marginTop: '35px', borderTop: '1px solid #e5e7eb', paddingTop: '25px' }}>
