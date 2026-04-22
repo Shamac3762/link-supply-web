@@ -440,12 +440,25 @@ export default function PremiumDashboard() {
                               </button>
                             )}
                           </div>
-                          <p style={{ fontSize: '13px', color: '#6b7280', marginTop: '10px', lineHeight: '1.4' }}>
-                            {!isPremium 
-                              ? <span><strong>💡 Locked:</strong> On the Free tier, your hardware is permanently linked to your digital profile. Upgrade to Pro to route this tag to a custom website or menu.</span>
-                              : <span><strong>💡 Tip:</strong> Keep this link set to your profile to share your digital business card, or change it to redirect straight to any other website.</span>
-                            }
-                          </p>
+<p style={{ fontSize: '13px', color: '#6b7280', marginTop: '10px', lineHeight: '1.4' }}>
+  {!isPremium 
+    ? <span><strong>💡 Locked:</strong> On the Free tier, your hardware is permanently linked to your digital profile. Upgrade to Pro to route this tag to a custom website or menu.</span>
+    : <span>
+        <strong>💡 Tip:</strong> To share your digital business card, set this to <strong>https://linksupply.co.uk/u/{pageProfile.username}</strong>, or enter any custom website. 
+        <button 
+          type="button"
+          onClick={() => {
+            const profileUrl = `https://linksupply.co.uk/u/${pageProfile.username}`;
+            const updated = stickers.map(s => s.id === sticker.id ? { ...s, target_url: profileUrl } : s); 
+            setStickers(updated);
+          }}
+          style={{ background: 'none', border: 'none', color: '#4f46e5', fontWeight: '700', cursor: 'pointer', padding: 0, marginLeft: '6px', fontSize: '13px' }}
+        >
+          Auto-fill profile link
+        </button>
+      </span>
+  }
+</p>   
                         </div>
                       </div>
                     </div>
