@@ -130,10 +130,16 @@ export default function PremiumDashboard() {
       show_save_contact: customerData?.show_save_contact !== false 
     })
     
-    // 🔥 NEW: Dynamic Tier Limit Logic
+    // 🔥 BULLETPROOF TIER LOGIC
     const userTier = customerData?.tier || 'free';
-    // If free, strictly 2. If premium, default to 15 (unless they have a custom override higher than that in the DB)
-    const dynamicLimit = userTier === 'free' ? 2 : (customerData?.max_links || 15);
+    let dynamicLimit = 2; // Default strict limit for Free users
+    
+    if (userTier !== 'free') {
+        // If they are Pro, force it to 15 minimum. 
+        // Only use the database number if you manually granted them more than 15.
+        dynamicLimit = (customerData?.max_links && customerData.max_links > 15) ? customerData.max_links : 15;
+    }
+    
     setMaxLinks(dynamicLimit);
 
     const { data: stickerData } = await supabase.from('nfc_stickers').select('*').eq('owner_id', session.user.id).order('id', { ascending: true })
