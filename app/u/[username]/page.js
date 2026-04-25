@@ -43,8 +43,12 @@ export default function PublicProfilePage({ params }) {
       
       const { data: linksData } = await supabase.from('page_links').select('*').eq('owner_id', profileData.id).order('sort_order', { ascending: true });
       
-      // 🔥 FREE TIER CAP: Enforces a maximum of 2 links if they are on the free tier
-      const linkLimit = profileData.tier === 'free' ? 2 : (profileData.max_links || 100);
+      // 🔥 BULLETPROOF TIER LOGIC (Matches the Dashboard)
+      let linkLimit = 2; // Default strict limit for Free users
+      if (profileData.tier !== 'free') {
+          // If they are Pro, allow at least 15 links to render
+          linkLimit = (profileData.max_links && profileData.max_links > 15) ? profileData.max_links : 15;
+      }
       
       setProfile(profileData); 
       setLinks((linksData || []).slice(0, linkLimit)); 
