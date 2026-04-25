@@ -1,10 +1,9 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { createClient } from '../../utils/supabase/client'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link' 
 
-// 🔥 HELPER: This ensures text is always visible regardless of the brand color
 function getContrastColor(hexcolor) {
   if (!hexcolor || hexcolor.startsWith('linear') || hexcolor.startsWith('radial')) return 'white';
   const r = parseInt(hexcolor.slice(1, 3), 16);
@@ -28,7 +27,8 @@ export default function PremiumDashboard() {
     profile_picture_url: '', job_title: '', company: '', phone_number: '', display_email: '',
     profile_status: 'live',
     remember_me: false,
-    tier: 'free' // 🔥 Default to free tier
+    tier: 'free',
+    show_save_contact: true 
   })
   const [pageLinks, setPageLinks] = useState([])
   const [newLinkTitle, setNewLinkTitle] = useState('')
@@ -42,6 +42,10 @@ export default function PremiumDashboard() {
   const [showSettings, setShowSettings] = useState(false)
   const [newPassword, setNewPassword] = useState('')
   const [settingsMessage, setSettingsMessage] = useState('')
+  
+  // 🔥 NEW: Storage Upload States
+  const [isUploading, setIsUploading] = useState(false)
+  const fileInputRef = useRef(null)
 
   const supabase = createClient()
   const router = useRouter()
@@ -71,25 +75,17 @@ export default function PremiumDashboard() {
 
     if (claimParam) {
       setActiveTab('hardware')
-      const { data: tagData } = await supabase
-        .from('nfc_stickers')
-        .select('id')
-        .eq('url_slug', claimParam)
-        .single()
-        
-      if (tagData) {
-        setClaimId(tagData.id) 
-      }
+      const { data: tagData } = await supabase.from('nfc_stickers').select('id').eq('url_slug', claimParam).single()
+      if (tagData) setClaimId(tagData.id) 
     }
 
     const firstName = session.user.user_metadata?.first_name || '';
     const lastName = session.user.user_metadata?.last_name || '';
     const defaultDisplayName = `${firstName} ${lastName}`.trim();
     
-    // 🔥 Fetching the new 'tier' column
     const { data: customerData } = await supabase
       .from('customers')
-      .select('username, display_name, bio, theme_color, max_links, profile_picture_url, job_title, company, phone_number, display_email, profile_status, remember_me, tier')
+      .select('username, display_name, bio, theme_color, max_links, profile_picture_url, job_title, company, phone_number, display_email, profile_status, remember_me, tier, show_save_contact')
       .eq('id', session.user.id)
       .single()
 
@@ -110,12 +106,7 @@ export default function PremiumDashboard() {
     }
 
     if (requiresBackgroundSave) {
-      await supabase.from('customers').upsert({
-        id: session.user.id,
-        username: currentUsername,
-        display_name: currentDisplayName,
-        theme_color: customerData?.theme_color || '#111111'
-      });
+      await supabase.from('customers').upsert({ id: session.user.id, username: currentUsername, display_name: currentDisplayName, theme_color: customerData?.theme_color || '#111111' });
     }
 
     setPageProfile({
@@ -135,11 +126,8 @@ export default function PremiumDashboard() {
     let dynamicLimit = 2; // Default strict limit for Free users
     
     if (userTier !== 'free') {
-        // If they are Pro, force it to 15 minimum. 
-        // Only use the database number if you manually granted them more than 15.
         dynamicLimit = (customerData?.max_links && customerData.max_links > 15) ? customerData.max_links : 15;
     }
-    
     setMaxLinks(dynamicLimit);
 
     const { data: stickerData } = await supabase.from('nfc_stickers').select('*').eq('owner_id', session.user.id).order('id', { ascending: true })
@@ -162,15 +150,8 @@ export default function PremiumDashboard() {
     if (!claimId || claimPin.length < 8) return setClaimMessage("Please enter a valid Tag ID and 8-char Code.")
     setIsClaiming(true); setClaimMessage("Verifying vault...")
     const { data: { session } } = await supabase.auth.getSession()
-
     const defaultUrl = `https://linksupply.co.uk/u/${pageProfile.username}`;
-
-    const { error, data } = await supabase.from('nfc_stickers')
-      .update({ owner_id: session.user.id, target_url: defaultUrl })
-      .eq('id', claimId.toUpperCase())
-      .eq('activation_code', claimPin)
-      .is('owner_id', null)
-      .select()
+    const { error, data } = await supabase.from('nfc_stickers').update({ owner_id: session.user.id, target_url: defaultUrl }).eq('id', claimId.toUpperCase()).eq('activation_code', claimPin).is('owner_id', null).select()
 
     if (error || !data || data.length === 0) setClaimMessage("Error: Invalid Code, wrong ID, or tag is already owned.")
     else { setClaimMessage("Success! Tag linked to your account. ✓"); setClaimId(''); setClaimPin(''); fetchData(); setTimeout(() => setClaimMessage(''), 3000) }
@@ -188,27 +169,69 @@ export default function PremiumDashboard() {
     const newState = !currentState 
     setStickers(stickers.map(s => s.id === id ? { ...s, is_active: newState } : s))
     const { error } = await supabase.from('nfc_stickers').update({ is_active: newState }).eq('id', id)
-    if (error) {
-      setStickers(stickers.map(s => s.id === id ? { ...s, is_active: currentState } : s))
-      alert("Failed to update hardware status.")
-    }
+    if (error) { setStickers(stickers.map(s => s.id === id ? { ...s, is_active: currentState } : s)); alert("Failed to update hardware status.") }
   }
+
+  // 🔥 NEW: Image Compression & Upload Engine
+  const handleImageUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    setIsUploading(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      const compressedFile = await new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = (event) => {
+          const img = new Image();
+          img.src = event.target.result;
+          img.onload = () => {
+            const canvas = document.createElement('canvas');
+            const MAX_WIDTH = 500; 
+            const scaleSize = MAX_WIDTH / img.width;
+            canvas.width = MAX_WIDTH;
+            canvas.height = img.height * scaleSize;
+            
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            
+            canvas.toBlob((blob) => {
+              resolve(new File([blob], `avatar-${Date.now()}.jpg`, { type: 'image/jpeg' }));
+            }, 'image/jpeg', 0.8);
+          };
+        };
+      });
+
+      const fileName = `${session.user.id}-${Date.now()}.jpg`;
+      const { error: uploadError } = await supabase.storage.from('avatars').upload(fileName, compressedFile, { upsert: true });
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(fileName);
+      
+      setPageProfile({ ...pageProfile, profile_picture_url: publicUrl });
+      
+    } catch (error) {
+      alert("Error uploading image: " + error.message);
+    } finally {
+      setIsUploading(false);
+    }
+  };
 
   const handleSaveProfile = async () => {
     setSaveStatus({ ...saveStatus, profile: 'Saving...' })
     const { data: { session } } = await supabase.auth.getSession()
     
-    // 🔥 TIER LOGIC: Only format and update username if they are on a paid plan
     let cleanUsername = pageProfile.username;
     const isPremium = pageProfile.tier !== 'free';
     
     const updateData = { 
         id: session.user.id, display_name: pageProfile.display_name,
         bio: pageProfile.bio, theme_color: pageProfile.theme_color, profile_picture_url: pageProfile.profile_picture_url,
-        // Include job_title and company but UI restricts changing them if free
         job_title: pageProfile.job_title, company: pageProfile.company, phone_number: pageProfile.phone_number, display_email: pageProfile.display_email,
-        profile_status: pageProfile.profile_status,
-        remember_me: pageProfile.remember_me 
+        profile_status: pageProfile.profile_status, remember_me: pageProfile.remember_me,
+        show_save_contact: pageProfile.show_save_contact
     }
 
     if (isPremium) {
@@ -247,29 +270,20 @@ export default function PremiumDashboard() {
   }
 
   const handleDeleteAccount = async () => {
-    const confirmDelete = window.confirm(
-      "GDPR NOTICE: Are you absolutely sure you want to permanently delete your account?\n\nThis will immediately sever all your physical NFC tags from this profile. This action cannot be undone."
-    )
-    
-    if (confirmDelete) {
-      setSettingsMessage("Deleting account...")
-      alert("Account scheduled for deletion. Please contact support to finalize.")
-    }
+    const confirmDelete = window.confirm("GDPR NOTICE: Are you absolutely sure you want to permanently delete your account?\n\nThis will immediately sever all your physical NFC tags from this profile. This action cannot be undone.")
+    if (confirmDelete) { setSettingsMessage("Deleting account..."); alert("Account scheduled for deletion. Please contact support to finalize.") }
   }
 
   const isAtLimit = pageLinks.length >= maxLinks
   const displayLimit = maxLinks > 100 ? 'Unlimited' : maxLinks
   const inputStyle = { width: '100%', padding: '12px 14px', borderRadius: '10px', border: '1px solid #d1d5db', fontSize: '15px', color: '#111', outline: 'none', boxSizing: 'border-box' }
   const labelStyle = { display: 'block', fontSize: '14px', color: '#4b5563', marginBottom: '8px', fontWeight: '600' }
-  
-  // Clean variable for rendering the UI locks
   const isPremium = pageProfile.tier !== 'free';
 
   if (loading) return <div style={{ minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', backgroundColor: '#f3f4f6' }}>Loading Workspace...</div>
 
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#f3f4f6', fontFamily: 'sans-serif', paddingBottom: '50px', overflowX: 'hidden', width: '100%' }}>
-      
       <style>{`
         * { box-sizing: border-box; }
         .responsive-nav { padding: 20px 40px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e5e7eb; background-color: white; }
@@ -277,7 +291,6 @@ export default function PremiumDashboard() {
         .responsive-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; width: 100%; }
         .responsive-stack { display: flex; gap: 12px; width: 100%; max-width: 100%; }
         .link-row { display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; background-color: #f9fafb; border: 1px solid #e5e7eb; border-radius: 10px; }
-        
         .url-input-container { display: flex; align-items: center; background-color: #f9fafb; border: 1px solid #d1d5db; border-radius: 10px; overflow: hidden; width: 100%; }
         .url-prefix { color: #6b7280; font-size: 15px; padding: 14px; font-weight: 500; border-right: 1px solid #e5e7eb; background-color: #f3f4f6; white-space: nowrap; }
 
@@ -291,7 +304,6 @@ export default function PremiumDashboard() {
           .header-stack .actions { width: 100%; display: flex; justify-content: space-between; }
           .link-row { flex-direction: column; align-items: flex-start; gap: 15px; }
           .link-row button { width: 100%; }
-          
           .url-input-container { flex-direction: column; align-items: stretch; }
           .url-prefix { border-right: none; border-bottom: 1px solid #e5e7eb; font-size: 13px; padding: 10px 14px; }
         }
@@ -318,53 +330,29 @@ export default function PremiumDashboard() {
                   <p style={{ margin: '0 0 4px 0', fontSize: '14px', fontWeight: '600', color: '#111' }}>Keep me signed in</p>
                   <p style={{ margin: 0, fontSize: '12px', color: '#6b7280' }}>Remember this device for future visits.</p>
                 </div>
-                <button 
-                  onClick={() => handleToggleRememberMe(pageProfile.remember_me)}
-                  style={{
-                    width: '44px', height: '24px', borderRadius: '12px', border: 'none', cursor: 'pointer',
-                    backgroundColor: pageProfile.remember_me ? '#059669' : '#e5e7eb',
-                    position: 'relative', transition: 'background-color 0.2s ease'
-                  }}
-                >
-                  <div style={{
-                    width: '20px', height: '20px', borderRadius: '50%', backgroundColor: 'white',
-                    position: 'absolute', top: '2px', left: pageProfile.remember_me ? '22px' : '2px',
-                    transition: 'left 0.2s cubic-bezier(0.4, 0, 0.2, 1)', boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
-                  }} />
+                <button onClick={() => handleToggleRememberMe(pageProfile.remember_me)} style={{ width: '44px', height: '24px', borderRadius: '12px', border: 'none', cursor: 'pointer', backgroundColor: pageProfile.remember_me ? '#059669' : '#e5e7eb', position: 'relative', transition: 'background-color 0.2s ease' }}>
+                  <div style={{ width: '20px', height: '20px', borderRadius: '50%', backgroundColor: 'white', position: 'absolute', top: '2px', left: pageProfile.remember_me ? '22px' : '2px', transition: 'left 0.2s cubic-bezier(0.4, 0, 0.2, 1)', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }} />
                 </button>
               </div>
             </div>
 
             <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: '20px', marginTop: '10px' }}>
               <h3 style={{ fontSize: '16px', color: '#dc2626', margin: '0 0 10px 0' }}>Danger Zone</h3>
-              <p style={{ fontSize: '13px', color: '#6b7280', marginBottom: '15px' }}>Permanently delete your account and data to comply with GDPR data privacy regulations.</p>
+              <p style={{ fontSize: '13px', color: '#6b7280', marginBottom: '15px' }}>Permanently delete your account and data to comply with GDPR.</p>
               <button onClick={handleDeleteAccount} style={{ width: '100%', padding: '10px', backgroundColor: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca', borderRadius: '8px', fontWeight: '600', cursor: 'pointer' }}>Delete Account</button>
             </div>
-            
             {settingsMessage && <p style={{ marginTop: '15px', color: settingsMessage.includes('Success') ? '#059669' : '#dc2626', fontSize: '14px', textAlign: 'center', fontWeight: '500' }}>{settingsMessage}</p>}
           </div>
         </div>
       )}
 
       <nav className="responsive-nav">
-        
         <Link href="/" style={{ textDecoration: 'none', display: 'inline-block' }}>
-          <div style={{ 
-            fontFamily: '"Myriad Pro", "Segoe UI", Roboto, sans-serif', 
-            fontSize: '22px', 
-            color: '#111', 
-            margin: 0, 
-            letterSpacing: '-0.5px', 
-            display: 'flex', 
-            alignItems: 'baseline' 
-          }}>
-            <span style={{ fontWeight: '700' }}>Link</span>
-            <span style={{ fontWeight: '400' }}>Supply.</span>
+          <div style={{ fontFamily: '"Myriad Pro", "Segoe UI", Roboto, sans-serif', fontSize: '22px', color: '#111', margin: 0, letterSpacing: '-0.5px', display: 'flex', alignItems: 'baseline' }}>
+            <span style={{ fontWeight: '700' }}>Link</span><span style={{ fontWeight: '400' }}>Supply.</span>
           </div>
         </Link>
-        
         <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-          <span style={{ color: '#4b5563', fontWeight: '500', fontSize: '15px', display: 'none' }}>Hello, {profile?.first_name || 'User'}</span>
           <button onClick={() => setShowSettings(true)} style={{ padding: '8px 16px', backgroundColor: '#f3f4f6', color: '#111', border: '1px solid #d1d5db', borderRadius: '6px', fontWeight: '600', cursor: 'pointer', fontSize: '14px' }}>⚙️ Settings</button>
           <button onClick={handleLogout} style={{ padding: '8px 16px', backgroundColor: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca', borderRadius: '6px', fontWeight: '600', cursor: 'pointer', fontSize: '14px' }}>Log Out</button>
         </div>
@@ -398,78 +386,55 @@ export default function PremiumDashboard() {
                   const isEnabled = sticker.is_active !== false;
                   return (
                     <div key={sticker.id} style={{ backgroundColor: 'white', padding: '30px', borderRadius: '16px', border: '1px solid #e5e7eb', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)', display: 'flex', flexDirection: 'column', gap: '20px', opacity: isEnabled ? 1 : 0.6, transition: 'opacity 0.2s', width: '100%', overflow: 'hidden' }}>
-                      
                       <div className="header-stack" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', flexWrap: 'wrap', gap: '10px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                           <span style={{ fontSize: '20px', fontWeight: '700', color: '#111', textDecoration: isEnabled ? 'none' : 'line-through' }}>{sticker.id}</span>
-                          <span style={{ fontSize: '13px', fontWeight: '600', color: '#4b5563', backgroundColor: '#f3f4f6', padding: '4px 10px', borderRadius: '20px', whiteSpace: 'nowrap' }}>
-                            {sticker.tap_count || 0} Taps
-                          </span>
+                          <span style={{ fontSize: '13px', fontWeight: '600', color: '#4b5563', backgroundColor: '#f3f4f6', padding: '4px 10px', borderRadius: '20px', whiteSpace: 'nowrap' }}>{sticker.tap_count || 0} Taps</span>
                         </div>
                         <a href={`/go/${sticker.url_slug}`} target="_blank" rel="noreferrer" style={{ fontSize: '14px', color: '#4f46e5', textDecoration: 'none', fontWeight: '600', padding: '8px 16px', backgroundColor: '#e0e7ff', borderRadius: '8px', textAlign: 'center', whiteSpace: 'nowrap' }}>Preview Link ↗</a>
                       </div>
-
                       <div style={{ marginTop: '5px', display: 'flex', flexDirection: 'column', gap: '15px', width: '100%' }}>
                         <div>
                           <label style={labelStyle}>Tag Name (Optional)</label>
                           <input disabled={!isEnabled} type="text" defaultValue={sticker.tag_name || ''} placeholder="e.g., Table 5" onChange={(e) => { const updated = stickers.map(s => s.id === sticker.id ? { ...s, tag_name: e.target.value } : s); setStickers(updated) }} style={inputStyle} />
                         </div>
                         <div style={{ width: '100%' }}>
-                          
-                          {/* 🔥 TIER LOCK: Target URL Labels & Buttons */}
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', flexWrap: 'wrap', gap: '10px' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                               <label style={{...labelStyle, marginBottom: 0}}>Destination URL</label>
-                              {!isPremium && (
-                                <span style={{ fontSize: '11px', fontWeight: '700', backgroundColor: '#fef9c3', color: '#854d0e', padding: '2px 8px', borderRadius: '12px' }}>PRO</span>
-                              )}
+                              {!isPremium && <span style={{ fontSize: '11px', fontWeight: '700', backgroundColor: '#fef9c3', color: '#854d0e', padding: '2px 8px', borderRadius: '12px' }}>PRO</span>}
                             </div>
-                            <button
-                              onClick={() => handleToggleActive(sticker.id, isEnabled)}
-                              style={{ padding: '6px 14px', borderRadius: '20px', border: 'none', fontSize: '12px', fontWeight: '700', cursor: 'pointer', backgroundColor: isEnabled ? '#d1fae5' : '#fee2e2', color: isEnabled ? '#059669' : '#dc2626', transition: 'all 0.2s', whiteSpace: 'nowrap' }}
-                            >
+                            <button onClick={() => handleToggleActive(sticker.id, isEnabled)} style={{ padding: '6px 14px', borderRadius: '20px', border: 'none', fontSize: '12px', fontWeight: '700', cursor: 'pointer', backgroundColor: isEnabled ? '#d1fae5' : '#fee2e2', color: isEnabled ? '#059669' : '#dc2626', transition: 'all 0.2s', whiteSpace: 'nowrap' }}>
                               {isEnabled ? '🟢 Active' : '🔴 Disabled'}
                             </button>
                           </div>
-                          
-                          {/* 🔥 TIER LOCK: Target URL Input */}
                           <div className="responsive-stack">
-                            <input 
-                              disabled={!isEnabled || !isPremium} 
-                              type="url" 
-                              value={!isPremium ? `https://linksupply.co.uk/u/${pageProfile.username}` : (sticker.target_url || '')} 
-                              onChange={(e) => { const updated = stickers.map(s => s.id === sticker.id ? { ...s, target_url: e.target.value } : s); setStickers(updated) }} 
-                              style={{ flex: 1, padding: '14px', borderRadius: '10px', border: '1px solid #d1d5db', fontSize: '16px', color: !isPremium ? '#6b7280' : '#111', backgroundColor: !isPremium ? '#f3f4f6' : 'white', outline: 'none' }} 
-                            />
+                            <input disabled={!isEnabled || !isPremium} type="url" value={!isPremium ? `https://linksupply.co.uk/u/${pageProfile.username}` : (sticker.target_url || '')} onChange={(e) => { const updated = stickers.map(s => s.id === sticker.id ? { ...s, target_url: e.target.value } : s); setStickers(updated) }} style={{ flex: 1, padding: '14px', borderRadius: '10px', border: '1px solid #d1d5db', fontSize: '16px', color: !isPremium ? '#6b7280' : '#111', backgroundColor: !isPremium ? '#f3f4f6' : 'white', outline: 'none' }} />
                             {!isPremium ? (
-                              <button onClick={() => alert("Custom hardware routing is a paid feature. Upgrade to unlock!")} style={{ padding: '14px 24px', backgroundColor: '#f59e0b', color: 'white', border: 'none', borderRadius: '10px', fontWeight: '700', cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                                Unlock Routing
-                              </button>
+                              <button onClick={() => alert("Custom hardware routing is a paid feature. Upgrade to unlock!")} style={{ padding: '14px 24px', backgroundColor: '#f59e0b', color: 'white', border: 'none', borderRadius: '10px', fontWeight: '700', cursor: 'pointer', whiteSpace: 'nowrap' }}>Unlock Routing</button>
                             ) : (
-                              <button disabled={!isEnabled} onClick={() => handleSaveHardwareChanges(sticker.id, sticker.target_url, sticker.tag_name)} style={{ padding: '14px 24px', backgroundColor: isEnabled ? '#111' : '#9ca3af', color: 'white', border: 'none', borderRadius: '10px', fontWeight: '600', cursor: isEnabled ? 'pointer' : 'not-allowed' }}>
-                                {saveStatus[sticker.id] || 'Save Changes'}
-                              </button>
+                              <button disabled={!isEnabled} onClick={() => handleSaveHardwareChanges(sticker.id, sticker.target_url, sticker.tag_name)} style={{ padding: '14px 24px', backgroundColor: isEnabled ? '#111' : '#9ca3af', color: 'white', border: 'none', borderRadius: '10px', fontWeight: '600', cursor: isEnabled ? 'pointer' : 'not-allowed' }}>{saveStatus[sticker.id] || 'Save Changes'}</button>
                             )}
                           </div>
-<p style={{ fontSize: '13px', color: '#6b7280', marginTop: '10px', lineHeight: '1.4' }}>
-  {!isPremium 
-    ? <span><strong>💡 Locked:</strong> On the Free tier, your hardware is permanently linked to your digital profile. Upgrade to Pro to route this tag to a custom website or menu.</span>
-    : <span>
-        <strong>💡 Tip:</strong> To share your digital business card, set this to <strong>https://linksupply.co.uk/u/{pageProfile.username}</strong>, or enter any custom website. 
-        <button 
-          type="button"
-          onClick={() => {
-            const profileUrl = `https://linksupply.co.uk/u/${pageProfile.username}`;
-            const updated = stickers.map(s => s.id === sticker.id ? { ...s, target_url: profileUrl } : s); 
-            setStickers(updated);
-          }}
-          style={{ background: 'none', border: 'none', color: '#4f46e5', fontWeight: '700', cursor: 'pointer', padding: 0, marginLeft: '6px', fontSize: '13px' }}
-        >
-          Auto-fill profile link
-        </button>
-      </span>
-  }
-</p>   
+                          <p style={{ fontSize: '13px', color: '#6b7280', marginTop: '10px', lineHeight: '1.4' }}>
+                            {!isPremium 
+                              ? <span><strong>💡 Locked:</strong> On the Free tier, your hardware is permanently linked to your digital profile. Upgrade to Pro to route this tag to a custom website or menu.</span>
+                              : <span>
+                                  <strong>💡 Tip:</strong> To share your digital business card, set this to <strong>https://linksupply.co.uk/u/{pageProfile.username}</strong>, or enter any custom website. 
+                                  <button 
+                                    type="button"
+                                    onClick={() => {
+                                      const profileUrl = `https://linksupply.co.uk/u/${pageProfile.username}`;
+                                      const updated = stickers.map(s => s.id === sticker.id ? { ...s, target_url: profileUrl } : s); 
+                                      setStickers(updated);
+                                    }}
+                                    style={{ background: 'none', border: 'none', color: '#4f46e5', fontWeight: '700', cursor: 'pointer', padding: 0, marginLeft: '6px', fontSize: '13px' }}
+                                  >
+                                    Auto-fill profile link
+                                  </button>
+                                </span>
+                            }
+                          </p>
                         </div>
                       </div>
                     </div>
@@ -488,67 +453,73 @@ export default function PremiumDashboard() {
                 <h2 style={{ fontSize: '20px', fontWeight: '700', color: '#111', margin: '0 0 5px 0' }}>Profile Status</h2>
                 <p style={{ color: '#6b7280', fontSize: '14px', margin: 0 }}>Control if your page is visible to the public.</p>
               </div>
-              
               <div style={{ display: 'flex', alignItems: 'center', gap: '15px', flexWrap: 'wrap' }}>
-                <a href={`/u/${pageProfile.username}`} target="_blank" rel="noreferrer" style={{ fontSize: '14px', color: '#4f46e5', textDecoration: 'none', fontWeight: '600', padding: '10px 18px', backgroundColor: '#e0e7ff', borderRadius: '100px', textAlign: 'center', whiteSpace: 'nowrap', transition: 'all 0.2s ease' }}>
-                  Preview Page ↗
-                </a>
+                <a href={`/u/${pageProfile.username}`} target="_blank" rel="noreferrer" style={{ fontSize: '14px', color: '#4f46e5', textDecoration: 'none', fontWeight: '600', padding: '10px 18px', backgroundColor: '#e0e7ff', borderRadius: '100px', textAlign: 'center', whiteSpace: 'nowrap', transition: 'all 0.2s ease' }}>Preview Page ↗</a>
                 <div style={{ display: 'flex', backgroundColor: '#f3f4f6', padding: '6px', borderRadius: '100px' }}>
-                  <button 
-                    onClick={() => { setPageProfile({...pageProfile, profile_status: 'live'}); }}
-                    style={{ padding: '10px 24px', borderRadius: '100px', border: 'none', fontWeight: '700', fontSize: '14px', cursor: 'pointer', transition: 'all 0.2s ease', backgroundColor: pageProfile.profile_status === 'live' ? 'white' : 'transparent', color: pageProfile.profile_status === 'live' ? '#111' : '#6b7280', boxShadow: pageProfile.profile_status === 'live' ? '0 2px 8px rgba(0,0,0,0.1)' : 'none' }}
-                  >
-                    🟢 Live
-                  </button>
-                  <button 
-                    onClick={() => { setPageProfile({...pageProfile, profile_status: 'coming_soon'}); }}
-                    style={{ padding: '10px 24px', borderRadius: '100px', border: 'none', fontWeight: '700', fontSize: '14px', cursor: 'pointer', transition: 'all 0.2s ease', backgroundColor: pageProfile.profile_status === 'coming_soon' ? 'white' : 'transparent', color: pageProfile.profile_status === 'coming_soon' ? '#111' : '#6b7280', boxShadow: pageProfile.profile_status === 'coming_soon' ? '0 2px 8px rgba(0,0,0,0.1)' : 'none' }}
-                  >
-                    🚧 Coming Soon
-                  </button>
+                  <button onClick={() => { setPageProfile({...pageProfile, profile_status: 'live'}); }} style={{ padding: '10px 24px', borderRadius: '100px', border: 'none', fontWeight: '700', fontSize: '14px', cursor: 'pointer', transition: 'all 0.2s ease', backgroundColor: pageProfile.profile_status === 'live' ? 'white' : 'transparent', color: pageProfile.profile_status === 'live' ? '#111' : '#6b7280', boxShadow: pageProfile.profile_status === 'live' ? '0 2px 8px rgba(0,0,0,0.1)' : 'none' }}>🟢 Live</button>
+                  <button onClick={() => { setPageProfile({...pageProfile, profile_status: 'coming_soon'}); }} style={{ padding: '10px 24px', borderRadius: '100px', border: 'none', fontWeight: '700', fontSize: '14px', cursor: 'pointer', transition: 'all 0.2s ease', backgroundColor: pageProfile.profile_status === 'coming_soon' ? 'white' : 'transparent', color: pageProfile.profile_status === 'coming_soon' ? '#111' : '#6b7280', boxShadow: pageProfile.profile_status === 'coming_soon' ? '0 2px 8px rgba(0,0,0,0.1)' : 'none' }}>🚧 Coming Soon</button>
                 </div>
               </div>
             </div>
 
             <div style={{ backgroundColor: 'white', padding: '30px', borderRadius: '16px', border: '1px solid #e5e7eb' }}>
-              <div className="header-stack" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                <h2 style={{ fontSize: '20px', fontWeight: '700', color: '#111', margin: 0 }}>Page Identity</h2>
-              </div>
-              
+              <h2 style={{ fontSize: '20px', fontWeight: '700', color: '#111', margin: '0 0 20px 0' }}>Page Identity</h2>
               <div className="responsive-grid">
                 <div style={{ gridColumn: '1 / -1' }}>
                   <label style={labelStyle}>Full Name / Display Name</label>
                   <input type="text" value={pageProfile.display_name} placeholder="e.g. John Doe" onChange={(e) => setPageProfile({...pageProfile, display_name: e.target.value})} style={inputStyle} />
                 </div>
                 
-                {/* 🔥 TIER LOCK: Username Input */}
                 <div style={{ gridColumn: '1 / -1' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
                     <label style={{...labelStyle, marginBottom: 0}}>Public Username (URL)</label>
-                    {!isPremium && (
-                      <span style={{ fontSize: '11px', fontWeight: '700', backgroundColor: '#fef9c3', color: '#854d0e', padding: '2px 8px', borderRadius: '12px' }}>PRO</span>
-                    )}
+                    {!isPremium && <span style={{ fontSize: '11px', fontWeight: '700', backgroundColor: '#fef9c3', color: '#854d0e', padding: '2px 8px', borderRadius: '12px' }}>PRO</span>}
                   </div>
                   <div className="url-input-container" style={{ backgroundColor: !isPremium ? '#f3f4f6' : '#f9fafb' }}>
                     <span className="url-prefix" style={{ backgroundColor: !isPremium ? '#e5e7eb' : '#f3f4f6' }}>linksupply.co.uk/u/</span>
-                    <input 
-                      disabled={!isPremium}
-                      type="text" 
-                      value={pageProfile.username} 
-                      placeholder="mybrand" 
-                      onChange={(e) => setPageProfile({...pageProfile, username: e.target.value})} 
-                      style={{ flex: 1, padding: '14px', border: 'none', backgroundColor: 'transparent', fontSize: '16px', color: !isPremium ? '#6b7280' : '#111', outline: 'none', fontWeight: '600' }} 
-                    />
+                    <input disabled={!isPremium} type="text" value={pageProfile.username} placeholder="mybrand" onChange={(e) => setPageProfile({...pageProfile, username: e.target.value})} style={{ flex: 1, padding: '14px', border: 'none', backgroundColor: 'transparent', fontSize: '16px', color: !isPremium ? '#6b7280' : '#111', outline: 'none', fontWeight: '600' }} />
                   </div>
-                  {!isPremium && (
-                    <p style={{ fontSize: '12px', color: '#6b7280', marginTop: '6px' }}>Custom URLs are locked on the Free tier.</p>
-                  )}
+                  {!isPremium && <p style={{ fontSize: '12px', color: '#6b7280', marginTop: '6px' }}>Custom URLs are locked on the Free tier.</p>}
                 </div>
 
+                {/* 🔥 NEW: Image Upload UI */}
                 <div style={{ gridColumn: '1 / -1' }}>
-                  <label style={labelStyle}>Profile Picture URL (Optional)</label>
-                  <input type="text" value={pageProfile.profile_picture_url} placeholder="https://example.com/my-photo.jpg" onChange={(e) => setPageProfile({...pageProfile, profile_picture_url: e.target.value})} style={inputStyle} />
+                  <label style={labelStyle}>Profile Picture</label>
+                  <input 
+                    type="file" 
+                    accept="image/*" 
+                    ref={fileInputRef} 
+                    onChange={handleImageUpload} 
+                    style={{ display: 'none' }} 
+                  />
+                  <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                    <input 
+                      type="text" 
+                      value={pageProfile.profile_picture_url} 
+                      placeholder="https://... or click upload" 
+                      onChange={(e) => setPageProfile({...pageProfile, profile_picture_url: e.target.value})} 
+                      style={{ ...inputStyle, flex: 1 }} 
+                    />
+                    <button 
+                      type="button"
+                      onClick={() => fileInputRef.current.click()} 
+                      disabled={isUploading}
+                      style={{ 
+                        padding: '12px 20px', 
+                        backgroundColor: '#f3f4f6', 
+                        color: '#111', 
+                        border: '1px solid #d1d5db', 
+                        borderRadius: '8px', 
+                        fontWeight: '700', 
+                        cursor: isUploading ? 'not-allowed' : 'pointer',
+                        whiteSpace: 'nowrap'
+                      }}
+                    >
+                      {isUploading ? '⏳ Compressing...' : '📷 Upload Photo'}
+                    </button>
+                  </div>
                 </div>
+
                 <div style={{ gridColumn: '1 / -1' }}>
                   <label style={labelStyle}>Short Bio</label>
                   <textarea value={pageProfile.bio} placeholder="Welcome to my profile!" onChange={(e) => setPageProfile({...pageProfile, bio: e.target.value})} rows="2" style={{ ...inputStyle, resize: 'vertical' }} />
@@ -557,56 +528,62 @@ export default function PremiumDashboard() {
                   <label style={labelStyle}>Brand Color</label>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
                     <input type="color" value={pageProfile.theme_color} onChange={(e) => setPageProfile({...pageProfile, theme_color: e.target.value})} style={{ width: '50px', height: '50px', padding: '0', border: 'none', borderRadius: '8px', cursor: 'pointer' }} />
-                    <div style={{ 
-                      padding: '8px 15px', 
-                      borderRadius: '8px', 
-                      backgroundColor: pageProfile.theme_color, 
-                      color: getContrastColor(pageProfile.theme_color),
-                      fontSize: '12px',
-                      fontWeight: 'bold',
-                      border: '1px solid #e5e7eb'
-                    }}>
-                      Preview Text
-                    </div>
+                    <div style={{ padding: '8px 15px', borderRadius: '8px', backgroundColor: pageProfile.theme_color, color: getContrastColor(pageProfile.theme_color), fontSize: '12px', fontWeight: 'bold', border: '1px solid #e5e7eb' }}>Preview Text</div>
                   </div>
                 </div>
               </div>
             </div>
 
             <div style={{ backgroundColor: 'white', padding: '30px', borderRadius: '16px', border: '1px solid #e5e7eb' }}>
-              <h2 style={{ fontSize: '20px', fontWeight: '700', color: '#111', marginBottom: '5px' }}>Digital Business Card</h2>
-              <p style={{ color: '#6b7280', fontSize: '14px', marginBottom: '20px' }}>Fill these out to add a "Save to Contacts" button to your profile.</p>
               
-              {/* 🔥 UPDATED TIER LOCKS FOR CONTACT INFO */}
-              <div className="responsive-grid">
-                {/* Job Title - PRO ONLY */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px', flexWrap: 'wrap', gap: '15px' }}>
                 <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                    <label style={{...labelStyle, marginBottom: 0}}>Job Title</label>
-                    {!isPremium && <span style={{ fontSize: '10px', fontWeight: '700', backgroundColor: '#fef9c3', color: '#854d0e', padding: '2px 6px', borderRadius: '10px' }}>PRO</span>}
-                  </div>
-                  <input disabled={!isPremium} type="text" value={pageProfile.job_title} placeholder="e.g. Sales Director" onChange={(e) => setPageProfile({...pageProfile, job_title: e.target.value})} style={{...inputStyle, backgroundColor: !isPremium ? '#f3f4f6' : '#f9f9f9', cursor: !isPremium ? 'not-allowed' : 'text'}} />
+                  <h2 style={{ fontSize: '20px', fontWeight: '700', color: '#111', marginBottom: '5px' }}>Digital Business Card</h2>
+                  <p style={{ color: '#6b7280', fontSize: '14px', margin: 0 }}>Add your info so people can save you to their phone.</p>
+                </div>
+                
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', backgroundColor: '#f9fafb', padding: '10px 16px', borderRadius: '12px', border: '1px solid #e5e7eb' }}>
+                  <label style={{ fontSize: '14px', color: '#4b5563', fontWeight: '600', cursor: 'pointer' }} htmlFor="contactToggle">
+                    Show Contact Button
+                  </label>
+                  <button 
+                    id="contactToggle"
+                    onClick={() => setPageProfile({ ...pageProfile, show_save_contact: !pageProfile.show_save_contact })}
+                    style={{ width: '44px', height: '24px', borderRadius: '12px', border: 'none', cursor: 'pointer', backgroundColor: pageProfile.show_save_contact ? '#059669' : '#d1d5db', position: 'relative', transition: 'background-color 0.2s ease' }}
+                  >
+                    <div style={{ width: '20px', height: '20px', borderRadius: '50%', backgroundColor: 'white', position: 'absolute', top: '2px', left: pageProfile.show_save_contact ? '22px' : '2px', transition: 'left 0.2s cubic-bezier(0.4, 0, 0.2, 1)', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }} />
+                  </button>
+                </div>
+              </div>
+
+              <div className="responsive-grid">
+                <div>
+                  <label style={labelStyle}>Job Title</label>
+                  <input type="text" value={pageProfile.job_title} placeholder="e.g. Sales Director" onChange={(e) => setPageProfile({...pageProfile, job_title: e.target.value})} style={inputStyle} />
                 </div>
 
-                {/* Company - PRO ONLY */}
                 <div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
                     <label style={{...labelStyle, marginBottom: 0}}>Company / Business</label>
                     {!isPremium && <span style={{ fontSize: '10px', fontWeight: '700', backgroundColor: '#fef9c3', color: '#854d0e', padding: '2px 6px', borderRadius: '10px' }}>PRO</span>}
                   </div>
-                  <input disabled={!isPremium} type="text" value={pageProfile.company} placeholder="e.g. Acme Corp" onChange={(e) => setPageProfile({...pageProfile, company: e.target.value})} style={{...inputStyle, backgroundColor: !isPremium ? '#f3f4f6' : '#f9f9f9', cursor: !isPremium ? 'not-allowed' : 'text'}} />
+                  <input disabled={!isPremium} type="text" value={pageProfile.company} placeholder="e.g. Acme Corp" onChange={(e) => setPageProfile({...pageProfile, company: e.target.value})} style={{...inputStyle, backgroundColor: !isPremium ? '#f3f4f6' : 'white', cursor: !isPremium ? 'not-allowed' : 'text'}} />
                 </div>
 
-                {/* Phone - ALWAYS FREE */}
                 <div>
-                  <label style={labelStyle}>Phone Number</label>
-                  <input type="tel" value={pageProfile.phone_number} placeholder="+44 7700 900077" onChange={(e) => setPageProfile({...pageProfile, phone_number: e.target.value})} style={inputStyle} />
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                    <label style={{...labelStyle, marginBottom: 0}}>Phone Number</label>
+                    {!isPremium && <span style={{ fontSize: '10px', fontWeight: '700', backgroundColor: '#fef9c3', color: '#854d0e', padding: '2px 6px', borderRadius: '10px' }}>PRO</span>}
+                  </div>
+                  <input disabled={!isPremium} type="tel" value={pageProfile.phone_number} placeholder="+44 7700 900077" onChange={(e) => setPageProfile({...pageProfile, phone_number: e.target.value})} style={{...inputStyle, backgroundColor: !isPremium ? '#f3f4f6' : 'white', cursor: !isPremium ? 'not-allowed' : 'text'}} />
                 </div>
                 
-                {/* Email - ALWAYS FREE */}
                 <div>
-                  <label style={labelStyle}>Display Email</label>
-                  <input type="email" value={pageProfile.display_email} placeholder="hello@example.com" onChange={(e) => setPageProfile({...pageProfile, display_email: e.target.value})} style={inputStyle} />
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                    <label style={{...labelStyle, marginBottom: 0}}>Display Email</label>
+                    {!isPremium && <span style={{ fontSize: '10px', fontWeight: '700', backgroundColor: '#fef9c3', color: '#854d0e', padding: '2px 6px', borderRadius: '10px' }}>PRO</span>}
+                  </div>
+                  <input disabled={!isPremium} type="email" value={pageProfile.display_email} placeholder="hello@example.com" onChange={(e) => setPageProfile({...pageProfile, display_email: e.target.value})} style={{...inputStyle, backgroundColor: !isPremium ? '#f3f4f6' : 'white', cursor: !isPremium ? 'not-allowed' : 'text'}} />
                 </div>
               </div>
 
