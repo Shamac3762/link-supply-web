@@ -109,7 +109,9 @@ export default function PublicProfilePage({ params }) {
     )
   }
 
-  const isBusinessCard = profile.phone_number || profile.display_email;
+  // 🔥 THIS IS THE MAGIC LINE: It now correctly listens to the dashboard toggle.
+  const showContactBtn = profile.show_save_contact !== false;
+  
   const vcard = `BEGIN:VCARD\r\nVERSION:3.0\r\nFN:${profile.display_name || profile.username}\r\nTITLE:${profile.job_title || ''}\r\nORG:${profile.company || ''}\r\nTEL;TYPE=CELL:${profile.phone_number || ''}\r\nEMAIL;TYPE=WORK:${profile.display_email || ''}\r\nURL:https://linksupply.co.uk/u/${profile.username}\r\nEND:VCARD`;
   const vcardData = `data:text/vcard;charset=utf-8,${encodeURIComponent(vcard)}`;
 
@@ -208,7 +210,7 @@ export default function PublicProfilePage({ params }) {
         {profile.bio && <p style={{ fontSize: '16px', lineHeight: '1.6', opacity: 0.85, marginBottom: '40px', padding: '0 20px' }}>{profile.bio}</p>}
 
         <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          {isBusinessCard && (
+          {showContactBtn && (
             <a href={vcardData} download={`${profile.display_name || profile.username}.vcf`} className="contact-btn">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
