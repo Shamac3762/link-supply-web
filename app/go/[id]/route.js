@@ -4,16 +4,13 @@ import { NextResponse } from 'next/server'
 export async function GET(request, { params }) {
   const { id } = await params;
 
-  // 1. Standard Client (For reading public data safely)
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
   const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
-  // 2. Admin Client (For bypassing RLS to forcefully update analytics)
   const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
   const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey)
 
-  // 🔥 STEP 1: Look up the hardware using 'url_slug'
   const { data: tag, error } = await supabase
     .from('nfc_stickers') 
     .select('*')
@@ -24,18 +21,17 @@ export async function GET(request, { params }) {
     return NextResponse.redirect(new URL('/', request.url))
   }
 
-  // 🔥 STEP 2: THE KILL-SWITCH
   if (tag.is_active === false) {
     return NextResponse.redirect(new URL('/', request.url)) 
   }
 
-  // 🔥 STEP 3: Is it a blank, unactivated tag?
   if (!tag.owner_id) {
     return NextResponse.redirect(new URL(`/claim/${id}`, request.url))
   }
 
-  // 🔥 STEP 4: The Analytics Fix (Uses the Admin Key to bypass security blocks)
+  // 🔥 STEP 4: The Analytics Fix
   if (supabaseAdmin) {
+    // A. Update the master count
     await supabaseAdmin
       .from('nfc_stickers')
       .update({
@@ -43,22 +39,27 @@ export async function GET(request, { params }) {
         last_tapped_at: new Date().toISOString()
       })
       .eq('id', tag.id) 
+
+    // 🔥 STEP 4.5: LOG THE EVENT (This powers your new graph)
+    // This creates a unique entry for every tap so we can see trends over time
+    await supabaseAdmin
+      .from('nfc_taps')
+      .insert({
+        sticker_id: tag.id,
+        owner_id: tag.owner_id
+      })
   }
 
-  // 🔥 STEP 5: Smart Routing (Custom URL vs LinkSupply Profile)
   let destination = '/'
 
   if (tag.target_url && tag.target_url.trim() !== '') {
-    // A. They typed in an external link (e.g. google.com or their car build sheet)
     destination = tag.target_url
-    // Safety check: Ensure it has http:// so Next.js doesn't break the redirect
     if (!destination.startsWith('http')) {
       destination = `https://${destination}`
     }
     return NextResponse.redirect(new URL(destination))
     
   } else {
-    // B. The box is blank, so route them to their LinkSupply Business Card
     const { data: customer } = await supabase
       .from('customers')
       .select('username')
@@ -68,8 +69,6 @@ export async function GET(request, { params }) {
     if (customer && customer.username) {
       destination = `/u/${customer.username}`
     }
-    
-    // Internal routes need the base URL to redirect properly
     return NextResponse.redirect(new URL(destination, request.url))
   }
 }
