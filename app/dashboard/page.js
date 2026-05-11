@@ -43,7 +43,6 @@ export default function PremiumDashboard() {
   const [newPassword, setNewPassword] = useState('')
   const [settingsMessage, setSettingsMessage] = useState('')
   
-  // 🔥 NEW: Storage Upload States
   const [isUploading, setIsUploading] = useState(false)
   const fileInputRef = useRef(null)
 
@@ -121,9 +120,8 @@ export default function PremiumDashboard() {
       show_save_contact: customerData?.show_save_contact !== false 
     })
     
-    // 🔥 BULLETPROOF TIER LOGIC
     const userTier = customerData?.tier || 'free';
-    let dynamicLimit = 2; // Default strict limit for Free users
+    let dynamicLimit = 2; 
     
     if (userTier !== 'free') {
         dynamicLimit = (customerData?.max_links && customerData.max_links > 15) ? customerData.max_links : 15;
@@ -172,7 +170,6 @@ export default function PremiumDashboard() {
     if (error) { setStickers(stickers.map(s => s.id === id ? { ...s, is_active: currentState } : s)); alert("Failed to update hardware status.") }
   }
 
-  // 🔥 NEW: Image Compression & Upload Engine
   const handleImageUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -362,6 +359,7 @@ export default function PremiumDashboard() {
         <div className="responsive-tabs">
           <button onClick={() => setActiveTab('hardware')} style={{ flex: 1, padding: '12px', borderRadius: '8px', border: 'none', fontWeight: '700', fontSize: '15px', cursor: 'pointer', backgroundColor: activeTab === 'hardware' ? 'white' : 'transparent', color: activeTab === 'hardware' ? '#111' : '#6b7280', boxShadow: activeTab === 'hardware' ? '0 2px 4px rgba(0,0,0,0.05)' : 'none', transition: 'all 0.2s' }}>My Hardware Tags</button>
           <button onClick={() => setActiveTab('page')} style={{ flex: 1, padding: '12px', borderRadius: '8px', border: 'none', fontWeight: '700', fontSize: '15px', cursor: 'pointer', backgroundColor: activeTab === 'page' ? 'white' : 'transparent', color: activeTab === 'page' ? '#111' : '#6b7280', boxShadow: activeTab === 'page' ? '0 2px 4px rgba(0,0,0,0.05)' : 'none', transition: 'all 0.2s' }}>My Premium Page</button>
+          <button onClick={() => setActiveTab('analytics')} style={{ flex: 1, padding: '12px', borderRadius: '8px', border: 'none', fontWeight: '700', fontSize: '15px', cursor: 'pointer', backgroundColor: activeTab === 'analytics' ? 'white' : 'transparent', color: activeTab === 'analytics' ? '#111' : '#6b7280', boxShadow: activeTab === 'analytics' ? '0 2px 4px rgba(0,0,0,0.05)' : 'none', transition: 'all 0.2s' }}>📈 Analytics</button>
         </div>
 
         {activeTab === 'hardware' && (
@@ -482,7 +480,6 @@ export default function PremiumDashboard() {
                   {!isPremium && <p style={{ fontSize: '12px', color: '#6b7280', marginTop: '6px' }}>Custom URLs are locked on the Free tier.</p>}
                 </div>
 
-                {/* 🔥 NEW: Image Upload UI */}
                 <div style={{ gridColumn: '1 / -1' }}>
                   <label style={labelStyle}>Profile Picture</label>
                   <input 
@@ -624,6 +621,22 @@ export default function PremiumDashboard() {
                 </form>
               )}
             </div>
+          </div>
+        )}
+
+        {activeTab === 'analytics' && (
+          <div style={{ backgroundColor: 'white', padding: '60px', borderRadius: '16px', textAlign: 'center', border: '1px solid #e5e7eb', width: '100%' }}>
+            <div style={{ fontSize: '48px', marginBottom: '20px' }}>📊</div>
+            <h2 style={{ fontSize: '24px', fontWeight: '700', color: '#111', marginBottom: '10px' }}>Page Analytics</h2>
+            <p style={{ color: '#6b7280', fontSize: '16px', maxWidth: '400px', margin: '0 auto 30px auto' }}>
+              Track your profile visits, link clicks, and NFC tap locations over time.
+            </p>
+            <div style={{ display: 'inline-block', backgroundColor: '#fef9c3', color: '#854d0e', padding: '6px 12px', borderRadius: '12px', fontSize: '14px', fontWeight: '700', marginBottom: '20px' }}>
+              PREMIUM FEATURE
+            </div>
+            <button onClick={() => alert("Stripe checkout coming soon!")} style={{ display: 'block', margin: '0 auto', padding: '14px 24px', backgroundColor: '#111', color: 'white', border: 'none', borderRadius: '10px', fontWeight: '700', cursor: 'pointer' }}>
+              Upgrade to Unlock Analytics
+            </button>
           </div>
         )}
       </main>
