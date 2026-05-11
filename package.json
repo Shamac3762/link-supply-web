@@ -13,6 +13,7 @@
     "react-dom": "latest",
     "@supabase/supabase-js": "latest",
     "@supabase/ssr": "latest",
-    "@google/generative-ai": "latest"
+    "@google/generative-ai": "latest",
+    "recharts": "2.12.7"
   }
 }
