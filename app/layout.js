@@ -6,7 +6,7 @@ export default function RootLayout({ children }) {
       <head>
         <Script 
           id="cookieyes" 
-          src="PASTE_YOUR_URL_HERE" 
+          src=<script id="cookieyes" type="text/javascript" src="https://cdn-cookieyes.com/client_data/a79521861388a137a5eb727b0e0233b6/script.js"></script>
           strategy="afterInteractive" 
         />
       </head>
