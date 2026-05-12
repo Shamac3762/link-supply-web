@@ -692,7 +692,6 @@ export default function PremiumDashboard() {
             </div>
           )
         )}
-)}
       </main>
     </div>
   )
