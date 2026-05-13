@@ -18,6 +18,7 @@ export default function PremiumDashboard() {
   const [activeTab, setActiveTab] = useState('hardware') 
   
   const [stickers, setStickers] = useState([])
+  const [chartData, setChartData] = useState([]) // 🔥 FIXED: Added missing state for graph data
   const [claimId, setClaimId] = useState('')
   const [claimPin, setClaimPin] = useState('')
   const [claimMessage, setClaimMessage] = useState('')
@@ -135,6 +136,28 @@ export default function PremiumDashboard() {
     const { data: linksData } = await supabase.from('page_links').select('*').eq('owner_id', session.user.id).order('sort_order', { ascending: true })
     if (linksData) setPageLinks(linksData)
 
+    // 🔥 FIXED: Added the missing fetch logic to actually pull the analytics data
+    const { data: tapLogs } = await supabase
+      .from('nfc_taps')
+      .select('tapped_at')
+      .eq('owner_id', session.user.id)
+      .gte('tapped_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString())
+
+    const days = [...Array(7)].map((_, i) => {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      return { name: d.toLocaleDateString('en-GB', { weekday: 'short' }), taps: 0, fullDate: d.toDateString() };
+    }).reverse();
+
+    if (tapLogs) {
+      tapLogs.forEach(log => {
+        const dateStr = new Date(log.tapped_at).toDateString();
+        const day = days.find(d => d.fullDate === dateStr);
+        if (day) day.taps++;
+      });
+    }
+    setChartData(days);
+
     setLoading(false)
   }
 
@@ -150,7 +173,15 @@ export default function PremiumDashboard() {
     setIsClaiming(true); setClaimMessage("Verifying vault...")
     const { data: { session } } = await supabase.auth.getSession()
     const defaultUrl = `https://linksupply.co.uk/u/${pageProfile.username}`;
-    const { error, data } = await supabase.from('nfc_stickers').update({ owner_id: session.user.id, target_url: defaultUrl }).eq('id', claimId.toUpperCase()).eq('activation_code', claimPin).is('owner_id', null).select()
+    
+    // 🔥 FIXED: Added lifecycle_status: 'active' when a tag is claimed
+    const { error, data } = await supabase
+      .from('nfc_stickers')
+      .update({ owner_id: session.user.id, target_url: defaultUrl, lifecycle_status: 'active' }) 
+      .eq('id', claimId.toUpperCase())
+      .eq('activation_code', claimPin)
+      .is('owner_id', null)
+      .select()
 
     if (error || !data || data.length === 0) setClaimMessage("Error: Invalid Code, wrong ID, or tag is already owned.")
     else { setClaimMessage("Success! Tag linked to your account. ✓"); setClaimId(''); setClaimPin(''); fetchData(); setTimeout(() => setClaimMessage(''), 3000) }
@@ -639,10 +670,10 @@ export default function PremiumDashboard() {
                   <span style={{ fontSize: '11px', fontWeight: '800', color: '#3b82f6', backgroundColor: '#eff6ff', padding: '6px 12px', borderRadius: '100px', letterSpacing: '1px' }}>LIVE DATA</span>
                 </div>
 
-                {/* The Recharts Graph */}
+                {/* 🔥 FIXED: Added fallback data (chartData || []) to prevent crashing */}
                 <div style={{ width: '100%', height: 250, marginTop: '10px' }}>
                   <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={chartData}>
+                    <AreaChart data={chartData || []}>
                       <defs>
                         <linearGradient id="colorTaps" x1="0" y1="0" x2="0" y2="1">
                           <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
@@ -670,8 +701,9 @@ export default function PremiumDashboard() {
                 
                 <div style={{ backgroundColor: 'white', padding: '25px', borderRadius: '16px', border: '1px solid #e5e7eb', textAlign: 'center' }}>
                   <p style={{ color: '#6b7280', fontSize: '13px', fontWeight: '700', textTransform: 'uppercase', marginBottom: '10px' }}>Best Performing Tag</p>
+                  {/* 🔥 FIXED: Added safe math checks to prevent the NaN crash */}
                   <p style={{ fontSize: '20px', fontWeight: '800', color: '#111', margin: 0 }}>
-                    {stickers.length > 0 ? [...stickers].sort((a,b) => b.tap_count - a.tap_count)[0].id : 'N/A'}
+                    {stickers.length > 0 ? [...stickers].sort((a,b) => (b.tap_count || 0) - (a.tap_count || 0))[0]?.id || 'N/A' : 'N/A'}
                   </p>
                 </div>
               </div>
