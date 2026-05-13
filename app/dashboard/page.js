@@ -18,7 +18,7 @@ export default function PremiumDashboard() {
   const [activeTab, setActiveTab] = useState('hardware') 
   
   const [stickers, setStickers] = useState([])
-  const [chartData, setChartData] = useState([]) // 🔥 FIXED: Added missing state for graph data
+  const [chartData, setChartData] = useState([]) 
   const [claimId, setClaimId] = useState('')
   const [claimPin, setClaimPin] = useState('')
   const [claimMessage, setClaimMessage] = useState('')
@@ -136,7 +136,6 @@ export default function PremiumDashboard() {
     const { data: linksData } = await supabase.from('page_links').select('*').eq('owner_id', session.user.id).order('sort_order', { ascending: true })
     if (linksData) setPageLinks(linksData)
 
-    // 🔥 FIXED: Added the missing fetch logic to actually pull the analytics data
     const { data: tapLogs } = await supabase
       .from('nfc_taps')
       .select('tapped_at')
@@ -174,7 +173,6 @@ export default function PremiumDashboard() {
     const { data: { session } } = await supabase.auth.getSession()
     const defaultUrl = `https://linksupply.co.uk/u/${pageProfile.username}`;
     
-    // 🔥 FIXED: Added lifecycle_status: 'active' when a tag is claimed
     const { error, data } = await supabase
       .from('nfc_stickers')
       .update({ owner_id: session.user.id, target_url: defaultUrl, lifecycle_status: 'active' }) 
@@ -660,7 +658,6 @@ export default function PremiumDashboard() {
           isPremium ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '30px', width: '100%' }}>
               
-              {/* 🔥 THE LIVE GRAPH CARD (Pro Users) */}
               <div style={{ backgroundColor: 'white', padding: '30px', borderRadius: '16px', border: '1px solid #e5e7eb', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '25px' }}>
                   <div>
@@ -670,7 +667,6 @@ export default function PremiumDashboard() {
                   <span style={{ fontSize: '11px', fontWeight: '800', color: '#3b82f6', backgroundColor: '#eff6ff', padding: '6px 12px', borderRadius: '100px', letterSpacing: '1px' }}>LIVE DATA</span>
                 </div>
 
-                {/* 🔥 FIXED: Added '250px' strings and strict YAxis domain so it never collapses */}
                 <div style={{ width: '100%', height: '250px', minHeight: '250px', marginTop: '20px' }}>
                   <ResponsiveContainer width="100%" height="100%">
                     <AreaChart data={chartData || []} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
@@ -688,8 +684,8 @@ export default function PremiumDashboard() {
                     </AreaChart>
                   </ResponsiveContainer>
                 </div>
+              </div>
 
-              {/* 🔥 TOTAL STATS GRID */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px' }}>
                 <div style={{ backgroundColor: 'white', padding: '25px', borderRadius: '16px', border: '1px solid #e5e7eb', textAlign: 'center' }}>
                   <p style={{ color: '#6b7280', fontSize: '13px', fontWeight: '700', textTransform: 'uppercase', marginBottom: '10px' }}>Total Taps (All Time)</p>
@@ -700,7 +696,6 @@ export default function PremiumDashboard() {
                 
                 <div style={{ backgroundColor: 'white', padding: '25px', borderRadius: '16px', border: '1px solid #e5e7eb', textAlign: 'center' }}>
                   <p style={{ color: '#6b7280', fontSize: '13px', fontWeight: '700', textTransform: 'uppercase', marginBottom: '10px' }}>Best Performing Tag</p>
-                  {/* 🔥 FIXED: Added safe math checks to prevent the NaN crash */}
                   <p style={{ fontSize: '20px', fontWeight: '800', color: '#111', margin: 0 }}>
                     {stickers.length > 0 ? [...stickers].sort((a,b) => (b.tap_count || 0) - (a.tap_count || 0))[0]?.id || 'N/A' : 'N/A'}
                   </p>
@@ -708,7 +703,6 @@ export default function PremiumDashboard() {
               </div>
             </div>
           ) : (
-            /* 🔥 THE LOCKED STATE (Free Users) */
             <div style={{ backgroundColor: 'white', padding: '60px', borderRadius: '16px', textAlign: 'center', border: '1px solid #e5e7eb', width: '100%' }}>
               <div style={{ fontSize: '48px', marginBottom: '20px' }}>📊</div>
               <h2 style={{ fontSize: '24px', fontWeight: '700', color: '#111', marginBottom: '10px' }}>Page Analytics</h2>
