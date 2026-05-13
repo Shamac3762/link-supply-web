@@ -670,10 +670,10 @@ export default function PremiumDashboard() {
                   <span style={{ fontSize: '11px', fontWeight: '800', color: '#3b82f6', backgroundColor: '#eff6ff', padding: '6px 12px', borderRadius: '100px', letterSpacing: '1px' }}>LIVE DATA</span>
                 </div>
 
-                {/* 🔥 FIXED: Added fallback data (chartData || []) to prevent crashing */}
-                <div style={{ width: '100%', height: 250, marginTop: '10px' }}>
+                {/* 🔥 FIXED: Added '250px' strings and strict YAxis domain so it never collapses */}
+                <div style={{ width: '100%', height: '250px', minHeight: '250px', marginTop: '20px' }}>
                   <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={chartData || []}>
+                    <AreaChart data={chartData || []} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
                       <defs>
                         <linearGradient id="colorTaps" x1="0" y1="0" x2="0" y2="1">
                           <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
@@ -682,13 +682,12 @@ export default function PremiumDashboard() {
                       </defs>
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                       <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 12, fontWeight: '600'}} dy={10} />
-                      <YAxis hide={true} domain={['dataMin', 'dataMax + 2']} />
+                      <YAxis hide={true} domain={[0, 'dataMax + 5']} allowDecimals={false} />
                       <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', fontWeight: '700' }} cursor={{ stroke: '#3b82f6', strokeWidth: 2 }} />
                       <Area type="monotone" dataKey="taps" stroke="#3b82f6" strokeWidth={4} fillOpacity={1} fill="url(#colorTaps)" animationDuration={1500} />
                     </AreaChart>
                   </ResponsiveContainer>
                 </div>
-              </div>
 
               {/* 🔥 TOTAL STATS GRID */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px' }}>
