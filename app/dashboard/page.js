@@ -168,7 +168,7 @@ export default function PremiumDashboard() {
   }
 
   const handleActivateTag = async () => {
-    if (!claimId || claimPin.length < 8) return setClaimMessage("Please enter a valid Tag ID and 8-char Code.")
+    if (!claimId || claimPin.length < 6) return setClaimMessage("Please enter a valid Tag ID and 6-digit PIN.")
     setIsClaiming(true); setClaimMessage("Verifying vault...")
     const { data: { session } } = await supabase.auth.getSession()
     const defaultUrl = `https://linksupply.co.uk/u/${pageProfile.username}`;
@@ -396,10 +396,10 @@ export default function PremiumDashboard() {
           <div style={{ width: '100%', maxWidth: '100%' }}>
             <div style={{ backgroundColor: '#111', padding: '30px', borderRadius: '16px', marginBottom: '40px', color: 'white', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)' }}>
               <h2 style={{ fontSize: '20px', margin: '0 0 5px 0', fontWeight: '700' }}>Activate a New Tag</h2>
-              <p style={{ color: '#9ca3af', fontSize: '14px', marginBottom: '20px' }}>Enter the Tag ID and the 8-character Activation Code.</p>
+              <p style={{ color: '#9ca3af', fontSize: '14px', marginBottom: '20px' }}>Enter the Tag ID and the 6-digit Activation PIN.</p>
               <div className="responsive-stack">
-                <input type="text" placeholder="Tag ID (e.g. LS-005)" value={claimId} onChange={(e) => setClaimId(e.target.value.toUpperCase())} style={{ flex: 1, padding: '14px 16px', borderRadius: '8px', border: 'none', fontSize: '16px', color: '#111' }} />
-                <input type="text" maxLength="8" placeholder="8-Char Code" value={claimPin} onChange={(e) => setClaimPin(e.target.value.toUpperCase())} style={{ width: '160px', padding: '14px 16px', borderRadius: '8px', border: 'none', fontSize: '16px', color: '#111', textAlign: 'center', letterSpacing: '2px' }} />
+                <input type="text" placeholder="Tag ID (e.g. ST-005)" value={claimId} onChange={(e) => setClaimId(e.target.value.toUpperCase())} style={{ flex: 1, padding: '14px 16px', borderRadius: '8px', border: 'none', fontSize: '16px', color: '#111' }} />
+                <input type="text" inputMode="numeric" pattern="[0-9]*" maxLength="6" placeholder="6-Digit PIN" value={claimPin} onChange={(e) => setClaimPin(e.target.value.replace(/\D/g, ''))} style={{ width: '160px', padding: '14px 16px', borderRadius: '8px', border: 'none', fontSize: '16px', color: '#111', textAlign: 'center', letterSpacing: '4px' }} />
                 <button onClick={handleActivateTag} disabled={isClaiming} style={{ padding: '14px 24px', backgroundColor: '#3b82f6', color: 'white', border: 'none', borderRadius: '8px', fontWeight: '700', cursor: 'pointer' }}>{isClaiming ? 'Verifying...' : 'Link to Account'}</button>
               </div>
               {claimMessage && <p style={{ marginTop: '15px', color: claimMessage.includes('Success') ? '#34d399' : '#f87171', fontWeight: '600', fontSize: '14px' }}>{claimMessage}</p>}
@@ -664,12 +664,24 @@ export default function PremiumDashboard() {
                     <h2 style={{ fontSize: '20px', fontWeight: '800', color: '#111', margin: 0 }}>Tap Activity</h2>
                     <p style={{ color: '#6b7280', fontSize: '14px', margin: '4px 0 0 0' }}>Daily performance over the last 7 days</p>
                   </div>
-                  <span style={{ fontSize: '11px', fontWeight: '800', color: '#3b82f6', backgroundColor: '#eff6ff', padding: '6px 12px', borderRadius: '100px', letterSpacing: '1px' }}>LIVE DATA</span>
+                  {(chartData || []).reduce((acc, d) => acc + (d.taps || 0), 0) > 0 ? (
+                    <span style={{ fontSize: '11px', fontWeight: '800', color: '#3b82f6', backgroundColor: '#eff6ff', padding: '6px 12px', borderRadius: '100px', letterSpacing: '1px' }}>LIVE DATA</span>
+                  ) : (
+                    <span style={{ fontSize: '11px', fontWeight: '800', color: '#f59e0b', backgroundColor: '#fef3c7', padding: '6px 12px', borderRadius: '100px', letterSpacing: '1px' }}>DEMO DATA</span>
+                  )}
                 </div>
 
                 <div style={{ width: '100%', height: '250px', minHeight: '250px', marginTop: '20px' }}>
                   <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={chartData || []} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
+                    <AreaChart 
+                      data={(chartData || []).reduce((acc, d) => acc + (d.taps || 0), 0) > 0 
+                        ? chartData 
+                        : [
+                            { name: 'Mon', taps: 12 }, { name: 'Tue', taps: 19 }, { name: 'Wed', taps: 15 }, 
+                            { name: 'Thu', taps: 25 }, { name: 'Fri', taps: 22 }, { name: 'Sat', taps: 35 }, { name: 'Sun', taps: 28 }
+                          ]} 
+                      margin={{ top: 10, right: 10, left: 10, bottom: 0 }}
+                    >
                       <defs>
                         <linearGradient id="colorTaps" x1="0" y1="0" x2="0" y2="1">
                           <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
