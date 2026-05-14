@@ -25,8 +25,9 @@ export async function GET(request, { params }) {
     return NextResponse.redirect(new URL('/', request.url)) 
   }
 
+  // 🔥 UPDATED: This now sends them directly to your new Dashboard UI to enter their 6-Digit PIN
   if (!tag.owner_id) {
-    return NextResponse.redirect(new URL(`/claim/${id}`, request.url))
+    return NextResponse.redirect(new URL(`/dashboard?claim=${id}`, request.url))
   }
 
   // 🔥 STEP 4: The Analytics Fix
@@ -40,8 +41,7 @@ export async function GET(request, { params }) {
       })
       .eq('id', tag.id) 
 
-    // 🔥 STEP 4.5: LOG THE EVENT (This powers your new graph)
-    // This creates a unique entry for every tap so we can see trends over time
+    // B. LOG THE EVENT (This powers your new live graph)
     await supabaseAdmin
       .from('nfc_taps')
       .insert({
