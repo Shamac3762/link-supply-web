@@ -85,7 +85,7 @@ export default function PublicProfilePage({ params }) {
         `}</style>
         
         <div className="premium-lock" style={{ 
-          width: '80px', height: '80px', borderRadius: '50%', 
+          width: '80px', height: '80px', borderRadius: '0%', 
           backgroundColor: textColor === 'white' ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)', 
           border: `1px solid ${textColor === 'white' ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.1)'}`,
           display: 'flex', justifyContent: 'center', alignItems: 'center', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)'
