@@ -30,7 +30,8 @@ export default function PremiumDashboard() {
     profile_status: 'live',
     remember_me: false,
     tier: 'free',
-    show_save_contact: true 
+    show_save_contact: true,
+    profile_views: 0
   })
   const [pageLinks, setPageLinks] = useState([])
   const [newLinkTitle, setNewLinkTitle] = useState('')
@@ -84,9 +85,10 @@ export default function PremiumDashboard() {
     const lastName = session.user.user_metadata?.last_name || '';
     const defaultDisplayName = `${firstName} ${lastName}`.trim();
     
+    // 🔥 UPDATED: Now grabbing profile_views
     const { data: customerData } = await supabase
       .from('customers')
-      .select('username, display_name, bio, theme_color, max_links, profile_picture_url, job_title, company, phone_number, display_email, profile_status, remember_me, tier, show_save_contact')
+      .select('username, display_name, bio, theme_color, max_links, profile_picture_url, job_title, company, phone_number, display_email, profile_status, remember_me, tier, show_save_contact, profile_views')
       .eq('id', session.user.id)
       .single()
 
@@ -110,6 +112,7 @@ export default function PremiumDashboard() {
       await supabase.from('customers').upsert({ id: session.user.id, username: currentUsername, display_name: currentDisplayName, theme_color: customerData?.theme_color || '#111111' });
     }
 
+    // 🔥 UPDATED: Saving profile_views to state
     setPageProfile({
       username: currentUsername, 
       display_name: currentDisplayName || '',
@@ -119,7 +122,8 @@ export default function PremiumDashboard() {
       profile_status: customerData?.profile_status || 'live',
       remember_me: customerData?.remember_me || false,
       tier: customerData?.tier || 'free',
-      show_save_contact: customerData?.show_save_contact !== false 
+      show_save_contact: customerData?.show_save_contact !== false,
+      profile_views: customerData?.profile_views || 0 
     })
     
     const userTier = customerData?.tier || 'free';
@@ -654,10 +658,51 @@ export default function PremiumDashboard() {
           </div>
         )}
 
+        {/* 🔥 THE NEW ANALYTICS UI 🔥 */}
         {activeTab === 'analytics' && (
-          isPremium ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '30px', width: '100%' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '30px', width: '100%' }}>
+            
+            {/* 📊 THE METRICS GRID */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px' }}>
+              <div style={{ backgroundColor: 'white', padding: '25px', borderRadius: '16px', border: '1px solid #e5e7eb', textAlign: 'center' }}>
+                <p style={{ color: '#6b7280', fontSize: '13px', fontWeight: '700', textTransform: 'uppercase', marginBottom: '10px' }}>Total Hardware Taps</p>
+                <p style={{ fontSize: '32px', fontWeight: '800', color: '#111', margin: 0 }}>
+                  {stickers.reduce((acc, s) => acc + (s.tap_count || 0), 0)}
+                </p>
+              </div>
               
+              <div style={{ backgroundColor: 'white', padding: '25px', borderRadius: '16px', border: '1px solid #e5e7eb', textAlign: 'center', position: 'relative', overflow: 'hidden' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginBottom: '10px' }}>
+                  <p style={{ color: '#6b7280', fontSize: '13px', fontWeight: '700', textTransform: 'uppercase', margin: 0 }}>Digital Profile Views</p>
+                  {!isPremium && <span style={{ fontSize: '10px', fontWeight: '700', backgroundColor: '#fef9c3', color: '#854d0e', padding: '2px 6px', borderRadius: '10px' }}>PRO</span>}
+                </div>
+                
+                {isPremium ? (
+                  <p style={{ fontSize: '32px', fontWeight: '800', color: '#111', margin: 0 }}>
+                    {pageProfile.profile_views || 0}
+                  </p>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '38px' }}>
+                     <p style={{ fontSize: '32px', fontWeight: '800', color: '#d1d5db', margin: 0, filter: 'blur(6px)', opacity: 0.5, userSelect: 'none' }}>
+                       {pageProfile.profile_views || 342}
+                     </p>
+                     <button onClick={() => alert("Stripe checkout coming soon!")} style={{ position: 'absolute', padding: '8px 16px', backgroundColor: '#111', color: 'white', border: 'none', borderRadius: '8px', fontWeight: '700', fontSize: '12px', cursor: 'pointer', boxShadow: '0 4px 6px rgba(0,0,0,0.1)', transition: 'transform 0.2s' }} onMouseEnter={(e) => e.target.style.transform = 'scale(1.05)'} onMouseLeave={(e) => e.target.style.transform = 'scale(1)'}>
+                       🔒 Unlock to View
+                     </button>
+                  </div>
+                )}
+              </div>
+
+              <div style={{ backgroundColor: 'white', padding: '25px', borderRadius: '16px', border: '1px solid #e5e7eb', textAlign: 'center' }}>
+                <p style={{ color: '#6b7280', fontSize: '13px', fontWeight: '700', textTransform: 'uppercase', marginBottom: '10px' }}>Best Performing Tag</p>
+                <p style={{ fontSize: '20px', fontWeight: '800', color: '#111', margin: 0 }}>
+                  {stickers.length > 0 ? [...stickers].sort((a,b) => (b.tap_count || 0) - (a.tap_count || 0))[0]?.id || 'N/A' : 'N/A'}
+                </p>
+              </div>
+            </div>
+
+            {/* 📈 THE CHART SECTION */}
+            {isPremium ? (
               <div style={{ backgroundColor: 'white', padding: '30px', borderRadius: '16px', border: '1px solid #e5e7eb', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '25px' }}>
                   <div>
@@ -697,38 +742,22 @@ export default function PremiumDashboard() {
                   </ResponsiveContainer>
                 </div>
               </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px' }}>
-                <div style={{ backgroundColor: 'white', padding: '25px', borderRadius: '16px', border: '1px solid #e5e7eb', textAlign: 'center' }}>
-                  <p style={{ color: '#6b7280', fontSize: '13px', fontWeight: '700', textTransform: 'uppercase', marginBottom: '10px' }}>Total Taps (All Time)</p>
-                  <p style={{ fontSize: '32px', fontWeight: '800', color: '#111', margin: 0 }}>
-                    {stickers.reduce((acc, s) => acc + (s.tap_count || 0), 0)}
-                  </p>
+            ) : (
+              <div style={{ backgroundColor: 'white', padding: '60px', borderRadius: '16px', textAlign: 'center', border: '1px solid #e5e7eb', width: '100%' }}>
+                <div style={{ fontSize: '48px', marginBottom: '20px' }}>📈</div>
+                <h2 style={{ fontSize: '24px', fontWeight: '700', color: '#111', marginBottom: '10px' }}>Advanced Analytics</h2>
+                <p style={{ color: '#6b7280', fontSize: '16px', maxWidth: '400px', margin: '0 auto 30px auto' }}>
+                  Track your profile visits, link clicks, and view daily performance charts over time.
+                </p>
+                <div style={{ display: 'inline-block', backgroundColor: '#fef9c3', color: '#854d0e', padding: '6px 12px', borderRadius: '12px', fontSize: '14px', fontWeight: '700', marginBottom: '20px' }}>
+                  PREMIUM FEATURE
                 </div>
-                
-                <div style={{ backgroundColor: 'white', padding: '25px', borderRadius: '16px', border: '1px solid #e5e7eb', textAlign: 'center' }}>
-                  <p style={{ color: '#6b7280', fontSize: '13px', fontWeight: '700', textTransform: 'uppercase', marginBottom: '10px' }}>Best Performing Tag</p>
-                  <p style={{ fontSize: '20px', fontWeight: '800', color: '#111', margin: 0 }}>
-                    {stickers.length > 0 ? [...stickers].sort((a,b) => (b.tap_count || 0) - (a.tap_count || 0))[0]?.id || 'N/A' : 'N/A'}
-                  </p>
-                </div>
+                <button onClick={() => alert("Stripe checkout coming soon!")} style={{ display: 'block', margin: '0 auto', padding: '14px 24px', backgroundColor: '#111', color: 'white', border: 'none', borderRadius: '10px', fontWeight: '700', cursor: 'pointer' }}>
+                  Upgrade to Unlock Charts
+                </button>
               </div>
-            </div>
-          ) : (
-            <div style={{ backgroundColor: 'white', padding: '60px', borderRadius: '16px', textAlign: 'center', border: '1px solid #e5e7eb', width: '100%' }}>
-              <div style={{ fontSize: '48px', marginBottom: '20px' }}>📊</div>
-              <h2 style={{ fontSize: '24px', fontWeight: '700', color: '#111', marginBottom: '10px' }}>Page Analytics</h2>
-              <p style={{ color: '#6b7280', fontSize: '16px', maxWidth: '400px', margin: '0 auto 30px auto' }}>
-                Track your profile visits, link clicks, and NFC tap locations over time.
-              </p>
-              <div style={{ display: 'inline-block', backgroundColor: '#fef9c3', color: '#854d0e', padding: '6px 12px', borderRadius: '12px', fontSize: '14px', fontWeight: '700', marginBottom: '20px' }}>
-                PREMIUM FEATURE
-              </div>
-              <button onClick={() => alert("Stripe checkout coming soon!")} style={{ display: 'block', margin: '0 auto', padding: '14px 24px', backgroundColor: '#111', color: 'white', border: 'none', borderRadius: '10px', fontWeight: '700', cursor: 'pointer' }}>
-                Upgrade to Unlock Analytics
-              </button>
-            </div>
-          )
+            )}
+          </div>
         )}
       </main>
     </div>
