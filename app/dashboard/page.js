@@ -659,7 +659,7 @@ export default function PremiumDashboard() {
         )}
 
         {activeTab === 'analytics' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '30px', width: '100%' }}>
+          <div key="analytics-tab" style={{ display: 'flex', flexDirection: 'column', gap: '30px', width: '100%' }}>
             
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px' }}>
               <div style={{ backgroundColor: 'white', padding: '25px', borderRadius: '16px', border: '1px solid #e5e7eb', textAlign: 'center' }}>
@@ -713,7 +713,7 @@ export default function PremiumDashboard() {
                   )}
                 </div>
 
-                <div style={{ width: '100%', height: '300px' }}>
+                <div style={{ width: '100%', height: '300px', minHeight: '300px' }}>
                   {isMounted && (
                     <ResponsiveContainer width="100%" height="100%">
                       <AreaChart 
