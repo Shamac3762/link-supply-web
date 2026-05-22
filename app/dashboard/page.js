@@ -16,6 +16,7 @@ function getContrastColor(hexcolor) {
 
 export default function PremiumDashboard() {
   const [activeTab, setActiveTab] = useState('hardware') 
+  const [isMounted, setIsMounted] = useState(false)
   
   const [stickers, setStickers] = useState([])
   const [chartData, setChartData] = useState([]) 
@@ -53,6 +54,7 @@ export default function PremiumDashboard() {
   const router = useRouter()
 
   useEffect(() => {
+    setIsMounted(true)
     fetchData()
   }, [])
 
@@ -85,7 +87,6 @@ export default function PremiumDashboard() {
     const lastName = session.user.user_metadata?.last_name || '';
     const defaultDisplayName = `${firstName} ${lastName}`.trim();
     
-    // 🔥 UPDATED: Now grabbing profile_views
     const { data: customerData } = await supabase
       .from('customers')
       .select('username, display_name, bio, theme_color, max_links, profile_picture_url, job_title, company, phone_number, display_email, profile_status, remember_me, tier, show_save_contact, profile_views')
@@ -112,7 +113,6 @@ export default function PremiumDashboard() {
       await supabase.from('customers').upsert({ id: session.user.id, username: currentUsername, display_name: currentDisplayName, theme_color: customerData?.theme_color || '#111111' });
     }
 
-    // 🔥 UPDATED: Saving profile_views to state
     setPageProfile({
       username: currentUsername, 
       display_name: currentDisplayName || '',
@@ -658,11 +658,9 @@ export default function PremiumDashboard() {
           </div>
         )}
 
-        {/* 🔥 THE NEW ANALYTICS UI 🔥 */}
         {activeTab === 'analytics' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '30px', width: '100%' }}>
             
-            {/* 📊 THE METRICS GRID */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px' }}>
               <div style={{ backgroundColor: 'white', padding: '25px', borderRadius: '16px', border: '1px solid #e5e7eb', textAlign: 'center' }}>
                 <p style={{ color: '#6b7280', fontSize: '13px', fontWeight: '700', textTransform: 'uppercase', marginBottom: '10px' }}>Total Hardware Taps</p>
@@ -701,7 +699,6 @@ export default function PremiumDashboard() {
               </div>
             </div>
 
-            {/* 📈 THE CHART SECTION */}
             {isPremium ? (
               <div style={{ backgroundColor: 'white', padding: '30px', borderRadius: '16px', border: '1px solid #e5e7eb', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '25px' }}>
@@ -716,30 +713,32 @@ export default function PremiumDashboard() {
                   )}
                 </div>
 
-                <div style={{ width: '100%', height: '250px', minHeight: '250px', marginTop: '20px' }}>
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart 
-                      data={(chartData || []).reduce((acc, d) => acc + (d.taps || 0), 0) > 0 
-                        ? chartData 
-                        : [
-                            { name: 'Mon', taps: 12 }, { name: 'Tue', taps: 19 }, { name: 'Wed', taps: 15 }, 
-                            { name: 'Thu', taps: 25 }, { name: 'Fri', taps: 22 }, { name: 'Sat', taps: 35 }, { name: 'Sun', taps: 28 }
-                          ]} 
-                      margin={{ top: 10, right: 10, left: 10, bottom: 0 }}
-                    >
-                      <defs>
-                        <linearGradient id="colorTaps" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
-                          <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
-                        </linearGradient>
-                      </defs>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                      <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 12, fontWeight: '600'}} dy={10} />
-                      <YAxis hide={true} domain={[0, 'dataMax + 5']} allowDecimals={false} />
-                      <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', fontWeight: '700' }} cursor={{ stroke: '#3b82f6', strokeWidth: 2 }} />
-                      <Area type="monotone" dataKey="taps" stroke="#3b82f6" strokeWidth={4} fillOpacity={1} fill="url(#colorTaps)" animationDuration={1500} />
-                    </AreaChart>
-                  </ResponsiveContainer>
+                <div style={{ width: '100%', height: '300px' }}>
+                  {isMounted && (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart 
+                        data={(chartData || []).reduce((acc, d) => acc + (d.taps || 0), 0) > 0 
+                          ? chartData 
+                          : [
+                              { name: 'Mon', taps: 12 }, { name: 'Tue', taps: 19 }, { name: 'Wed', taps: 15 }, 
+                              { name: 'Thu', taps: 25 }, { name: 'Fri', taps: 22 }, { name: 'Sat', taps: 35 }, { name: 'Sun', taps: 28 }
+                            ]} 
+                        margin={{ top: 10, right: 10, left: 10, bottom: 0 }}
+                      >
+                        <defs>
+                          <linearGradient id="colorTaps" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
+                            <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                        <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 12, fontWeight: '600'}} dy={10} />
+                        <YAxis hide={true} domain={[0, 'dataMax + 5']} allowDecimals={false} />
+                        <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', fontWeight: '700' }} cursor={{ stroke: '#3b82f6', strokeWidth: 2 }} />
+                        <Area type="monotone" dataKey="taps" stroke="#3b82f6" strokeWidth={4} fillOpacity={1} fill="url(#colorTaps)" animationDuration={1500} />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  )}
                 </div>
               </div>
             ) : (
