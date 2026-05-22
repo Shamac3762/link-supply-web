@@ -41,6 +41,9 @@ export default function PublicProfilePage({ params }) {
       const { data: profileData } = await supabase.from('customers').select('*').eq('username', username.toLowerCase()).single();
       if (!profileData) return setProfile('not_found');
       
+      // 🔥 NEW TRACKING TRIGGER: Silently add +1 to the view count in the background
+      supabase.rpc('increment_profile_views', { profile_username: username.toLowerCase() });
+      
       const { data: linksData } = await supabase.from('page_links').select('*').eq('owner_id', profileData.id).order('sort_order', { ascending: true });
       
       // 🔥 BULLETPROOF TIER LOGIC (Matches the Dashboard)
