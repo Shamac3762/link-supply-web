@@ -41,8 +41,14 @@ export default function PublicProfilePage({ params }) {
       const { data: profileData } = await supabase.from('customers').select('*').eq('username', username.toLowerCase()).single();
       if (!profileData) return setProfile('not_found');
       
-      // 🔥 NEW TRACKING TRIGGER: Silently add +1 to the view count in the background
-      supabase.rpc('increment_profile_views', { profile_username: username.toLowerCase() });
+      // 🔥 NEW TRACKING TRIGGER (With built-in error reporting)
+      const { error: rpcError } = await supabase.rpc('increment_profile_views', { profile_username: username.toLowerCase() });
+      
+      if (rpcError) {
+        console.error("❌ SUPABASE TRACKING ERROR:", rpcError.message);
+      } else {
+        console.log("✅ View successfully tracked for:", username.toLowerCase());
+      }
       
       const { data: linksData } = await supabase.from('page_links').select('*').eq('owner_id', profileData.id).order('sort_order', { ascending: true });
       
