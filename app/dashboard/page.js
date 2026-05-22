@@ -311,6 +311,13 @@ export default function PremiumDashboard() {
   const labelStyle = { display: 'block', fontSize: '14px', color: '#4b5563', marginBottom: '8px', fontWeight: '600' }
   const isPremium = pageProfile.tier !== 'free';
 
+  // 🔥 Pre-calculate chart data outside the render block to prevent hydration crashes
+  const hasRealData = (chartData || []).reduce((acc, d) => acc + (d.taps || 0), 0) > 0;
+  const displayChartData = hasRealData ? chartData : [
+    { name: 'Mon', taps: 12 }, { name: 'Tue', taps: 19 }, { name: 'Wed', taps: 15 }, 
+    { name: 'Thu', taps: 25 }, { name: 'Fri', taps: 22 }, { name: 'Sat', taps: 35 }, { name: 'Sun', taps: 28 }
+  ];
+
   if (loading) return <div style={{ minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', backgroundColor: '#f3f4f6' }}>Loading Workspace...</div>
 
   return (
@@ -700,30 +707,25 @@ export default function PremiumDashboard() {
             </div>
 
             {isPremium ? (
-              <div style={{ backgroundColor: 'white', padding: '30px', borderRadius: '16px', border: '1px solid #e5e7eb', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' }}>
+              <div style={{ backgroundColor: 'white', padding: '30px', borderRadius: '16px', border: '1px solid #e5e7eb', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)', width: '100%', minWidth: 0 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '25px' }}>
                   <div>
                     <h2 style={{ fontSize: '20px', fontWeight: '800', color: '#111', margin: 0 }}>Tap Activity</h2>
                     <p style={{ color: '#6b7280', fontSize: '14px', margin: '4px 0 0 0' }}>Daily performance over the last 7 days</p>
                   </div>
-                  {(chartData || []).reduce((acc, d) => acc + (d.taps || 0), 0) > 0 ? (
+                  {hasRealData ? (
                     <span style={{ fontSize: '11px', fontWeight: '800', color: '#3b82f6', backgroundColor: '#eff6ff', padding: '6px 12px', borderRadius: '100px', letterSpacing: '1px' }}>LIVE DATA</span>
                   ) : (
                     <span style={{ fontSize: '11px', fontWeight: '800', color: '#f59e0b', backgroundColor: '#fef3c7', padding: '6px 12px', borderRadius: '100px', letterSpacing: '1px' }}>DEMO DATA</span>
                   )}
                 </div>
 
-                <div style={{ width: '100%', height: '300px', minHeight: '300px' }}>
+                <div style={{ width: '100%', height: '300px', minHeight: '300px', position: 'relative' }}>
                   {isMounted && (
-                    <ResponsiveContainer width="100%" height="100%">
+                    <ResponsiveContainer width="99%" height="100%">
                       <AreaChart 
-                        data={(chartData || []).reduce((acc, d) => acc + (d.taps || 0), 0) > 0 
-                          ? chartData 
-                          : [
-                              { name: 'Mon', taps: 12 }, { name: 'Tue', taps: 19 }, { name: 'Wed', taps: 15 }, 
-                              { name: 'Thu', taps: 25 }, { name: 'Fri', taps: 22 }, { name: 'Sat', taps: 35 }, { name: 'Sun', taps: 28 }
-                            ]} 
-                        margin={{ top: 10, right: 10, left: 10, bottom: 0 }}
+                        data={displayChartData} 
+                        margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
                       >
                         <defs>
                           <linearGradient id="colorTaps" x1="0" y1="0" x2="0" y2="1">
@@ -733,7 +735,7 @@ export default function PremiumDashboard() {
                         </defs>
                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                         <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 12, fontWeight: '600'}} dy={10} />
-                        <YAxis hide={true} domain={[0, 'dataMax + 5']} allowDecimals={false} />
+                        <YAxis hide={true} />
                         <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', fontWeight: '700' }} cursor={{ stroke: '#3b82f6', strokeWidth: 2 }} />
                         <Area type="monotone" dataKey="taps" stroke="#3b82f6" strokeWidth={4} fillOpacity={1} fill="url(#colorTaps)" animationDuration={1500} />
                       </AreaChart>
