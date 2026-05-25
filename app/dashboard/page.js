@@ -9,6 +9,7 @@ import HardwareSection from '../../components/dashboard/HardwareSection'
 import PageProfileSection from '../../components/dashboard/PageProfileSection'
 import AnalyticsSection from '../../components/dashboard/AnalyticsSection'
 import TeamAdminSection from '../../components/dashboard/TeamAdminSection'
+import PricingSection from '../../components/dashboard/PricingSection' // 🔥 Added Import
 
 function getContrastColor(hexcolor) {
   if (!hexcolor || hexcolor.startsWith('linear') || hexcolor.startsWith('radial')) return 'white';
@@ -137,7 +138,6 @@ export default function PremiumDashboard() {
     }
     setMaxLinks(dynamicLimit);
 
-    // 🔥 Capture stickers here so we can match them to employees below
     let currentStickers = [];
     const { data: stickerData } = await supabase.from('nfc_stickers').select('*').eq('owner_id', session.user.id).order('id', { ascending: true })
     if (stickerData) {
@@ -169,24 +169,22 @@ export default function PremiumDashboard() {
     }
     setChartData(days);
 
-    // 🔥 FETCH B2B DATA (Company Name + Employees with Username included)
     if (customerData?.company_id) {
       const { data: compData } = await supabase.from('companies').select('company_name').eq('id', customerData.company_id).single();
       if (compData) setCompanyName(compData.company_name);
 
       const { data: teamData } = await supabase
         .from('customers')
-        .select('id, display_name, display_email, job_title, profile_status, username') // We added username here
+        .select('id, display_name, display_email, job_title, profile_status, username') 
         .eq('company_id', customerData.company_id);
 
       if (teamData) {
         setTeamMembers(teamData.map(member => {
-          // Check if any hardware tag's destination URL contains this employee's username
           const assignedTag = currentStickers.find(s => s.target_url && s.target_url.includes(`/u/${member.username}`));
 
           return {
             id: member.id,
-            username: member.username, // Pass the username down for the Assign modal
+            username: member.username, 
             name: member.display_name || 'Unnamed User',
             email: member.display_email || 'No email',
             title: member.job_title || 'No title',
@@ -401,6 +399,10 @@ export default function PremiumDashboard() {
           <button onClick={() => setActiveTab('hardware')} style={{ flex: 1, padding: '12px', borderRadius: '8px', border: 'none', fontWeight: '700', fontSize: '15px', cursor: 'pointer', backgroundColor: activeTab === 'hardware' ? 'white' : 'transparent', color: activeTab === 'hardware' ? '#111' : '#6b7280', boxShadow: activeTab === 'hardware' ? '0 2px 4px rgba(0,0,0,0.05)' : 'none', transition: 'all 0.2s' }}>My Hardware</button>
           <button onClick={() => setActiveTab('page')} style={{ flex: 1, padding: '12px', borderRadius: '8px', border: 'none', fontWeight: '700', fontSize: '15px', cursor: 'pointer', backgroundColor: activeTab === 'page' ? 'white' : 'transparent', color: activeTab === 'page' ? '#111' : '#6b7280', boxShadow: activeTab === 'page' ? '0 2px 4px rgba(0,0,0,0.05)' : 'none', transition: 'all 0.2s' }}>My Page</button>
           <button onClick={() => setActiveTab('analytics')} style={{ flex: 1, padding: '12px', borderRadius: '8px', border: 'none', fontWeight: '700', fontSize: '15px', cursor: 'pointer', backgroundColor: activeTab === 'analytics' ? 'white' : 'transparent', color: activeTab === 'analytics' ? '#111' : '#6b7280', boxShadow: activeTab === 'analytics' ? '0 2px 4px rgba(0,0,0,0.05)' : 'none', transition: 'all 0.2s' }}>📈 Analytics</button>
+          
+          {/* 🔥 ADDED PRICING TAB BUTTON */}
+          <button onClick={() => setActiveTab('pricing')} style={{ flex: 1, padding: '12px', borderRadius: '8px', border: 'none', fontWeight: '700', fontSize: '15px', cursor: 'pointer', backgroundColor: activeTab === 'pricing' ? '#111' : 'transparent', color: activeTab === 'pricing' ? 'white' : '#6b7280', transition: 'all 0.2s' }}>⭐ Upgrade</button>
+          
           {isPremium && (
             <button onClick={() => setActiveTab('team')} style={{ flex: 1, padding: '12px', borderRadius: '8px', border: 'none', fontWeight: '700', fontSize: '15px', cursor: 'pointer', backgroundColor: activeTab === 'team' ? 'white' : 'transparent', color: activeTab === 'team' ? '#111' : '#6b7280', boxShadow: activeTab === 'team' ? '0 2px 4px rgba(0,0,0,0.05)' : 'none', transition: 'all 0.2s' }}>🏢 Team Admin</button>
           )}
@@ -433,13 +435,18 @@ export default function PremiumDashboard() {
           />
         )}
 
+        {/* 🔥 ADDED PRICING SECTION RENDER */}
+        {activeTab === 'pricing' && (
+          <PricingSection />
+        )}
+
         {activeTab === 'team' && isPremium && (
           <TeamAdminSection 
             teamMembers={teamMembers} 
             supabase={supabase} 
             companyId={companyId} 
             companyName={companyName}
-            stickers={stickers} // 🔥 Added the stickers prop here!
+            stickers={stickers} 
             refreshData={fetchData} 
           />
         )}
