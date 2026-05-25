@@ -21,10 +21,10 @@ export default function TeamAdminSection({ teamMembers, supabase, companyId, com
   const [newLinkTitle, setNewLinkTitle] = useState('');
   const [newLinkUrl, setNewLinkUrl] = useState('');
 
-  // 🔥 NEW: Bulk Selection & Actions State
+  // Bulk Selection & Actions State
   const [selectedIds, setSelectedIds] = useState([]);
   const [showBulkModal, setShowBulkModal] = useState(false);
-  const [bulkActionType, setBulkActionType] = useState(''); // 'theme', 'logo', 'contact', 'link'
+  const [bulkActionType, setBulkActionType] = useState(''); 
   const [bulkForm, setBulkForm] = useState({ theme_color: '#111111', profile_picture_url: '', show_save_contact: true, link_title: '', link_url: '' });
 
   // --- Handlers ---
@@ -77,8 +77,9 @@ export default function TeamAdminSection({ teamMembers, supabase, companyId, com
     if (!selectedTagId || !assignModalEmployee) return;
     setIsSubmitting(true);
     try {
+      const profileUrl = `https://linksupply.co.uk/u/${assignModalEmployee.username}`;
       const { error } = await supabase.from('nfc_stickers').update({ 
-          target_url: `https://linksupply.co.uk/u/${assignModalEmployee.username}`, 
+          target_url: profileUrl, 
           tag_name: assignModalEmployee.name 
         }).eq('id', selectedTagId);
       if (error) throw error;
@@ -139,7 +140,7 @@ export default function TeamAdminSection({ teamMembers, supabase, companyId, com
     if (!error) setEmployeeLinks(employeeLinks.filter(l => l.id !== linkId));
   };
 
-  // 🔥 NEW: Checkbox & Bulk Handlers
+  // Checkbox & Bulk Handlers
   const handleSelectAll = (e) => {
     if (e.target.checked) setSelectedIds(teamMembers.map(m => m.id));
     else setSelectedIds([]);
@@ -183,7 +184,9 @@ export default function TeamAdminSection({ teamMembers, supabase, companyId, com
   // --- Styles ---
   const inputStyle = { width: '100%', padding: '12px 14px', borderRadius: '10px', border: '1px solid #d1d5db', fontSize: '15px', color: '#111', outline: 'none', boxSizing: 'border-box', marginBottom: '15px' };
   const labelStyle = { display: 'block', fontSize: '14px', color: '#4b5563', marginBottom: '8px', fontWeight: '600' };
-  const availableTags = stickers?.filter(s => !s.target_url || !s.target_url.includes('/u/')) || [];
+  
+  // 🔥 FIX: We now show ALL hardware tags the manager owns, so they can reassign easily.
+  const availableTags = stickers || [];
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '30px', width: '100%' }}>
@@ -218,7 +221,7 @@ export default function TeamAdminSection({ teamMembers, supabase, companyId, com
         </div>
       </div>
 
-      {/* 🔥 BULK ACTIONS MENU (Only shows when checkboxes are checked) */}
+      {/* BULK ACTIONS MENU */}
       {selectedIds.length > 0 && (
         <div style={{ backgroundColor: '#e0e7ff', border: '1px solid #c7d2fe', padding: '15px 20px', borderRadius: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', animation: 'fadeIn 0.2s' }}>
           <div style={{ fontWeight: '700', color: '#3730a3' }}>{selectedIds.length} Employee(s) Selected</div>
@@ -294,28 +297,25 @@ export default function TeamAdminSection({ teamMembers, supabase, companyId, com
         </div>
       </div>
 
-      {/* 🔥 BULK ACTION MODAL */}
+      {/* BULK ACTION MODAL */}
       {showBulkModal && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, padding: '20px' }}>
           <div style={{ backgroundColor: 'white', padding: '30px', borderRadius: '16px', width: '100%', maxWidth: '400px' }}>
             <h2 style={{ margin: '0 0 15px 0', fontSize: '20px', fontWeight: '800' }}>Apply to {selectedIds.length} Employees</h2>
             <form onSubmit={handleExecuteBulkAction}>
-              
               {bulkActionType === 'theme' && (
                 <div>
                   <label style={labelStyle}>Select Company Theme Color</label>
                   <input type="color" value={bulkForm.theme_color} onChange={(e) => setBulkForm({...bulkForm, theme_color: e.target.value})} style={{ width: '100%', height: '50px', borderRadius: '8px', cursor: 'pointer' }} />
                 </div>
               )}
-
               {bulkActionType === 'logo' && (
                 <div>
                   <label style={labelStyle}>Company Logo URL</label>
                   <input type="url" placeholder="https://example.com/logo.png" value={bulkForm.profile_picture_url} onChange={(e) => setBulkForm({...bulkForm, profile_picture_url: e.target.value})} style={inputStyle} required />
-                  <p style={{ fontSize: '12px', color: '#6b7280' }}>Paste a direct link to your company logo to override individual profile pictures.</p>
+                  <p style={{ fontSize: '12px', color: '#6b7280' }}>Paste a direct link to your company logo.</p>
                 </div>
               )}
-
               {bulkActionType === 'contact' && (
                 <div>
                   <label style={labelStyle}>"Save Contact" Button</label>
@@ -325,7 +325,6 @@ export default function TeamAdminSection({ teamMembers, supabase, companyId, com
                   </select>
                 </div>
               )}
-
               {bulkActionType === 'link' && (
                 <div>
                   <label style={labelStyle}>Link Title</label>
@@ -334,7 +333,6 @@ export default function TeamAdminSection({ teamMembers, supabase, companyId, com
                   <input type="url" placeholder="https://" value={bulkForm.link_url} onChange={(e) => setBulkForm({...bulkForm, link_url: e.target.value})} style={inputStyle} required />
                 </div>
               )}
-
               <div style={{ marginTop: '20px', display: 'flex', gap: '10px' }}>
                 <button type="button" disabled={isSubmitting} onClick={() => setShowBulkModal(false)} style={{ flex: 1, padding: '12px', backgroundColor: '#f3f4f6', border: 'none', borderRadius: '8px', fontWeight: '700', cursor: 'pointer' }}>Cancel</button>
                 <button type="submit" disabled={isSubmitting} style={{ flex: 2, padding: '12px', backgroundColor: '#4f46e5', color: 'white', border: 'none', borderRadius: '8px', fontWeight: '700', cursor: isSubmitting ? 'not-allowed' : 'pointer' }}>{isSubmitting ? 'Applying...' : 'Apply to All'}</button>
@@ -365,7 +363,6 @@ export default function TeamAdminSection({ teamMembers, supabase, companyId, com
                 <label style={labelStyle}>Bio</label>
                 <textarea value={editForm.bio} onChange={(e) => setEditForm({...editForm, bio: e.target.value})} style={{...inputStyle, height: '80px', resize: 'vertical'}} />
 
-                {/* 🔥 NEW: Show Save Contact Toggle */}
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '15px', padding: '10px', backgroundColor: '#f9fafb', borderRadius: '8px' }}>
                   <label style={{ margin: 0, fontSize: '14px', fontWeight: '600', color: '#4b5563' }}>Show "Save Contact"</label>
                   <button type="button" onClick={() => setEditForm({...editForm, show_save_contact: !editForm.show_save_contact})} style={{ width: '44px', height: '24px', borderRadius: '12px', border: 'none', cursor: 'pointer', backgroundColor: editForm.show_save_contact ? '#059669' : '#e5e7eb', position: 'relative' }}>
@@ -373,7 +370,6 @@ export default function TeamAdminSection({ teamMembers, supabase, companyId, com
                   </button>
                 </div>
 
-                {/* 🔥 NEW: Custom Image URL */}
                 <label style={labelStyle}>Profile Image / Logo URL</label>
                 <input type="url" placeholder="https://..." value={editForm.profile_picture_url} onChange={(e) => setEditForm({...editForm, profile_picture_url: e.target.value})} style={{...inputStyle, fontSize: '13px'}} />
                 
@@ -415,12 +411,71 @@ export default function TeamAdminSection({ teamMembers, supabase, companyId, com
         </div>
       )}
 
-      {/* (Bottom Modals removed for brevity, logic remains identical) */}
-      {/* ... */}
-      {/* ADD EMPLOYEE MODAL */}
-      {/* ... */}
-      {/* ASSIGN TAG MODAL */}
-      {/* ... */}
+      {/* 🔥 ADD EMPLOYEE MODAL (Restored!) */}
+      {showAddModal && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, padding: '20px' }}>
+          <div style={{ backgroundColor: 'white', padding: '30px', borderRadius: '16px', width: '100%', maxWidth: '450px', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <h2 style={{ margin: 0, fontSize: '20px', fontWeight: '800', color: '#111' }}>Add New Employee</h2>
+              <button onClick={() => setShowAddModal(false)} style={{ background: 'none', border: 'none', fontSize: '24px', cursor: 'pointer', color: '#6b7280' }}>&times;</button>
+            </div>
+            
+            <form onSubmit={handleAddEmployee}>
+              <label style={labelStyle}>Full Name</label>
+              <input required type="text" placeholder="e.g. John Doe" value={newEmpName} onChange={(e) => setNewEmpName(e.target.value)} style={inputStyle} />
+              <label style={labelStyle}>Work Email</label>
+              <input required type="email" placeholder="john@company.com" value={newEmpEmail} onChange={(e) => setNewEmpEmail(e.target.value)} style={inputStyle} />
+              <label style={labelStyle}>Job Title</label>
+              <input required type="text" placeholder="e.g. Sales Director" value={newEmpTitle} onChange={(e) => setNewEmpTitle(e.target.value)} style={inputStyle} />
+
+              <div style={{ marginTop: '20px', display: 'flex', gap: '10px' }}>
+                <button type="button" disabled={isSubmitting} onClick={() => setShowAddModal(false)} style={{ flex: 1, padding: '12px', backgroundColor: '#f3f4f6', color: '#4b5563', border: 'none', borderRadius: '8px', fontWeight: '700', cursor: 'pointer' }}>Cancel</button>
+                <button type="submit" disabled={isSubmitting} style={{ flex: 2, padding: '12px', backgroundColor: '#111', color: 'white', border: 'none', borderRadius: '8px', fontWeight: '700', cursor: isSubmitting ? 'not-allowed' : 'pointer', opacity: isSubmitting ? 0.7 : 1 }}>
+                  {isSubmitting ? 'Creating...' : 'Create Profile'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* 🔥 ASSIGN TAG MODAL (Restored!) */}
+      {assignModalEmployee && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, padding: '20px' }}>
+          <div style={{ backgroundColor: 'white', padding: '30px', borderRadius: '16px', width: '100%', maxWidth: '400px', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+              <h2 style={{ margin: 0, fontSize: '20px', fontWeight: '800', color: '#111' }}>Assign Hardware</h2>
+              <button onClick={() => setAssignModalEmployee(null)} style={{ background: 'none', border: 'none', fontSize: '24px', cursor: 'pointer', color: '#6b7280' }}>&times;</button>
+            </div>
+            <p style={{ color: '#6b7280', fontSize: '14px', marginBottom: '20px' }}>
+              Select a tag to link it to <strong>{assignModalEmployee.name}'s</strong> profile.
+            </p>
+            
+            <form onSubmit={handleAssignTag}>
+              <label style={labelStyle}>Available Tags</label>
+              {availableTags.length === 0 ? (
+                <div style={{ padding: '15px', backgroundColor: '#fef2f2', color: '#dc2626', borderRadius: '8px', fontSize: '14px', marginBottom: '15px', border: '1px solid #fecaca' }}>
+                  No tags available. Go to "My Hardware" to activate tags first.
+                </div>
+              ) : (
+                <select required value={selectedTagId} onChange={(e) => setSelectedTagId(e.target.value)} style={{...inputStyle, backgroundColor: '#f9fafb', cursor: 'pointer'}}>
+                  <option value="" disabled>-- Select a Tag --</option>
+                  {availableTags.map(tag => (
+                    <option key={tag.id} value={tag.id}>{tag.id} {tag.tag_name ? `(${tag.tag_name})` : ''}</option>
+                  ))}
+                </select>
+              )}
+
+              <div style={{ marginTop: '20px', display: 'flex', gap: '10px' }}>
+                <button type="button" disabled={isSubmitting} onClick={() => setAssignModalEmployee(null)} style={{ flex: 1, padding: '12px', backgroundColor: '#f3f4f6', color: '#4b5563', border: 'none', borderRadius: '8px', fontWeight: '700', cursor: 'pointer' }}>Cancel</button>
+                <button type="submit" disabled={isSubmitting || availableTags.length === 0} style={{ flex: 2, padding: '12px', backgroundColor: '#4f46e5', color: 'white', border: 'none', borderRadius: '8px', fontWeight: '700', cursor: (isSubmitting || availableTags.length === 0) ? 'not-allowed' : 'pointer', opacity: (isSubmitting || availableTags.length === 0) ? 0.7 : 1 }}>
+                  {isSubmitting ? 'Linking...' : 'Assign Tag'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
       
     </div>
   )
