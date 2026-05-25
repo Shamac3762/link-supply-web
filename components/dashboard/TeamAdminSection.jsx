@@ -1,17 +1,20 @@
 'use client'
 import { useState } from 'react'
 
-export default function TeamAdminSection({ teamMembers, supabase, companyId, companyName, refreshData }) {
+export default function TeamAdminSection({ teamMembers, supabase, companyId, companyName, stickers, refreshData }) {
   const [showAddModal, setShowAddModal] = useState(false);
   const [newEmpName, setNewEmpName] = useState('');
   const [newEmpEmail, setNewEmpEmail] = useState('');
   const [newEmpTitle, setNewEmpTitle] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // 🔥 New Tag Assignment State
+  const [assignModalEmployee, setAssignModalEmployee] = useState(null);
+  const [selectedTagId, setSelectedTagId] = useState('');
+
   const handleAddEmployee = async (e) => {
     e.preventDefault();
     if (!companyId) return alert("Error: No company ID found for this account.");
-    
     setIsSubmitting(true);
     
     try {
@@ -43,13 +46,48 @@ export default function TeamAdminSection({ teamMembers, supabase, companyId, com
     }
   };
 
+  const handleAssignTag = async (e) => {
+    e.preventDefault();
+    if (!selectedTagId || !assignModalEmployee) return;
+    setIsSubmitting(true);
+
+    try {
+      // Create the profile URL for the employee
+      const profileUrl = `https://linksupply.co.uk/u/${assignModalEmployee.username}`;
+
+      // Update the hardware tag in the database to point to the employee
+      const { error } = await supabase
+        .from('nfc_stickers')
+        .update({ 
+          target_url: profileUrl, 
+          tag_name: assignModalEmployee.name // Auto-rename the tag to the employee's name!
+        })
+        .eq('id', selectedTagId);
+
+      if (error) throw error;
+
+      // Close modal and refresh
+      setAssignModalEmployee(null);
+      setSelectedTagId('');
+      refreshData();
+
+    } catch (error) {
+      alert("Database Error: " + error.message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const inputStyle = { width: '100%', padding: '12px 14px', borderRadius: '10px', border: '1px solid #d1d5db', fontSize: '15px', color: '#111', outline: 'none', boxSizing: 'border-box', marginBottom: '15px' };
   const labelStyle = { display: 'block', fontSize: '14px', color: '#4b5563', marginBottom: '8px', fontWeight: '600' };
+
+  // Filter for tags that aren't assigned to anyone yet (target_url doesn't have /u/ in it)
+  const availableTags = stickers?.filter(s => !s.target_url || !s.target_url.includes('/u/')) || [];
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '30px', width: '100%' }}>
       
-      {/* 🔥 PREMIUM B2B HEADER */}
+      {/* PREMIUM B2B HEADER */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '-10px' }}>
         <div style={{ width: '54px', height: '54px', borderRadius: '14px', backgroundColor: '#111', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', color: 'white', fontWeight: '800', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
           {companyName ? companyName.charAt(0).toUpperCase() : '🏢'}
@@ -77,10 +115,8 @@ export default function TeamAdminSection({ teamMembers, supabase, companyId, com
             <form onSubmit={handleAddEmployee}>
               <label style={labelStyle}>Full Name</label>
               <input required type="text" placeholder="e.g. John Doe" value={newEmpName} onChange={(e) => setNewEmpName(e.target.value)} style={inputStyle} />
-              
               <label style={labelStyle}>Work Email</label>
               <input required type="email" placeholder="john@company.com" value={newEmpEmail} onChange={(e) => setNewEmpEmail(e.target.value)} style={inputStyle} />
-              
               <label style={labelStyle}>Job Title</label>
               <input required type="text" placeholder="e.g. Sales Director" value={newEmpTitle} onChange={(e) => setNewEmpTitle(e.target.value)} style={inputStyle} />
 
@@ -88,6 +124,44 @@ export default function TeamAdminSection({ teamMembers, supabase, companyId, com
                 <button type="button" disabled={isSubmitting} onClick={() => setShowAddModal(false)} style={{ flex: 1, padding: '12px', backgroundColor: '#f3f4f6', color: '#4b5563', border: 'none', borderRadius: '8px', fontWeight: '700', cursor: 'pointer' }}>Cancel</button>
                 <button type="submit" disabled={isSubmitting} style={{ flex: 2, padding: '12px', backgroundColor: '#111', color: 'white', border: 'none', borderRadius: '8px', fontWeight: '700', cursor: isSubmitting ? 'not-allowed' : 'pointer', opacity: isSubmitting ? 0.7 : 1 }}>
                   {isSubmitting ? 'Creating...' : 'Create Profile'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* 🔥 ASSIGN TAG MODAL */}
+      {assignModalEmployee && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, padding: '20px' }}>
+          <div style={{ backgroundColor: 'white', padding: '30px', borderRadius: '16px', width: '100%', maxWidth: '400px', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+              <h2 style={{ margin: 0, fontSize: '20px', fontWeight: '800', color: '#111' }}>Assign Hardware</h2>
+              <button onClick={() => setAssignModalEmployee(null)} style={{ background: 'none', border: 'none', fontSize: '24px', cursor: 'pointer', color: '#6b7280' }}>&times;</button>
+            </div>
+            <p style={{ color: '#6b7280', fontSize: '14px', marginBottom: '20px' }}>
+              Select a tag to permanently link it to <strong>{assignModalEmployee.name}'s</strong> digital profile.
+            </p>
+            
+            <form onSubmit={handleAssignTag}>
+              <label style={labelStyle}>Available Tags in Inventory</label>
+              {availableTags.length === 0 ? (
+                <div style={{ padding: '15px', backgroundColor: '#fef2f2', color: '#dc2626', borderRadius: '8px', fontSize: '14px', marginBottom: '15px', border: '1px solid #fecaca' }}>
+                  No unassigned tags available! Please go to the "My Hardware" tab and activate new tags first.
+                </div>
+              ) : (
+                <select required value={selectedTagId} onChange={(e) => setSelectedTagId(e.target.value)} style={{...inputStyle, backgroundColor: '#f9fafb', cursor: 'pointer'}}>
+                  <option value="" disabled>-- Select a Tag --</option>
+                  {availableTags.map(tag => (
+                    <option key={tag.id} value={tag.id}>{tag.id} {tag.tag_name ? `(${tag.tag_name})` : ''}</option>
+                  ))}
+                </select>
+              )}
+
+              <div style={{ marginTop: '20px', display: 'flex', gap: '10px' }}>
+                <button type="button" disabled={isSubmitting} onClick={() => setAssignModalEmployee(null)} style={{ flex: 1, padding: '12px', backgroundColor: '#f3f4f6', color: '#4b5563', border: 'none', borderRadius: '8px', fontWeight: '700', cursor: 'pointer' }}>Cancel</button>
+                <button type="submit" disabled={isSubmitting || availableTags.length === 0} style={{ flex: 2, padding: '12px', backgroundColor: '#4f46e5', color: 'white', border: 'none', borderRadius: '8px', fontWeight: '700', cursor: (isSubmitting || availableTags.length === 0) ? 'not-allowed' : 'pointer', opacity: (isSubmitting || availableTags.length === 0) ? 0.7 : 1 }}>
+                  {isSubmitting ? 'Linking...' : 'Assign Tag'}
                 </button>
               </div>
             </form>
@@ -157,7 +231,7 @@ export default function TeamAdminSection({ teamMembers, supabase, companyId, com
                     {member.tag !== 'Unassigned' ? (
                       <span style={{ fontWeight: '600', color: '#4f46e5', backgroundColor: '#e0e7ff', padding: '4px 10px', borderRadius: '20px', fontSize: '13px' }}>{member.tag}</span>
                     ) : (
-                      <button style={{ fontWeight: '700', color: '#f59e0b', backgroundColor: '#fef3c7', border: '1px solid #fde68a', padding: '4px 10px', borderRadius: '20px', fontSize: '12px', cursor: 'pointer' }}>+ Assign Tag</button>
+                      <button onClick={() => setAssignModalEmployee(member)} style={{ fontWeight: '700', color: '#f59e0b', backgroundColor: '#fef3c7', border: '1px solid #fde68a', padding: '4px 10px', borderRadius: '20px', fontSize: '12px', cursor: 'pointer', transition: 'all 0.2s' }}>+ Assign Tag</button>
                     )}
                   </td>
                   <td>
@@ -168,7 +242,7 @@ export default function TeamAdminSection({ teamMembers, supabase, companyId, com
                     )}
                   </td>
                   <td style={{ textAlign: 'right' }}>
-                    <button style={{ background: 'none', border: 'none', color: '#4f46e5', fontWeight: '700', cursor: 'pointer', fontSize: '14px', padding: '8px 12px' }}>Edit Profile</button>
+                    <a href={`/u/${member.username}`} target="_blank" rel="noreferrer" style={{ display: 'inline-block', color: '#4f46e5', fontWeight: '700', textDecoration: 'none', fontSize: '14px', padding: '8px 12px' }}>View Profile ↗</a>
                   </td>
                 </tr>
               ))}
