@@ -1,13 +1,12 @@
 'use client'
 import { useState } from 'react'
 
-// Notice we added supabase, companyId, and refreshData to the props here!
-export default function TeamAdminSection({ teamMembers, supabase, companyId, refreshData }) {
+export default function TeamAdminSection({ teamMembers, supabase, companyId, companyName, refreshData }) {
   const [showAddModal, setShowAddModal] = useState(false);
   const [newEmpName, setNewEmpName] = useState('');
   const [newEmpEmail, setNewEmpEmail] = useState('');
   const [newEmpTitle, setNewEmpTitle] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false); // Added loading state
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleAddEmployee = async (e) => {
     e.preventDefault();
@@ -16,24 +15,21 @@ export default function TeamAdminSection({ teamMembers, supabase, companyId, ref
     setIsSubmitting(true);
     
     try {
-      // 1. Generate a random URL slug/username for the new employee
       const cleanBase = newEmpName.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
       const randomStr = Math.random().toString(36).substring(2, 6);
       const newUsername = `${cleanBase}${randomStr}`;
 
-      // 2. Insert the new employee into your database
       const { error } = await supabase.from('customers').insert([{
         display_name: newEmpName,
         display_email: newEmpEmail,
         job_title: newEmpTitle,
         company_id: companyId,
         username: newUsername,
-        profile_status: 'live' // Automatically make their profile live
+        profile_status: 'live' 
       }]);
 
       if (error) throw error;
 
-      // 3. Close the modal, clear the form, and refresh the table!
       setShowAddModal(false);
       setNewEmpName('');
       setNewEmpEmail('');
@@ -53,6 +49,22 @@ export default function TeamAdminSection({ teamMembers, supabase, companyId, ref
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '30px', width: '100%' }}>
       
+      {/* 🔥 PREMIUM B2B HEADER */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '-10px' }}>
+        <div style={{ width: '54px', height: '54px', borderRadius: '14px', backgroundColor: '#111', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', color: 'white', fontWeight: '800', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
+          {companyName ? companyName.charAt(0).toUpperCase() : '🏢'}
+        </div>
+        <div>
+          <h1 style={{ margin: '0 0 4px 0', fontSize: '24px', fontWeight: '800', color: '#111', letterSpacing: '-0.5px' }}>
+            {companyName || 'Enterprise'} Workspace
+          </h1>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ fontSize: '11px', fontWeight: '800', color: '#059669', backgroundColor: '#d1fae5', padding: '4px 10px', borderRadius: '20px', letterSpacing: '0.5px' }}>✓ MANAGER ACCOUNT</span>
+            <span style={{ fontSize: '13px', color: '#6b7280', fontWeight: '500' }}>Organization ID: {companyId?.substring(0, 8) || 'Pending'}...</span>
+          </div>
+        </div>
+      </div>
+
       {/* ADD EMPLOYEE MODAL */}
       {showAddModal && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, padding: '20px' }}>
