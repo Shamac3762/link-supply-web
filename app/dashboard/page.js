@@ -41,6 +41,7 @@ export default function PremiumDashboard() {
   const [newLinkUrl, setNewLinkUrl] = useState('')
 
   const [profile, setProfile] = useState(null)
+  const [companyId, setCompanyId] = useState(null) // 🔥 Added for B2B
   const [maxLinks, setMaxLinks] = useState(2)
   const [loading, setLoading] = useState(true)
   const [saveStatus, setSaveStatus] = useState({}) 
@@ -55,12 +56,8 @@ export default function PremiumDashboard() {
   const supabase = createClient()
   const router = useRouter()
 
-  const [teamMembers, setTeamMembers] = useState([
-    { id: 1, name: 'Sarah Jenkins', email: 'sarah.j@company.com', title: 'VP of Sales', tag: 'LS-092', taps: 142, status: 'active' },
-    { id: 2, name: 'Marcus Chen', email: 'marcus.c@company.com', title: 'Account Executive', tag: 'LS-093', taps: 89, status: 'active' },
-    { id: 3, name: 'Elena Rodriguez', email: 'elena.r@company.com', title: 'Marketing Director', tag: 'Unassigned', taps: 0, status: 'pending' },
-    { id: 4, name: 'David Smith', email: 'david.s@company.com', title: 'Software Engineer', tag: 'LS-095', taps: 12, status: 'active' },
-  ]);
+  // 🔥 Starts empty now because we are fetching real data
+  const [teamMembers, setTeamMembers] = useState([]);
 
   useEffect(() => {
     setIsMounted(true)
@@ -97,11 +94,12 @@ export default function PremiumDashboard() {
     
     const { data: customerData } = await supabase
       .from('customers')
-      .select('username, display_name, bio, theme_color, max_links, profile_picture_url, job_title, company, phone_number, display_email, profile_status, remember_me, tier, show_save_contact, profile_views')
+      .select('username, display_name, bio, theme_color, max_links, profile_picture_url, job_title, company, phone_number, display_email, profile_status, remember_me, tier, show_save_contact, profile_views, company_id')
       .eq('id', session.user.id)
       .single()
 
     setProfile({ first_name: firstName })
+    setCompanyId(customerData?.company_id) // 🔥 Store the company ID for B2B logic
 
     let currentUsername = customerData?.username;
     let currentDisplayName = customerData?.display_name;
@@ -167,6 +165,26 @@ export default function PremiumDashboard() {
       });
     }
     setChartData(days);
+
+    // 🔥 NEW B2B FETCH: Get the real employees for the manager's company
+    if (customerData?.company_id) {
+      const { data: teamData } = await supabase
+        .from('customers')
+        .select('id, display_name, display_email, job_title, profile_status')
+        .eq('company_id', customerData.company_id);
+
+      if (teamData) {
+        setTeamMembers(teamData.map(member => ({
+          id: member.id,
+          name: member.display_name || 'Unnamed User',
+          email: member.display_email || 'No email',
+          title: member.job_title || 'No title',
+          tag: 'Unassigned', // We will wire this up to real tags later
+          status: member.profile_status === 'live' ? 'active' : 'pending'
+        })));
+      }
+    }
+
     setLoading(false)
   }
 
@@ -220,193 +238,4 @@ export default function PremiumDashboard() {
         const reader = new FileReader();
         reader.readAsDataURL(file);
         reader.onload = (event) => {
-          const img = new Image();
-          img.src = event.target.result;
-          img.onload = () => {
-            const canvas = document.createElement('canvas');
-            const MAX_WIDTH = 500; 
-            const scaleSize = MAX_WIDTH / img.width;
-            canvas.width = MAX_WIDTH;
-            canvas.height = img.height * scaleSize;
-            const ctx = canvas.getContext('2d');
-            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-            canvas.toBlob((blob) => {
-              resolve(new File([blob], `avatar-${Date.now()}.jpg`, { type: 'image/jpeg' }));
-            }, 'image/jpeg', 0.8);
-          };
-        };
-      });
-
-      const fileName = `${session.user.id}-${Date.now()}.jpg`;
-      const { error: uploadError } = await supabase.storage.from('avatars').upload(fileName, compressedFile, { upsert: true });
-      if (uploadError) throw uploadError;
-
-      const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(fileName);
-      setPageProfile({ ...pageProfile, profile_picture_url: publicUrl });
-    } catch (error) {
-      alert("Error uploading image: " + error.message);
-    } finally {
-      setIsUploading(false);
-    }
-  };
-
-  const handleSaveProfile = async () => {
-    setSaveStatus({ ...saveStatus, profile: 'Saving...' })
-    const { data: { session } } = await supabase.auth.getSession()
-    let cleanUsername = pageProfile.username;
-    const isPremium = pageProfile.tier !== 'free';
-    
-    const updateData = { 
-        id: session.user.id, display_name: pageProfile.display_name, bio: pageProfile.bio, theme_color: pageProfile.theme_color, 
-        profile_picture_url: pageProfile.profile_picture_url, job_title: pageProfile.job_title, company: pageProfile.company, 
-        phone_number: pageProfile.phone_number, display_email: pageProfile.display_email, profile_status: pageProfile.profile_status, 
-        remember_me: pageProfile.remember_me, show_save_contact: pageProfile.show_save_contact
-    }
-
-    if (isPremium) {
-        cleanUsername = pageProfile.username.toLowerCase().replace(/[^a-z0-9_]/g, '');
-        updateData.username = cleanUsername;
-    }
-
-    const { error } = await supabase.from('customers').upsert(updateData)
-    if (error) { alert("Database Error: " + error.message); setSaveStatus({ ...saveStatus, profile: 'Error!' }) } 
-    else { setPageProfile({ ...pageProfile, username: cleanUsername }); setSaveStatus({ ...saveStatus, profile: 'Saved! ✓' }); setTimeout(() => setSaveStatus((prev) => ({ ...prev, profile: '' })), 2000) }
-  }
-
-  const handleAddLink = async (e) => {
-    e.preventDefault()
-    if (!newLinkTitle || !newLinkUrl) return
-    if (pageLinks.length >= maxLinks) return alert("Link limit reached.")
-    const { data: { session } } = await supabase.auth.getSession()
-    const { error } = await supabase.from('page_links').insert([{ owner_id: session.user.id, title: newLinkTitle, url: newLinkUrl, sort_order: pageLinks.length }])
-    if (!error) { setNewLinkTitle(''); setNewLinkUrl(''); fetchData() }
-  }
-
-  const handleDeleteLink = async (linkId) => {
-    const { error } = await supabase.from('page_links').delete().eq('id', linkId)
-    if (!error) fetchData()
-  }
-
-  const handleLogout = async () => { await supabase.auth.signOut(); router.push('/login') }
-
-  const handleUpdatePassword = async () => {
-    if (newPassword.length < 6) return setSettingsMessage("Password must be at least 6 characters.")
-    setSettingsMessage("Updating...")
-    const { error } = await supabase.auth.updateUser({ password: newPassword })
-    if (error) setSettingsMessage("Error updating password: " + error.message)
-    else { setSettingsMessage("Password updated successfully! ✓"); setNewPassword('') }
-  }
-
-  const handleDeleteAccount = async () => {
-    const confirmDelete = window.confirm("GDPR NOTICE: Are you absolutely sure you want to permanently delete your account?\n\nThis will immediately sever all your physical NFC tags from this profile. This action cannot be undone.")
-    if (confirmDelete) { setSettingsMessage("Deleting account..."); alert("Account scheduled for deletion. Please contact support to finalize.") }
-  }
-
-  const isAtLimit = pageLinks.length >= maxLinks
-  const displayLimit = maxLinks > 100 ? 'Unlimited' : maxLinks
-  const isPremium = pageProfile.tier !== 'free';
-
-  const hasRealData = (chartData || []).reduce((acc, d) => acc + (d.taps || 0), 0) > 0;
-  const displayChartData = hasRealData ? chartData : [
-    { name: 'Mon', taps: 12 }, { name: 'Tue', taps: 19 }, { name: 'Wed', taps: 15 }, 
-    { name: 'Thu', taps: 25 }, { name: 'Fri', taps: 22 }, { name: 'Sat', taps: 35 }, { name: 'Sun', taps: 28 }
-  ];
-
-  if (loading) return <div style={{ minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', backgroundColor: '#f3f4f6' }}>Loading Workspace...</div>
-
-  return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#f3f4f6', fontFamily: 'sans-serif', paddingBottom: '50px', overflowX: 'hidden', width: '100%' }}>
-      <style>{`
-        * { box-sizing: border-box; }
-        .responsive-nav { padding: 20px 40px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e5e7eb; background-color: white; }
-        .responsive-tabs { display: flex; gap: 10px; margin-bottom: 30px; background-color: #e5e7eb; padding: 6px; border-radius: 12px; overflow-x: auto; white-space: nowrap; }
-        .responsive-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; width: 100%; }
-        .responsive-stack { display: flex; gap: 12px; width: 100%; max-width: 100%; }
-        .link-row { display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; background-color: #f9fafb; border: 1px solid #e5e7eb; border-radius: 10px; }
-        .url-input-container { display: flex; align-items: center; background-color: #f9fafb; border: 1px solid #d1d5db; border-radius: 10px; overflow: hidden; width: 100%; }
-        .url-prefix { color: #6b7280; font-size: 15px; padding: 14px; font-weight: 500; border-right: 1px solid #e5e7eb; background-color: #f3f4f6; white-space: nowrap; }
-        .b2b-table { width: 100%; border-collapse: collapse; text-align: left; }
-        .b2b-table th { padding: 16px 20px; background-color: #f9fafb; color: #6b7280; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #e5e7eb; font-weight: 700; }
-        .b2b-table td { padding: 16px 20px; border-bottom: 1px solid #e5e7eb; vertical-align: middle; color: #111; font-size: 14px; }
-        .b2b-table tr:last-child td { border-bottom: none; }
-        .b2b-table tr:hover { background-color: #f9fafb; }
-        @media (max-width: 768px) {
-          .responsive-nav { padding: 15px 20px; flex-direction: column; gap: 15px; }
-          .responsive-tabs { flex-direction: column; }
-          .responsive-grid { grid-template-columns: 1fr; }
-          .responsive-stack { flex-direction: column; align-items: stretch; }
-          .responsive-stack > input, .responsive-stack > button { width: 100% !important; max-width: 100% !important; }
-          .header-stack { flex-direction: column; align-items: flex-start !important; gap: 15px; width: 100%; flex-wrap: wrap; }
-          .header-stack .actions { width: 100%; display: flex; justify-content: space-between; }
-          .link-row { flex-direction: column; align-items: flex-start; gap: 15px; }
-          .link-row button { width: 100%; }
-          .url-input-container { flex-direction: column; align-items: stretch; }
-          .url-prefix { border-right: none; border-bottom: 1px solid #e5e7eb; font-size: 13px; padding: 10px 14px; }
-          .b2b-table-wrapper { overflow-x: auto; }
-        }
-      `}</style>
-
-      {showSettings && (
-        <SettingsModal 
-          setShowSettings={setShowSettings} newPassword={newPassword} setNewPassword={setNewPassword}
-          handleUpdatePassword={handleUpdatePassword} pageProfile={pageProfile} handleToggleRememberMe={handleToggleRememberMe}
-          handleDeleteAccount={handleDeleteAccount} settingsMessage={settingsMessage} setSettingsMessage={setSettingsMessage}
-        />
-      )}
-
-      <nav className="responsive-nav">
-        <Link href="/" style={{ textDecoration: 'none', display: 'inline-block' }}>
-          <div style={{ fontFamily: '"Myriad Pro", "Segoe UI", Roboto, sans-serif', fontSize: '22px', color: '#111', margin: 0, letterSpacing: '-0.5px', display: 'flex', alignItems: 'baseline' }}>
-            <span style={{ fontWeight: '700' }}>Link</span><span style={{ fontWeight: '400' }}>Supply.</span>
-          </div>
-        </Link>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-          <button onClick={() => setShowSettings(true)} style={{ padding: '8px 16px', backgroundColor: '#f3f4f6', color: '#111', border: '1px solid #d1d5db', borderRadius: '6px', fontWeight: '600', cursor: 'pointer', fontSize: '14px' }}>⚙️ Settings</button>
-          <button onClick={handleLogout} style={{ padding: '8px 16px', backgroundColor: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca', borderRadius: '6px', fontWeight: '600', cursor: 'pointer', fontSize: '14px' }}>Log Out</button>
-        </div>
-      </nav>
-
-      <main style={{ maxWidth: '1000px', margin: '40px auto', padding: '0 20px', width: '100%' }}>
-        <div className="responsive-tabs">
-          <button onClick={() => setActiveTab('hardware')} style={{ flex: 1, padding: '12px', borderRadius: '8px', border: 'none', fontWeight: '700', fontSize: '15px', cursor: 'pointer', backgroundColor: activeTab === 'hardware' ? 'white' : 'transparent', color: activeTab === 'hardware' ? '#111' : '#6b7280', boxShadow: activeTab === 'hardware' ? '0 2px 4px rgba(0,0,0,0.05)' : 'none', transition: 'all 0.2s' }}>My Hardware</button>
-          <button onClick={() => setActiveTab('page')} style={{ flex: 1, padding: '12px', borderRadius: '8px', border: 'none', fontWeight: '700', fontSize: '15px', cursor: 'pointer', backgroundColor: activeTab === 'page' ? 'white' : 'transparent', color: activeTab === 'page' ? '#111' : '#6b7280', boxShadow: activeTab === 'page' ? '0 2px 4px rgba(0,0,0,0.05)' : 'none', transition: 'all 0.2s' }}>My Page</button>
-          <button onClick={() => setActiveTab('analytics')} style={{ flex: 1, padding: '12px', borderRadius: '8px', border: 'none', fontWeight: '700', fontSize: '15px', cursor: 'pointer', backgroundColor: activeTab === 'analytics' ? 'white' : 'transparent', color: activeTab === 'analytics' ? '#111' : '#6b7280', boxShadow: activeTab === 'analytics' ? '0 2px 4px rgba(0,0,0,0.05)' : 'none', transition: 'all 0.2s' }}>📈 Analytics</button>
-          {isPremium && (
-            <button onClick={() => setActiveTab('team')} style={{ flex: 1, padding: '12px', borderRadius: '8px', border: 'none', fontWeight: '700', fontSize: '15px', cursor: 'pointer', backgroundColor: activeTab === 'team' ? 'white' : 'transparent', color: activeTab === 'team' ? '#111' : '#6b7280', boxShadow: activeTab === 'team' ? '0 2px 4px rgba(0,0,0,0.05)' : 'none', transition: 'all 0.2s' }}>🏢 Team Admin</button>
-          )}
-        </div>
-
-        {activeTab === 'hardware' && (
-          <HardwareSection 
-            claimId={claimId} setClaimId={setClaimId} claimPin={claimPin} setClaimPin={setClaimPin}
-            handleActivateTag={handleActivateTag} claimMessage={claimMessage} stickers={stickers}
-            setStickers={setStickers} isPremium={isPremium} pageProfile={pageProfile}
-            handleToggleActive={handleToggleActive} handleSaveHardwareChanges={handleSaveHardwareChanges} saveStatus={saveStatus}
-          />
-        )}
-
-        {activeTab === 'page' && (
-          <PageProfileSection 
-            pageProfile={pageProfile} setPageProfile={setPageProfile} getContrastColor={getContrastColor}
-            fileInputRef={fileInputRef} handleImageUpload={handleImageUpload} isUploading={isUploading}
-            isPremium={isPremium} handleSaveProfile={handleSaveProfile} saveStatus={saveStatus}
-            pageLinks={pageLinks} isAtLimit={isAtLimit} displayLimit={displayLimit} handleDeleteLink={handleDeleteLink}
-            newLinkTitle={newLinkTitle} setNewLinkTitle={setNewLinkTitle} newLinkUrl={newLinkUrl} setNewLinkUrl={setNewLinkUrl}
-            handleAddLink={handleAddLink}
-          />
-        )}
-
-        {activeTab === 'analytics' && (
-          <AnalyticsSection 
-            stickers={stickers} isPremium={isPremium} pageProfile={pageProfile}
-            hasRealData={hasRealData} displayChartData={displayChartData} isMounted={isMounted}
-          />
-        )}
-
-        {activeTab === 'team' && isPremium && (
-          <TeamAdminSection teamMembers={teamMembers} />
-        )}
-      </main>
-    </div>
-  )
-}
+          const
