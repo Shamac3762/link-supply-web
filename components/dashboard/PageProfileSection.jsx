@@ -25,6 +25,8 @@ export default function PageProfileSection({
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '30px', width: '100%' }}>
+      
+      {/* Profile Status */}
       <div style={{ backgroundColor: 'white', padding: '25px 30px', borderRadius: '16px', border: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '15px' }}>
         <div>
           <h2 style={{ fontSize: '20px', fontWeight: '700', color: '#111', margin: '0 0 5px 0' }}>Profile Status</h2>
@@ -39,9 +41,11 @@ export default function PageProfileSection({
         </div>
       </div>
 
+      {/* Page Identity */}
       <div style={{ backgroundColor: 'white', padding: '30px', borderRadius: '16px', border: '1px solid #e5e7eb' }}>
         <h2 style={{ fontSize: '20px', fontWeight: '700', color: '#111', margin: '0 0 20px 0' }}>Page Identity</h2>
         <div className="responsive-grid">
+          
           <div style={{ gridColumn: '1 / -1' }}>
             <label style={labelStyle}>Full Name / Display Name</label>
             <input type="text" value={pageProfile.display_name} placeholder="e.g. John Doe" onChange={(e) => setPageProfile({...pageProfile, display_name: e.target.value})} style={inputStyle} />
@@ -74,6 +78,7 @@ export default function PageProfileSection({
             <label style={labelStyle}>Short Bio</label>
             <textarea value={pageProfile.bio} placeholder="Welcome to my profile!" onChange={(e) => setPageProfile({...pageProfile, bio: e.target.value})} rows="2" style={{ ...inputStyle, resize: 'vertical' }} />
           </div>
+
           <div>
             <label style={labelStyle}>Brand Color</label>
             <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
@@ -84,6 +89,7 @@ export default function PageProfileSection({
         </div>
       </div>
 
+      {/* Digital Business Card Info */}
       <div style={{ backgroundColor: 'white', padding: '30px', borderRadius: '16px', border: '1px solid #e5e7eb' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px', flexWrap: 'wrap', gap: '15px' }}>
           <div>
@@ -133,6 +139,7 @@ export default function PageProfileSection({
         </div>
       </div>
 
+      {/* Your Links */}
       <div style={{ backgroundColor: 'white', padding: '30px', borderRadius: '16px', border: '1px solid #e5e7eb' }}>
         <div className="header-stack" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '5px' }}>
           <h2 style={{ fontSize: '20px', fontWeight: '700', color: '#111', margin: 0 }}>Your Links</h2>
