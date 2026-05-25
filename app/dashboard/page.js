@@ -41,7 +41,7 @@ export default function PremiumDashboard() {
 
   const [profile, setProfile] = useState(null)
   const [companyId, setCompanyId] = useState(null)
-  const [companyName, setCompanyName] = useState('')
+  const [companyName, setCompanyName] = useState('') 
   const [maxLinks, setMaxLinks] = useState(2)
   const [loading, setLoading] = useState(true)
   const [saveStatus, setSaveStatus] = useState({}) 
@@ -137,8 +137,13 @@ export default function PremiumDashboard() {
     }
     setMaxLinks(dynamicLimit);
 
+    // 🔥 Capture stickers here so we can match them to employees below
+    let currentStickers = [];
     const { data: stickerData } = await supabase.from('nfc_stickers').select('*').eq('owner_id', session.user.id).order('id', { ascending: true })
-    if (stickerData) setStickers(stickerData)
+    if (stickerData) {
+      setStickers(stickerData);
+      currentStickers = stickerData;
+    }
 
     const { data: linksData } = await supabase.from('page_links').select('*').eq('owner_id', session.user.id).order('sort_order', { ascending: true })
     if (linksData) setPageLinks(linksData)
@@ -164,25 +169,31 @@ export default function PremiumDashboard() {
     }
     setChartData(days);
 
-    // FETCH B2B DATA (Company Name + Employees)
+    // 🔥 FETCH B2B DATA (Company Name + Employees with Username included)
     if (customerData?.company_id) {
       const { data: compData } = await supabase.from('companies').select('company_name').eq('id', customerData.company_id).single();
       if (compData) setCompanyName(compData.company_name);
 
       const { data: teamData } = await supabase
         .from('customers')
-        .select('id, display_name, display_email, job_title, profile_status')
+        .select('id, display_name, display_email, job_title, profile_status, username') // We added username here
         .eq('company_id', customerData.company_id);
 
       if (teamData) {
-        setTeamMembers(teamData.map(member => ({
-          id: member.id,
-          name: member.display_name || 'Unnamed User',
-          email: member.display_email || 'No email',
-          title: member.job_title || 'No title',
-          tag: 'Unassigned',
-          status: member.profile_status === 'live' ? 'active' : 'pending'
-        })));
+        setTeamMembers(teamData.map(member => {
+          // Check if any hardware tag's destination URL contains this employee's username
+          const assignedTag = currentStickers.find(s => s.target_url && s.target_url.includes(`/u/${member.username}`));
+
+          return {
+            id: member.id,
+            username: member.username, // Pass the username down for the Assign modal
+            name: member.display_name || 'Unnamed User',
+            email: member.display_email || 'No email',
+            title: member.job_title || 'No title',
+            tag: assignedTag ? assignedTag.id : 'Unassigned',
+            status: member.profile_status === 'live' ? 'active' : 'pending'
+          }
+        }));
       }
     }
 
@@ -428,6 +439,7 @@ export default function PremiumDashboard() {
             supabase={supabase} 
             companyId={companyId} 
             companyName={companyName}
+            stickers={stickers} // 🔥 Added the stickers prop here!
             refreshData={fetchData} 
           />
         )}
