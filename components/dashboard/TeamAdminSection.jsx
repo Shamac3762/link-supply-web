@@ -2,15 +2,23 @@
 import { useState } from 'react'
 
 export default function TeamAdminSection({ teamMembers, supabase, companyId, companyName, stickers, refreshData }) {
+  // Add Employee State
   const [showAddModal, setShowAddModal] = useState(false);
   const [newEmpName, setNewEmpName] = useState('');
   const [newEmpEmail, setNewEmpEmail] = useState('');
   const [newEmpTitle, setNewEmpTitle] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // 🔥 New Tag Assignment State
+  // Assign Tag State
   const [assignModalEmployee, setAssignModalEmployee] = useState(null);
   const [selectedTagId, setSelectedTagId] = useState('');
+
+  // 🔥 NEW: Edit Profile State
+  const [editingEmployee, setEditingEmployee] = useState(null);
+  const [editForm, setEditForm] = useState({ bio: '', job_title: '', theme_color: '#111111' });
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
+
+  // --- Handlers ---
 
   const handleAddEmployee = async (e) => {
     e.preventDefault();
@@ -38,7 +46,6 @@ export default function TeamAdminSection({ teamMembers, supabase, companyId, com
       setNewEmpEmail('');
       setNewEmpTitle('');
       refreshData(); 
-      
     } catch (error) {
       alert("Database Error: " + error.message);
     } finally {
@@ -52,25 +59,17 @@ export default function TeamAdminSection({ teamMembers, supabase, companyId, com
     setIsSubmitting(true);
 
     try {
-      // Create the profile URL for the employee
       const profileUrl = `https://linksupply.co.uk/u/${assignModalEmployee.username}`;
-
-      // Update the hardware tag in the database to point to the employee
-      const { error } = await supabase
-        .from('nfc_stickers')
-        .update({ 
+      const { error } = await supabase.from('nfc_stickers').update({ 
           target_url: profileUrl, 
-          tag_name: assignModalEmployee.name // Auto-rename the tag to the employee's name!
-        })
-        .eq('id', selectedTagId);
+          tag_name: assignModalEmployee.name 
+        }).eq('id', selectedTagId);
 
       if (error) throw error;
 
-      // Close modal and refresh
       setAssignModalEmployee(null);
       setSelectedTagId('');
       refreshData();
-
     } catch (error) {
       alert("Database Error: " + error.message);
     } finally {
@@ -78,16 +77,51 @@ export default function TeamAdminSection({ teamMembers, supabase, companyId, com
     }
   };
 
+  // 🔥 NEW: Open Edit Modal and Fetch Current Data
+  const openEditModal = async (member) => {
+    setEditingEmployee(member);
+    // Fetch their current profile settings so the form isn't empty
+    const { data } = await supabase.from('customers').select('bio, job_title, theme_color').eq('id', member.id).single();
+    if (data) {
+      setEditForm({
+        bio: data.bio || '',
+        job_title: data.job_title || member.title || '',
+        theme_color: data.theme_color || '#111111'
+      });
+    }
+  };
+
+  // 🔥 NEW: Save Edited Data
+  const handleSaveEdit = async (e) => {
+    e.preventDefault();
+    setIsSavingEdit(true);
+    try {
+      const { error } = await supabase.from('customers').update({
+        bio: editForm.bio,
+        job_title: editForm.job_title,
+        theme_color: editForm.theme_color
+      }).eq('id', editingEmployee.id);
+
+      if (error) throw error;
+
+      setEditingEmployee(null);
+      refreshData(); // Refresh the table so the new job title shows up!
+    } catch (error) {
+      alert("Error saving profile: " + error.message);
+    } finally {
+      setIsSavingEdit(false);
+    }
+  };
+
+  // --- Styles ---
   const inputStyle = { width: '100%', padding: '12px 14px', borderRadius: '10px', border: '1px solid #d1d5db', fontSize: '15px', color: '#111', outline: 'none', boxSizing: 'border-box', marginBottom: '15px' };
   const labelStyle = { display: 'block', fontSize: '14px', color: '#4b5563', marginBottom: '8px', fontWeight: '600' };
-
-  // Filter for tags that aren't assigned to anyone yet (target_url doesn't have /u/ in it)
   const availableTags = stickers?.filter(s => !s.target_url || !s.target_url.includes('/u/')) || [];
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '30px', width: '100%' }}>
       
-      {/* PREMIUM B2B HEADER */}
+      {/* HEADER */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '-10px' }}>
         <div style={{ width: '54px', height: '54px', borderRadius: '14px', backgroundColor: '#111', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', color: 'white', fontWeight: '800', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
           {companyName ? companyName.charAt(0).toUpperCase() : '🏢'}
@@ -131,7 +165,7 @@ export default function TeamAdminSection({ teamMembers, supabase, companyId, com
         </div>
       )}
 
-      {/* 🔥 ASSIGN TAG MODAL */}
+      {/* ASSIGN TAG MODAL */}
       {assignModalEmployee && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, padding: '20px' }}>
           <div style={{ backgroundColor: 'white', padding: '30px', borderRadius: '16px', width: '100%', maxWidth: '400px', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)' }}>
@@ -169,7 +203,46 @@ export default function TeamAdminSection({ teamMembers, supabase, companyId, com
         </div>
       )}
 
-      {/* Team Metrics Overview */}
+      {/* 🔥 NEW: EDIT PROFILE MODAL */}
+      {editingEmployee && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, padding: '20px' }}>
+          <div style={{ backgroundColor: 'white', padding: '30px', borderRadius: '16px', width: '100%', maxWidth: '500px', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)', maxHeight: '90vh', overflowY: 'auto' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <h2 style={{ margin: 0, fontSize: '20px', fontWeight: '800', color: '#111' }}>Edit Profile: {editingEmployee.name}</h2>
+              <button onClick={() => setEditingEmployee(null)} style={{ background: 'none', border: 'none', fontSize: '24px', cursor: 'pointer', color: '#6b7280' }}>&times;</button>
+            </div>
+            
+            <form onSubmit={handleSaveEdit}>
+              <label style={labelStyle}>Job Title</label>
+              <input type="text" value={editForm.job_title} onChange={(e) => setEditForm({...editForm, job_title: e.target.value})} style={inputStyle} placeholder="e.g. Lead Designer" />
+              
+              <label style={labelStyle}>Bio</label>
+              <textarea value={editForm.bio} onChange={(e) => setEditForm({...editForm, bio: e.target.value})} style={{...inputStyle, height: '100px', resize: 'vertical'}} placeholder="Write a short bio for this employee..." />
+              
+              <label style={labelStyle}>Profile Theme Color</label>
+              <div style={{ display: 'flex', gap: '15px', alignItems: 'center', marginBottom: '20px' }}>
+                <input type="color" value={editForm.theme_color} onChange={(e) => setEditForm({...editForm, theme_color: e.target.value})} style={{ width: '50px', height: '50px', border: 'none', borderRadius: '8px', cursor: 'pointer', padding: 0 }} />
+                <span style={{ fontSize: '14px', color: '#6b7280', fontFamily: 'monospace' }}>{editForm.theme_color}</span>
+              </div>
+
+              <div style={{ padding: '15px', backgroundColor: '#eff6ff', borderRadius: '8px', border: '1px solid #bfdbfe', marginBottom: '20px' }}>
+                <p style={{ margin: 0, fontSize: '13px', color: '#1d4ed8' }}>
+                  <strong>Note:</strong> To manage links, the employee can log in directly, or you can manage them via the main dashboard by switching accounts.
+                </p>
+              </div>
+
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <button type="button" disabled={isSavingEdit} onClick={() => setEditingEmployee(null)} style={{ flex: 1, padding: '12px', backgroundColor: '#f3f4f6', color: '#4b5563', border: 'none', borderRadius: '8px', fontWeight: '700', cursor: 'pointer' }}>Cancel</button>
+                <button type="submit" disabled={isSavingEdit} style={{ flex: 2, padding: '12px', backgroundColor: '#111', color: 'white', border: 'none', borderRadius: '8px', fontWeight: '700', cursor: isSavingEdit ? 'not-allowed' : 'pointer', opacity: isSavingEdit ? 0.7 : 1 }}>
+                  {isSavingEdit ? 'Saving...' : 'Save Profile Changes'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Metrics Overview */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px' }}>
         <div style={{ backgroundColor: 'white', padding: '25px', borderRadius: '16px', border: '1px solid #e5e7eb' }}>
           <p style={{ color: '#6b7280', fontSize: '13px', fontWeight: '700', textTransform: 'uppercase', marginBottom: '10px' }}>Total Employees</p>
@@ -183,7 +256,7 @@ export default function TeamAdminSection({ teamMembers, supabase, companyId, com
         </div>
       </div>
 
-      {/* The Main Employee Table */}
+      {/* Directory Table */}
       <div style={{ backgroundColor: 'white', borderRadius: '16px', border: '1px solid #e5e7eb', overflow: 'hidden', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' }}>
         <div style={{ padding: '25px 30px', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '15px' }}>
           <div>
@@ -241,8 +314,10 @@ export default function TeamAdminSection({ teamMembers, supabase, companyId, com
                       <span style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', fontWeight: '600', color: '#6b7280' }}><span style={{ width: '8px', height: '8px', backgroundColor: '#9ca3af', borderRadius: '50%' }}></span> Pending Setup</span>
                     )}
                   </td>
-                  <td style={{ textAlign: 'right' }}>
-                    <a href={`/u/${member.username}`} target="_blank" rel="noreferrer" style={{ display: 'inline-block', color: '#4f46e5', fontWeight: '700', textDecoration: 'none', fontSize: '14px', padding: '8px 12px' }}>View Profile ↗</a>
+                  <td style={{ textAlign: 'right', display: 'flex', gap: '10px', justifyContent: 'flex-end', alignItems: 'center' }}>
+                    <a href={`/u/${member.username}`} target="_blank" rel="noreferrer" style={{ display: 'inline-block', color: '#6b7280', fontWeight: '600', textDecoration: 'none', fontSize: '13px' }}>View ↗</a>
+                    {/* 🔥 NEW: The Edit Profile Button */}
+                    <button onClick={() => openEditModal(member)} style={{ background: '#f3f4f6', border: '1px solid #d1d5db', color: '#111', fontWeight: '600', cursor: 'pointer', fontSize: '13px', padding: '6px 12px', borderRadius: '6px' }}>Edit Profile</button>
                   </td>
                 </tr>
               ))}
