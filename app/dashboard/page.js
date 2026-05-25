@@ -53,6 +53,14 @@ export default function PremiumDashboard() {
   const supabase = createClient()
   const router = useRouter()
 
+  // 🔥 MOCK B2B DATA: To show the high-end experience
+  const [teamMembers, setTeamMembers] = useState([
+    { id: 1, name: 'Sarah Jenkins', email: 'sarah.j@company.com', title: 'VP of Sales', tag: 'LS-092', taps: 142, status: 'active' },
+    { id: 2, name: 'Marcus Chen', email: 'marcus.c@company.com', title: 'Account Executive', tag: 'LS-093', taps: 89, status: 'active' },
+    { id: 3, name: 'Elena Rodriguez', email: 'elena.r@company.com', title: 'Marketing Director', tag: 'Unassigned', taps: 0, status: 'pending' },
+    { id: 4, name: 'David Smith', email: 'david.s@company.com', title: 'Software Engineer', tag: 'LS-095', taps: 12, status: 'active' },
+  ]);
+
   useEffect(() => {
     setIsMounted(true)
     fetchData()
@@ -311,7 +319,6 @@ export default function PremiumDashboard() {
   const labelStyle = { display: 'block', fontSize: '14px', color: '#4b5563', marginBottom: '8px', fontWeight: '600' }
   const isPremium = pageProfile.tier !== 'free';
 
-  // 🔥 Pre-calculate chart data outside the render block to prevent hydration crashes
   const hasRealData = (chartData || []).reduce((acc, d) => acc + (d.taps || 0), 0) > 0;
   const displayChartData = hasRealData ? chartData : [
     { name: 'Mon', taps: 12 }, { name: 'Tue', taps: 19 }, { name: 'Wed', taps: 15 }, 
@@ -325,14 +332,21 @@ export default function PremiumDashboard() {
       <style>{`
         * { box-sizing: border-box; }
         .responsive-nav { padding: 20px 40px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e5e7eb; background-color: white; }
-        .responsive-tabs { display: flex; gap: 10px; margin-bottom: 30px; background-color: #e5e7eb; padding: 6px; border-radius: 12px; }
+        .responsive-tabs { display: flex; gap: 10px; margin-bottom: 30px; background-color: #e5e7eb; padding: 6px; border-radius: 12px; overflow-x: auto; white-space: nowrap; }
         .responsive-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; width: 100%; }
         .responsive-stack { display: flex; gap: 12px; width: 100%; max-width: 100%; }
         .link-row { display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; background-color: #f9fafb; border: 1px solid #e5e7eb; border-radius: 10px; }
         .url-input-container { display: flex; align-items: center; background-color: #f9fafb; border: 1px solid #d1d5db; border-radius: 10px; overflow: hidden; width: 100%; }
         .url-prefix { color: #6b7280; font-size: 15px; padding: 14px; font-weight: 500; border-right: 1px solid #e5e7eb; background-color: #f3f4f6; white-space: nowrap; }
 
-        @media (max-width: 600px) {
+        /* B2B Table Styles */
+        .b2b-table { width: 100%; border-collapse: collapse; text-align: left; }
+        .b2b-table th { padding: 16px 20px; background-color: #f9fafb; color: #6b7280; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #e5e7eb; font-weight: 700; }
+        .b2b-table td { padding: 16px 20px; border-bottom: 1px solid #e5e7eb; vertical-align: middle; color: #111; font-size: 14px; }
+        .b2b-table tr:last-child td { border-bottom: none; }
+        .b2b-table tr:hover { background-color: #f9fafb; }
+
+        @media (max-width: 768px) {
           .responsive-nav { padding: 15px 20px; flex-direction: column; gap: 15px; }
           .responsive-tabs { flex-direction: column; }
           .responsive-grid { grid-template-columns: 1fr; }
@@ -344,9 +358,11 @@ export default function PremiumDashboard() {
           .link-row button { width: 100%; }
           .url-input-container { flex-direction: column; align-items: stretch; }
           .url-prefix { border-right: none; border-bottom: 1px solid #e5e7eb; font-size: 13px; padding: 10px 14px; }
+          .b2b-table-wrapper { overflow-x: auto; }
         }
       `}</style>
 
+      {/* Settings Modal (Unchanged) */}
       {showSettings && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, padding: '20px' }}>
           <div style={{ backgroundColor: 'white', padding: '30px', borderRadius: '16px', width: '100%', maxWidth: '400px', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)' }}>
@@ -396,15 +412,113 @@ export default function PremiumDashboard() {
         </div>
       </nav>
 
-      <main style={{ maxWidth: '900px', margin: '40px auto', padding: '0 20px', width: '100%' }}>
+      <main style={{ maxWidth: '1000px', margin: '40px auto', padding: '0 20px', width: '100%' }}>
         <div className="responsive-tabs">
-          <button onClick={() => setActiveTab('hardware')} style={{ flex: 1, padding: '12px', borderRadius: '8px', border: 'none', fontWeight: '700', fontSize: '15px', cursor: 'pointer', backgroundColor: activeTab === 'hardware' ? 'white' : 'transparent', color: activeTab === 'hardware' ? '#111' : '#6b7280', boxShadow: activeTab === 'hardware' ? '0 2px 4px rgba(0,0,0,0.05)' : 'none', transition: 'all 0.2s' }}>My Hardware Tags</button>
-          <button onClick={() => setActiveTab('page')} style={{ flex: 1, padding: '12px', borderRadius: '8px', border: 'none', fontWeight: '700', fontSize: '15px', cursor: 'pointer', backgroundColor: activeTab === 'page' ? 'white' : 'transparent', color: activeTab === 'page' ? '#111' : '#6b7280', boxShadow: activeTab === 'page' ? '0 2px 4px rgba(0,0,0,0.05)' : 'none', transition: 'all 0.2s' }}>My Premium Page</button>
+          <button onClick={() => setActiveTab('hardware')} style={{ flex: 1, padding: '12px', borderRadius: '8px', border: 'none', fontWeight: '700', fontSize: '15px', cursor: 'pointer', backgroundColor: activeTab === 'hardware' ? 'white' : 'transparent', color: activeTab === 'hardware' ? '#111' : '#6b7280', boxShadow: activeTab === 'hardware' ? '0 2px 4px rgba(0,0,0,0.05)' : 'none', transition: 'all 0.2s' }}>My Hardware</button>
+          <button onClick={() => setActiveTab('page')} style={{ flex: 1, padding: '12px', borderRadius: '8px', border: 'none', fontWeight: '700', fontSize: '15px', cursor: 'pointer', backgroundColor: activeTab === 'page' ? 'white' : 'transparent', color: activeTab === 'page' ? '#111' : '#6b7280', boxShadow: activeTab === 'page' ? '0 2px 4px rgba(0,0,0,0.05)' : 'none', transition: 'all 0.2s' }}>My Page</button>
           <button onClick={() => setActiveTab('analytics')} style={{ flex: 1, padding: '12px', borderRadius: '8px', border: 'none', fontWeight: '700', fontSize: '15px', cursor: 'pointer', backgroundColor: activeTab === 'analytics' ? 'white' : 'transparent', color: activeTab === 'analytics' ? '#111' : '#6b7280', boxShadow: activeTab === 'analytics' ? '0 2px 4px rgba(0,0,0,0.05)' : 'none', transition: 'all 0.2s' }}>📈 Analytics</button>
+          
+          {/* 🔥 NEW B2B TEAM TAB */}
+          {isPremium && (
+            <button onClick={() => setActiveTab('team')} style={{ flex: 1, padding: '12px', borderRadius: '8px', border: 'none', fontWeight: '700', fontSize: '15px', cursor: 'pointer', backgroundColor: activeTab === 'team' ? 'white' : 'transparent', color: activeTab === 'team' ? '#111' : '#6b7280', boxShadow: activeTab === 'team' ? '0 2px 4px rgba(0,0,0,0.05)' : 'none', transition: 'all 0.2s' }}>🏢 Team Admin</button>
+          )}
         </div>
 
+        {/* ------------------------------------------------------------- */}
+        {/* NEW B2B TEAM MANAGEMENT SECTION */}
+        {/* ------------------------------------------------------------- */}
+        {activeTab === 'team' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '30px', width: '100%' }}>
+            
+            {/* Team Metrics Overview */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px' }}>
+              <div style={{ backgroundColor: 'white', padding: '25px', borderRadius: '16px', border: '1px solid #e5e7eb' }}>
+                <p style={{ color: '#6b7280', fontSize: '13px', fontWeight: '700', textTransform: 'uppercase', marginBottom: '10px' }}>Total Employees</p>
+                <p style={{ fontSize: '32px', fontWeight: '800', color: '#111', margin: 0 }}>120</p>
+              </div>
+              <div style={{ backgroundColor: 'white', padding: '25px', borderRadius: '16px', border: '1px solid #e5e7eb' }}>
+                <p style={{ color: '#6b7280', fontSize: '13px', fontWeight: '700', textTransform: 'uppercase', marginBottom: '10px' }}>Active Tags</p>
+                <p style={{ fontSize: '32px', fontWeight: '800', color: '#059669', margin: 0 }}>112</p>
+              </div>
+              <div style={{ backgroundColor: 'white', padding: '25px', borderRadius: '16px', border: '1px solid #e5e7eb' }}>
+                <p style={{ color: '#6b7280', fontSize: '13px', fontWeight: '700', textTransform: 'uppercase', marginBottom: '10px' }}>Unassigned Tags</p>
+                <p style={{ fontSize: '32px', fontWeight: '800', color: '#f59e0b', margin: 0 }}>8</p>
+              </div>
+            </div>
+
+            {/* The Main Employee Table */}
+            <div style={{ backgroundColor: 'white', borderRadius: '16px', border: '1px solid #e5e7eb', overflow: 'hidden', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' }}>
+              
+              {/* Table Header & Actions */}
+              <div style={{ padding: '25px 30px', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '15px' }}>
+                <div>
+                  <h2 style={{ fontSize: '20px', fontWeight: '800', color: '#111', margin: '0 0 5px 0' }}>Employee Directory</h2>
+                  <p style={{ color: '#6b7280', fontSize: '14px', margin: 0 }}>Manage profiles and assign NFC tags instantly.</p>
+                </div>
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <input type="text" placeholder="Search employees..." style={{ padding: '10px 16px', borderRadius: '8px', border: '1px solid #d1d5db', fontSize: '14px', outline: 'none' }} />
+                  <button onClick={() => alert("This will open a modal to type in a new employee name and email.")} style={{ padding: '10px 20px', backgroundColor: '#111', color: 'white', border: 'none', borderRadius: '8px', fontWeight: '700', cursor: 'pointer', fontSize: '14px', whiteSpace: 'nowrap' }}>+ Add Employee</button>
+                </div>
+              </div>
+
+              {/* The Data Table */}
+              <div className="b2b-table-wrapper">
+                <table className="b2b-table">
+                  <thead>
+                    <tr>
+                      <th>Employee</th>
+                      <th>Job Title</th>
+                      <th>Assigned Tag</th>
+                      <th>Status</th>
+                      <th style={{ textAlign: 'right' }}>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {teamMembers.map((member) => (
+                      <tr key={member.id}>
+                        <td>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                            <div style={{ width: '36px', height: '36px', borderRadius: '50%', backgroundColor: '#f3f4f6', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '700', color: '#4b5563', fontSize: '14px' }}>
+                              {member.name.charAt(0)}
+                            </div>
+                            <div>
+                              <div style={{ fontWeight: '600', color: '#111' }}>{member.name}</div>
+                              <div style={{ fontSize: '13px', color: '#6b7280' }}>{member.email}</div>
+                            </div>
+                          </div>
+                        </td>
+                        <td>{member.title}</td>
+                        <td>
+                          {member.tag !== 'Unassigned' ? (
+                            <span style={{ fontWeight: '600', color: '#4f46e5', backgroundColor: '#e0e7ff', padding: '4px 10px', borderRadius: '20px', fontSize: '13px' }}>{member.tag}</span>
+                          ) : (
+                            <span style={{ fontWeight: '600', color: '#f59e0b', backgroundColor: '#fef3c7', padding: '4px 10px', borderRadius: '20px', fontSize: '13px' }}>Unassigned</span>
+                          )}
+                        </td>
+                        <td>
+                          {member.status === 'active' ? (
+                            <span style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', fontWeight: '600', color: '#059669' }}><span style={{ width: '8px', height: '8px', backgroundColor: '#10b981', borderRadius: '50%' }}></span> Active</span>
+                          ) : (
+                            <span style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', fontWeight: '600', color: '#6b7280' }}><span style={{ width: '8px', height: '8px', backgroundColor: '#9ca3af', borderRadius: '50%' }}></span> Pending Setup</span>
+                          )}
+                        </td>
+                        <td style={{ textAlign: 'right' }}>
+                          <button onClick={() => alert(`Edit panel for ${member.name} opening...`)} style={{ background: 'none', border: 'none', color: '#4f46e5', fontWeight: '700', cursor: 'pointer', fontSize: '14px', padding: '8px 12px' }}>Edit Profile</button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+            </div>
+          </div>
+        )}
+
+        {/* Existing Hardware Tab */}
         {activeTab === 'hardware' && (
           <div style={{ width: '100%', maxWidth: '100%' }}>
+            {/* ... (Hardware Content remains exactly as before) */}
             <div style={{ backgroundColor: '#111', padding: '30px', borderRadius: '16px', marginBottom: '40px', color: 'white', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)' }}>
               <h2 style={{ fontSize: '20px', margin: '0 0 5px 0', fontWeight: '700' }}>Activate a New Tag</h2>
               <p style={{ color: '#9ca3af', fontSize: '14px', marginBottom: '20px' }}>Enter the Tag ID and the 6-digit Activation PIN.</p>
@@ -484,9 +598,10 @@ export default function PremiumDashboard() {
           </div>
         )}
 
+        {/* Existing Page Profile Tab */}
         {activeTab === 'page' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '30px', width: '100%' }}>
-            
+            {/* ... (Page Profile Content remains exactly as before) */}
             <div style={{ backgroundColor: 'white', padding: '25px 30px', borderRadius: '16px', border: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '15px' }}>
               <div>
                 <h2 style={{ fontSize: '20px', fontWeight: '700', color: '#111', margin: '0 0 5px 0' }}>Profile Status</h2>
@@ -523,36 +638,10 @@ export default function PremiumDashboard() {
 
                 <div style={{ gridColumn: '1 / -1' }}>
                   <label style={labelStyle}>Profile Picture</label>
-                  <input 
-                    type="file" 
-                    accept="image/*" 
-                    ref={fileInputRef} 
-                    onChange={handleImageUpload} 
-                    style={{ display: 'none' }} 
-                  />
+                  <input type="file" accept="image/*" ref={fileInputRef} onChange={handleImageUpload} style={{ display: 'none' }} />
                   <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                    <input 
-                      type="text" 
-                      value={pageProfile.profile_picture_url} 
-                      placeholder="https://... or click upload" 
-                      onChange={(e) => setPageProfile({...pageProfile, profile_picture_url: e.target.value})} 
-                      style={{ ...inputStyle, flex: 1 }} 
-                    />
-                    <button 
-                      type="button"
-                      onClick={() => fileInputRef.current.click()} 
-                      disabled={isUploading}
-                      style={{ 
-                        padding: '12px 20px', 
-                        backgroundColor: '#f3f4f6', 
-                        color: '#111', 
-                        border: '1px solid #d1d5db', 
-                        borderRadius: '8px', 
-                        fontWeight: '700', 
-                        cursor: isUploading ? 'not-allowed' : 'pointer',
-                        whiteSpace: 'nowrap'
-                      }}
-                    >
+                    <input type="text" value={pageProfile.profile_picture_url} placeholder="https://... or click upload" onChange={(e) => setPageProfile({...pageProfile, profile_picture_url: e.target.value})} style={{ ...inputStyle, flex: 1 }} />
+                    <button type="button" onClick={() => fileInputRef.current.click()} disabled={isUploading} style={{ padding: '12px 20px', backgroundColor: '#f3f4f6', color: '#111', border: '1px solid #d1d5db', borderRadius: '8px', fontWeight: '700', cursor: isUploading ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap' }}>
                       {isUploading ? '⏳ Compressing...' : '📷 Upload Photo'}
                     </button>
                   </div>
@@ -573,22 +662,14 @@ export default function PremiumDashboard() {
             </div>
 
             <div style={{ backgroundColor: 'white', padding: '30px', borderRadius: '16px', border: '1px solid #e5e7eb' }}>
-              
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px', flexWrap: 'wrap', gap: '15px' }}>
                 <div>
                   <h2 style={{ fontSize: '20px', fontWeight: '700', color: '#111', marginBottom: '5px' }}>Digital Business Card</h2>
                   <p style={{ color: '#6b7280', fontSize: '14px', margin: 0 }}>Add your info so people can save you to their phone.</p>
                 </div>
-                
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', backgroundColor: '#f9fafb', padding: '10px 16px', borderRadius: '12px', border: '1px solid #e5e7eb' }}>
-                  <label style={{ fontSize: '14px', color: '#4b5563', fontWeight: '600', cursor: 'pointer' }} htmlFor="contactToggle">
-                    Show Contact Button
-                  </label>
-                  <button 
-                    id="contactToggle"
-                    onClick={() => setPageProfile({ ...pageProfile, show_save_contact: !pageProfile.show_save_contact })}
-                    style={{ width: '44px', height: '24px', borderRadius: '12px', border: 'none', cursor: 'pointer', backgroundColor: pageProfile.show_save_contact ? '#059669' : '#d1d5db', position: 'relative', transition: 'background-color 0.2s ease' }}
-                  >
+                  <label style={{ fontSize: '14px', color: '#4b5563', fontWeight: '600', cursor: 'pointer' }} htmlFor="contactToggle">Show Contact Button</label>
+                  <button id="contactToggle" onClick={() => setPageProfile({ ...pageProfile, show_save_contact: !pageProfile.show_save_contact })} style={{ width: '44px', height: '24px', borderRadius: '12px', border: 'none', cursor: 'pointer', backgroundColor: pageProfile.show_save_contact ? '#059669' : '#d1d5db', position: 'relative', transition: 'background-color 0.2s ease' }}>
                     <div style={{ width: '20px', height: '20px', borderRadius: '50%', backgroundColor: 'white', position: 'absolute', top: '2px', left: pageProfile.show_save_contact ? '22px' : '2px', transition: 'left 0.2s cubic-bezier(0.4, 0, 0.2, 1)', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }} />
                   </button>
                 </div>
@@ -599,7 +680,6 @@ export default function PremiumDashboard() {
                   <label style={labelStyle}>Job Title</label>
                   <input type="text" value={pageProfile.job_title} placeholder="e.g. Sales Director" onChange={(e) => setPageProfile({...pageProfile, job_title: e.target.value})} style={inputStyle} />
                 </div>
-
                 <div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
                     <label style={{...labelStyle, marginBottom: 0}}>Company / Business</label>
@@ -607,7 +687,6 @@ export default function PremiumDashboard() {
                   </div>
                   <input disabled={!isPremium} type="text" value={pageProfile.company} placeholder="e.g. Acme Corp" onChange={(e) => setPageProfile({...pageProfile, company: e.target.value})} style={{...inputStyle, backgroundColor: !isPremium ? '#f3f4f6' : 'white', cursor: !isPremium ? 'not-allowed' : 'text'}} />
                 </div>
-
                 <div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
                     <label style={{...labelStyle, marginBottom: 0}}>Phone Number</label>
@@ -615,7 +694,6 @@ export default function PremiumDashboard() {
                   </div>
                   <input disabled={!isPremium} type="tel" value={pageProfile.phone_number} placeholder="+44 7700 900077" onChange={(e) => setPageProfile({...pageProfile, phone_number: e.target.value})} style={{...inputStyle, backgroundColor: !isPremium ? '#f3f4f6' : 'white', cursor: !isPremium ? 'not-allowed' : 'text'}} />
                 </div>
-                
                 <div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
                     <label style={{...labelStyle, marginBottom: 0}}>Display Email</label>
@@ -665,9 +743,10 @@ export default function PremiumDashboard() {
           </div>
         )}
 
+        {/* Existing Analytics Tab */}
         {activeTab === 'analytics' && (
           <div key="analytics-tab" style={{ display: 'flex', flexDirection: 'column', gap: '30px', width: '100%' }}>
-            
+            {/* ... (Analytics Content remains exactly as before) */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px' }}>
               <div style={{ backgroundColor: 'white', padding: '25px', borderRadius: '16px', border: '1px solid #e5e7eb', textAlign: 'center' }}>
                 <p style={{ color: '#6b7280', fontSize: '13px', fontWeight: '700', textTransform: 'uppercase', marginBottom: '10px' }}>Total Hardware Taps</p>
@@ -760,6 +839,7 @@ export default function PremiumDashboard() {
             )}
           </div>
         )}
+
       </main>
     </div>
   )
