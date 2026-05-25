@@ -56,6 +56,9 @@ export default function PremiumDashboard() {
   const router = useRouter()
   const [teamMembers, setTeamMembers] = useState([]);
 
+  const [companyId, setCompanyId] = useState(null)
+  const [companyName, setCompanyName] = useState('') // 🔥 Add this line!
+
   useEffect(() => {
     setIsMounted(true)
     fetchData()
