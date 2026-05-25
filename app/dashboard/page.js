@@ -41,6 +41,7 @@ export default function PremiumDashboard() {
 
   const [profile, setProfile] = useState(null)
   const [companyId, setCompanyId] = useState(null)
+  const [companyName, setCompanyName] = useState('')
   const [maxLinks, setMaxLinks] = useState(2)
   const [loading, setLoading] = useState(true)
   const [saveStatus, setSaveStatus] = useState({}) 
@@ -55,8 +56,6 @@ export default function PremiumDashboard() {
   const supabase = createClient()
   const router = useRouter()
   const [teamMembers, setTeamMembers] = useState([]);
-
-  const [companyName, setCompanyName] = useState('') // 🔥 Add this line!
 
   useEffect(() => {
     setIsMounted(true)
@@ -165,7 +164,11 @@ export default function PremiumDashboard() {
     }
     setChartData(days);
 
+    // FETCH B2B DATA (Company Name + Employees)
     if (customerData?.company_id) {
+      const { data: compData } = await supabase.from('companies').select('company_name').eq('id', customerData.company_id).single();
+      if (compData) setCompanyName(compData.company_name);
+
       const { data: teamData } = await supabase
         .from('customers')
         .select('id, display_name, display_email, job_title, profile_status')
@@ -424,6 +427,7 @@ export default function PremiumDashboard() {
             teamMembers={teamMembers} 
             supabase={supabase} 
             companyId={companyId} 
+            companyName={companyName}
             refreshData={fetchData} 
           />
         )}
