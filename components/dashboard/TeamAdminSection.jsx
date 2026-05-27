@@ -271,20 +271,35 @@ export default function TeamAdminSection({ teamMembers, supabase, companyId, com
         }
       `}</style>
 
-      {/* HEADER */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '-10px' }}>
-        <div style={{ width: '54px', height: '54px', borderRadius: '14px', backgroundColor: '#111', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', color: 'white', fontWeight: '800', boxShadow: '0 4px 6px rgba(0,0,0,0.1)', flexShrink: 0 }}>
-          {companyName ? companyName.charAt(0).toUpperCase() : '🏢'}
-        </div>
-        <div>
-          <h1 style={{ margin: '0 0 4px 0', fontSize: '24px', fontWeight: '800', color: '#111', letterSpacing: '-0.5px' }}>
-            {companyName || 'Enterprise'} Workspace
-          </h1>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-            <span style={{ fontSize: '11px', fontWeight: '800', color: '#059669', backgroundColor: '#d1fae5', padding: '4px 10px', borderRadius: '20px', letterSpacing: '0.5px', whiteSpace: 'nowrap' }}>✓ MANAGER ACCOUNT</span>
-            <span style={{ fontSize: '13px', color: '#6b7280', fontWeight: '500' }}>Organization ID: {companyId?.substring(0, 8) || 'Pending'}...</span>
+      {/* HEADER WITH DIRECTORY BUTTON */}
+      <div className="mobile-stack" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '-10px', gap: '15px', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+          <div style={{ width: '54px', height: '54px', borderRadius: '14px', backgroundColor: '#111', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', color: 'white', fontWeight: '800', boxShadow: '0 4px 6px rgba(0,0,0,0.1)', flexShrink: 0 }}>
+            {companyName ? companyName.charAt(0).toUpperCase() : '🏢'}
+          </div>
+          <div>
+            <h1 style={{ margin: '0 0 4px 0', fontSize: '24px', fontWeight: '800', color: '#111', letterSpacing: '-0.5px' }}>
+              {companyName || 'Enterprise'} Workspace
+            </h1>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+              <span style={{ fontSize: '11px', fontWeight: '800', color: '#059669', backgroundColor: '#d1fae5', padding: '4px 10px', borderRadius: '20px', letterSpacing: '0.5px', whiteSpace: 'nowrap' }}>✓ MANAGER ACCOUNT</span>
+              <span style={{ fontSize: '13px', color: '#6b7280', fontWeight: '500' }}>Organization ID: {companyId?.substring(0, 8) || 'Pending'}...</span>
+            </div>
           </div>
         </div>
+
+        {/* 🔥 THE NEW DIRECTORY BUTTON */}
+        {companyId && (
+          <a 
+            href={`/team/${companyId}`} 
+            target="_blank" 
+            rel="noreferrer"
+            style={{ padding: '10px 18px', backgroundColor: 'white', border: '1px solid #d1d5db', borderRadius: '8px', color: '#111', fontSize: '13px', fontWeight: '700', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', transition: 'all 0.2s', cursor: 'pointer', whiteSpace: 'nowrap' }}
+          >
+            <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+            View Live Directory ↗
+          </a>
+        )}
       </div>
 
       {/* METRICS */}
