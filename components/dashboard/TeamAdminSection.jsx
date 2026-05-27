@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 
 export default function TeamAdminSection({ teamMembers, supabase, companyId, companyName, stickers, refreshData }) {
   // Add Employee State
@@ -13,7 +13,7 @@ export default function TeamAdminSection({ teamMembers, supabase, companyId, com
   const [assignModalEmployee, setAssignModalEmployee] = useState(null);
   const [selectedTagId, setSelectedTagId] = useState('');
 
-  // 🔥 Edit Single Profile State (Now includes ALL My Page fields)
+  // Edit Single Profile State
   const [editingEmployee, setEditingEmployee] = useState(null);
   const [editForm, setEditForm] = useState({ 
     display_name: '', username: '', profile_status: 'live', bio: '', job_title: '', 
@@ -52,13 +52,8 @@ export default function TeamAdminSection({ teamMembers, supabase, companyId, com
       };
 
       const { error } = await supabase.from('customers').insert([{
-        id: generateUUID(),
-        display_name: newEmpName,
-        display_email: newEmpEmail,
-        job_title: newEmpTitle,
-        company_id: companyId,
-        username: newUsername,
-        profile_status: 'live' 
+        id: generateUUID(), display_name: newEmpName, display_email: newEmpEmail,
+        job_title: newEmpTitle, company_id: companyId, username: newUsername, profile_status: 'live' 
       }]);
 
       if (error) {
@@ -66,9 +61,7 @@ export default function TeamAdminSection({ teamMembers, supabase, companyId, com
         throw error;
       }
 
-      setShowAddModal(false);
-      setNewEmpName(''); setNewEmpEmail(''); setNewEmpTitle('');
-      refreshData(); 
+      setShowAddModal(false); setNewEmpName(''); setNewEmpEmail(''); setNewEmpTitle(''); refreshData(); 
     } catch (error) {
       alert("Database Error: " + error.message);
     } finally {
@@ -83,8 +76,7 @@ export default function TeamAdminSection({ teamMembers, supabase, companyId, com
     try {
       const profileUrl = `https://linksupply.co.uk/u/${assignModalEmployee.username}`;
       const { error } = await supabase.from('nfc_stickers').update({ 
-          target_url: profileUrl, 
-          tag_name: assignModalEmployee.name 
+          target_url: profileUrl, tag_name: assignModalEmployee.name 
         }).eq('id', selectedTagId);
       if (error) throw error;
       setAssignModalEmployee(null); setSelectedTagId(''); refreshData();
@@ -100,17 +92,10 @@ export default function TeamAdminSection({ teamMembers, supabase, companyId, com
     const { data } = await supabase.from('customers').select('display_name, username, profile_status, bio, job_title, company, phone_number, display_email, theme_color, profile_picture_url, show_save_contact').eq('id', member.id).single();
     if (data) {
       setEditForm({
-        display_name: data.display_name || member.name || '',
-        username: data.username || '',
-        profile_status: data.profile_status || 'live',
-        bio: data.bio || '',
-        job_title: data.job_title || member.title || '',
-        company: data.company || '',
-        phone_number: data.phone_number || '',
-        display_email: data.display_email || member.email || '',
-        theme_color: data.theme_color || '#111111',
-        profile_picture_url: data.profile_picture_url || '',
-        show_save_contact: data.show_save_contact !== false
+        display_name: data.display_name || member.name || '', username: data.username || '', profile_status: data.profile_status || 'live',
+        bio: data.bio || '', job_title: data.job_title || member.title || '', company: data.company || '',
+        phone_number: data.phone_number || '', display_email: data.display_email || member.email || '', theme_color: data.theme_color || '#111111',
+        profile_picture_url: data.profile_picture_url || '', show_save_contact: data.show_save_contact !== false
       });
     }
     const { data: links } = await supabase.from('page_links').select('*').eq('owner_id', member.id).order('sort_order', { ascending: true });
@@ -123,17 +108,9 @@ export default function TeamAdminSection({ teamMembers, supabase, companyId, com
     try {
       let cleanUsername = editForm.username.toLowerCase().replace(/[^a-z0-9_]/g, '');
       const { error } = await supabase.from('customers').update({
-        display_name: editForm.display_name,
-        username: cleanUsername,
-        profile_status: editForm.profile_status,
-        bio: editForm.bio, 
-        job_title: editForm.job_title, 
-        company: editForm.company,
-        phone_number: editForm.phone_number,
-        display_email: editForm.display_email,
-        theme_color: editForm.theme_color,
-        profile_picture_url: editForm.profile_picture_url, 
-        show_save_contact: editForm.show_save_contact
+        display_name: editForm.display_name, username: cleanUsername, profile_status: editForm.profile_status,
+        bio: editForm.bio, job_title: editForm.job_title, company: editForm.company, phone_number: editForm.phone_number,
+        display_email: editForm.display_email, theme_color: editForm.theme_color, profile_picture_url: editForm.profile_picture_url, show_save_contact: editForm.show_save_contact
       }).eq('id', editingEmployee.id);
       if (error) throw error;
       setEditingEmployee(null); refreshData(); 
@@ -147,11 +124,23 @@ export default function TeamAdminSection({ teamMembers, supabase, companyId, com
   const handleAddEmployeeLink = async (e) => {
     e.preventDefault();
     if (!newLinkTitle || !newLinkUrl || !editingEmployee) return;
+
+    let cleanUrl;
+    try {
+      const urlObj = new URL(newLinkUrl);
+      cleanUrl = `${urlObj.origin}${urlObj.pathname}`;
+    } catch {
+      cleanUrl = newLinkUrl;
+    }
+    
     const { data, error } = await supabase.from('page_links').insert([{ 
-      owner_id: editingEmployee.id, title: newLinkTitle, url: newLinkUrl, sort_order: employeeLinks.length 
+      owner_id: editingEmployee.id, title: newLinkTitle, url: cleanUrl, sort_order: employeeLinks.length 
     }]).select();
+
     if (!error && data) {
       setEmployeeLinks([...employeeLinks, data[0]]); setNewLinkTitle(''); setNewLinkUrl('');
+    } else {
+      alert("Error adding link: " + error?.message);
     }
   };
 
@@ -176,23 +165,41 @@ export default function TeamAdminSection({ teamMembers, supabase, companyId, com
     setShowBulkModal(true);
   };
 
+  // 🔥 FIXED: Bulk Action Execution with URL Sanitization and Error Catching
   const handleExecuteBulkAction = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
     try {
       if (bulkActionType === 'theme') {
-        await supabase.from('customers').update({ theme_color: bulkForm.theme_color }).in('id', selectedIds);
+        const { error } = await supabase.from('customers').update({ theme_color: bulkForm.theme_color }).in('id', selectedIds);
+        if (error) throw error;
       } else if (bulkActionType === 'logo') {
-        await supabase.from('customers').update({ profile_picture_url: bulkForm.profile_picture_url }).in('id', selectedIds);
+        const { error } = await supabase.from('customers').update({ profile_picture_url: bulkForm.profile_picture_url }).in('id', selectedIds);
+        if (error) throw error;
       } else if (bulkActionType === 'contact') {
-        await supabase.from('customers').update({ show_save_contact: bulkForm.show_save_contact }).in('id', selectedIds);
+        const { error } = await supabase.from('customers').update({ show_save_contact: bulkForm.show_save_contact }).in('id', selectedIds);
+        if (error) throw error;
       } else if (bulkActionType === 'link') {
-        const linksToInsert = selectedIds.map(id => ({ owner_id: id, title: bulkForm.link_title, url: bulkForm.link_url, sort_order: 99 }));
-        await supabase.from('page_links').insert(linksToInsert);
+        
+        let cleanUrl;
+        try {
+          const urlObj = new URL(bulkForm.link_url);
+          cleanUrl = `${urlObj.origin}${urlObj.pathname}`;
+        } catch {
+          cleanUrl = bulkForm.link_url;
+        }
+
+        const linksToInsert = selectedIds.map(id => ({ 
+          owner_id: id, 
+          title: bulkForm.link_title, 
+          url: cleanUrl, 
+          sort_order: 99 // Put global links at the bottom
+        }));
+        
+        const { error } = await supabase.from('page_links').insert(linksToInsert);
+        if (error) throw error;
       }
-      setShowBulkModal(false);
-      setSelectedIds([]);
-      refreshData();
+      setShowBulkModal(false); setSelectedIds([]); refreshData();
       alert("Bulk update successful! ✓");
     } catch (error) {
       alert("Error executing bulk action: " + error.message);
@@ -207,26 +214,40 @@ export default function TeamAdminSection({ teamMembers, supabase, companyId, com
   const availableTags = stickers || [];
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '30px', width: '100%' }}>
+    <div className="admin-wrapper" style={{ display: 'flex', flexDirection: 'column', gap: '30px', width: '100%' }}>
       
+      {/* 🔥 STRICT MOBILE CSS FIXES INJECTED HERE */}
+      <style>{`
+        .admin-wrapper { max-width: 100vw; overflow-x: hidden; box-sizing: border-box; }
+        .admin-table { width: 100%; border-collapse: separate; border-spacing: 0; text-align: left; }
+        .admin-table th, .admin-table td { padding: 16px 20px; border-bottom: 1px solid #e5e7eb; vertical-align: middle; color: #111; font-size: 14px; }
+        .admin-table th { background-color: #f9fafb; color: #6b7280; font-size: 12px; text-transform: uppercase; font-weight: 700; border-top: none; }
+        .admin-table tr:last-child td { border-bottom: none; }
+        .admin-table-wrap { overflow-x: auto; width: 100%; border-radius: 12px; border: 1px solid #e5e7eb; background: white; }
+        @media (max-width: 768px) {
+          .mobile-stack { flex-direction: column !important; align-items: flex-start !important; }
+          .mobile-stack > div, .mobile-stack > button { width: 100% !important; margin-top: 10px; }
+        }
+      `}</style>
+
       {/* HEADER */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '-10px' }}>
-        <div style={{ width: '54px', height: '54px', borderRadius: '14px', backgroundColor: '#111', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', color: 'white', fontWeight: '800', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
+        <div style={{ width: '54px', height: '54px', borderRadius: '14px', backgroundColor: '#111', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', color: 'white', fontWeight: '800', boxShadow: '0 4px 6px rgba(0,0,0,0.1)', flexShrink: 0 }}>
           {companyName ? companyName.charAt(0).toUpperCase() : '🏢'}
         </div>
         <div>
           <h1 style={{ margin: '0 0 4px 0', fontSize: '24px', fontWeight: '800', color: '#111', letterSpacing: '-0.5px' }}>
             {companyName || 'Enterprise'} Workspace
           </h1>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span style={{ fontSize: '11px', fontWeight: '800', color: '#059669', backgroundColor: '#d1fae5', padding: '4px 10px', borderRadius: '20px', letterSpacing: '0.5px' }}>✓ MANAGER ACCOUNT</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+            <span style={{ fontSize: '11px', fontWeight: '800', color: '#059669', backgroundColor: '#d1fae5', padding: '4px 10px', borderRadius: '20px', letterSpacing: '0.5px', whiteSpace: 'nowrap' }}>✓ MANAGER ACCOUNT</span>
             <span style={{ fontSize: '13px', color: '#6b7280', fontWeight: '500' }}>Organization ID: {companyId?.substring(0, 8) || 'Pending'}...</span>
           </div>
         </div>
       </div>
 
       {/* METRICS */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '20px' }}>
         <div style={{ backgroundColor: 'white', padding: '25px', borderRadius: '16px', border: '1px solid #e5e7eb' }}>
           <p style={{ color: '#6b7280', fontSize: '13px', fontWeight: '700', textTransform: 'uppercase', marginBottom: '10px' }}>Total Employees</p>
           <p style={{ fontSize: '32px', fontWeight: '800', color: '#111', margin: 0 }}>{teamMembers.length}</p>
@@ -241,20 +262,20 @@ export default function TeamAdminSection({ teamMembers, supabase, companyId, com
 
       {/* BULK ACTIONS MENU */}
       {selectedIds.length > 0 && (
-        <div style={{ backgroundColor: '#e0e7ff', border: '1px solid #c7d2fe', padding: '15px 20px', borderRadius: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', animation: 'fadeIn 0.2s' }}>
+        <div className="mobile-stack" style={{ backgroundColor: '#e0e7ff', border: '1px solid #c7d2fe', padding: '15px 20px', borderRadius: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', animation: 'fadeIn 0.2s' }}>
           <div style={{ fontWeight: '700', color: '#3730a3' }}>{selectedIds.length} Employee(s) Selected</div>
           <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-            <button onClick={() => openBulkModal('theme')} style={{ padding: '8px 12px', backgroundColor: 'white', border: '1px solid #c7d2fe', borderRadius: '6px', fontSize: '13px', fontWeight: '600', color: '#3730a3', cursor: 'pointer' }}>Apply Theme Color</button>
-            <button onClick={() => openBulkModal('logo')} style={{ padding: '8px 12px', backgroundColor: 'white', border: '1px solid #c7d2fe', borderRadius: '6px', fontSize: '13px', fontWeight: '600', color: '#3730a3', cursor: 'pointer' }}>Set Default Logo</button>
-            <button onClick={() => openBulkModal('contact')} style={{ padding: '8px 12px', backgroundColor: 'white', border: '1px solid #c7d2fe', borderRadius: '6px', fontSize: '13px', fontWeight: '600', color: '#3730a3', cursor: 'pointer' }}>Toggle Save Contact</button>
-            <button onClick={() => openBulkModal('link')} style={{ padding: '8px 12px', backgroundColor: '#3730a3', border: 'none', borderRadius: '6px', fontSize: '13px', fontWeight: '600', color: 'white', cursor: 'pointer' }}>+ Add Global Link</button>
+            <button onClick={() => openBulkModal('theme')} style={{ padding: '8px 12px', backgroundColor: 'white', border: '1px solid #c7d2fe', borderRadius: '6px', fontSize: '13px', fontWeight: '600', color: '#3730a3', cursor: 'pointer', flex: 1 }}>Apply Theme</button>
+            <button onClick={() => openBulkModal('logo')} style={{ padding: '8px 12px', backgroundColor: 'white', border: '1px solid #c7d2fe', borderRadius: '6px', fontSize: '13px', fontWeight: '600', color: '#3730a3', cursor: 'pointer', flex: 1 }}>Set Logo</button>
+            <button onClick={() => openBulkModal('contact')} style={{ padding: '8px 12px', backgroundColor: 'white', border: '1px solid #c7d2fe', borderRadius: '6px', fontSize: '13px', fontWeight: '600', color: '#3730a3', cursor: 'pointer', flex: 1 }}>Toggle Contact</button>
+            <button onClick={() => openBulkModal('link')} style={{ padding: '8px 12px', backgroundColor: '#3730a3', border: 'none', borderRadius: '6px', fontSize: '13px', fontWeight: '600', color: 'white', cursor: 'pointer', flex: 1 }}>+ Add Link</button>
           </div>
         </div>
       )}
 
-      {/* DIRECTORY TABLE */}
-      <div style={{ backgroundColor: 'white', borderRadius: '16px', border: '1px solid #e5e7eb', overflow: 'hidden', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' }}>
-        <div style={{ padding: '25px 30px', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '15px' }}>
+      {/* DIRECTORY TABLE WITH NEW CSS CLASSES */}
+      <div style={{ backgroundColor: 'white', borderRadius: '16px', border: 'none', overflow: 'hidden', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' }}>
+        <div className="mobile-stack" style={{ padding: '25px 30px', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '15px' }}>
           <div>
             <h2 style={{ fontSize: '20px', fontWeight: '800', color: '#111', margin: '0 0 5px 0' }}>Employee Directory</h2>
             <p style={{ color: '#6b7280', fontSize: '14px', margin: 0 }}>Select checkboxes to apply company-wide changes.</p>
@@ -262,8 +283,8 @@ export default function TeamAdminSection({ teamMembers, supabase, companyId, com
           <button onClick={() => setShowAddModal(true)} style={{ padding: '10px 20px', backgroundColor: '#111', color: 'white', border: 'none', borderRadius: '8px', fontWeight: '700', cursor: 'pointer', fontSize: '14px' }}>+ Add Employee</button>
         </div>
 
-        <div className="b2b-table-wrapper">
-          <table className="b2b-table">
+        <div className="admin-table-wrap">
+          <table className="admin-table">
             <thead>
               <tr>
                 <th style={{ width: '40px', textAlign: 'center' }}>
@@ -287,21 +308,21 @@ export default function TeamAdminSection({ teamMembers, supabase, companyId, com
                   </td>
                   <td>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                      <div style={{ width: '36px', height: '36px', borderRadius: '50%', backgroundColor: '#f3f4f6', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '700', color: '#4b5563', fontSize: '14px' }}>
+                      <div style={{ width: '36px', height: '36px', borderRadius: '50%', backgroundColor: '#f3f4f6', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '700', color: '#4b5563', fontSize: '14px', flexShrink: 0 }}>
                         {member.name.charAt(0)}
                       </div>
-                      <div>
-                        <div style={{ fontWeight: '600', color: '#111' }}>{member.name}</div>
-                        <div style={{ fontSize: '13px', color: '#6b7280' }}>{member.email}</div>
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ fontWeight: '600', color: '#111', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{member.name}</div>
+                        <div style={{ fontSize: '13px', color: '#6b7280', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{member.email}</div>
                       </div>
                     </div>
                   </td>
-                  <td>{member.title}</td>
+                  <td style={{ whiteSpace: 'nowrap' }}>{member.title}</td>
                   <td>
                     {member.tag !== 'Unassigned' ? (
-                      <span style={{ fontWeight: '600', color: '#4f46e5', backgroundColor: '#e0e7ff', padding: '4px 10px', borderRadius: '20px', fontSize: '13px' }}>{member.tag}</span>
+                      <span style={{ fontWeight: '600', color: '#4f46e5', backgroundColor: '#e0e7ff', padding: '4px 10px', borderRadius: '20px', fontSize: '13px', whiteSpace: 'nowrap' }}>{member.tag}</span>
                     ) : (
-                      <button onClick={() => setAssignModalEmployee(member)} style={{ fontWeight: '700', color: '#f59e0b', backgroundColor: '#fef3c7', border: '1px solid #fde68a', padding: '4px 10px', borderRadius: '20px', fontSize: '12px', cursor: 'pointer' }}>+ Assign Tag</button>
+                      <button onClick={() => setAssignModalEmployee(member)} style={{ fontWeight: '700', color: '#f59e0b', backgroundColor: '#fef3c7', border: '1px solid #fde68a', padding: '4px 10px', borderRadius: '20px', fontSize: '12px', cursor: 'pointer', whiteSpace: 'nowrap' }}>+ Assign Tag</button>
                     )}
                   </td>
                   <td style={{ textAlign: 'right', display: 'flex', gap: '10px', justifyContent: 'flex-end', alignItems: 'center' }}>
@@ -364,7 +385,7 @@ export default function TeamAdminSection({ teamMembers, supabase, companyId, com
       {editingEmployee && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.6)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, padding: '20px' }}>
           <div style={{ backgroundColor: 'white', padding: '30px', borderRadius: '20px', width: '100%', maxWidth: '800px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', maxHeight: '90vh', overflowY: 'auto' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '25px', borderBottom: '1px solid #e5e7eb', paddingBottom: '15px' }}>
+            <div className="mobile-stack" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '25px', borderBottom: '1px solid #e5e7eb', paddingBottom: '15px' }}>
               <div>
                 <h2 style={{ margin: '0 0 5px 0', fontSize: '22px', fontWeight: '800', color: '#111' }}>Edit Profile</h2>
                 <p style={{ margin: 0, fontSize: '14px', color: '#6b7280' }}>Managing details for {editingEmployee.name}</p>
@@ -372,8 +393,7 @@ export default function TeamAdminSection({ teamMembers, supabase, companyId, com
               <button onClick={() => setEditingEmployee(null)} style={{ background: '#f3f4f6', border: 'none', fontSize: '20px', width: '40px', height: '40px', borderRadius: '50%', cursor: 'pointer', color: '#4b5563', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>&times;</button>
             </div>
             
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '30px' }}>
-              
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '30px' }}>
               {/* Left Column: Profile Settings */}
               <form onSubmit={handleSaveEdit} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
                 <div style={{ backgroundColor: '#f9fafb', padding: '15px', borderRadius: '12px', border: '1px solid #e5e7eb' }}>
