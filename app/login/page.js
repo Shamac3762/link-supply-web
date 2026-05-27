@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react'
 import { createClient } from '../../utils/supabase/client'
 import { useRouter } from 'next/navigation'
-import Link from 'next/link' // 🔥 Added Link import for the logo
+import Link from 'next/link' 
 
 export default function PremiumLoginPage() {
   const [isSignUp, setIsSignUp] = useState(false)
@@ -43,6 +43,7 @@ export default function PremiumLoginPage() {
     const redirectUrl = claimId ? `/dashboard?claim=${claimId}` : '/dashboard'
 
     if (isSignUp) {
+      // 1. Create secure Auth vault login
       const { data, error } = await supabase.auth.signUp({ 
         email, 
         password,
@@ -56,12 +57,30 @@ export default function PremiumLoginPage() {
       } else {
         setMessage('Account created! Securing your vault...')
         
-        // Log them in
+        // 2. Log them in automatically
         const { error: signInError } = await supabase.auth.signInWithPassword({ email, password })
         
         if (!signInError) {
-          await supabase.from('customers').upsert({ id: data.user.id, remember_me: rememberMe });
-          // 🔥 NEW: Route fresh sign-ups to the onboarding screen
+          // 🔥 THE FIX: Generate a clean base username and create a COMPLETE customer profile
+          const cleanName = `${firstName}${lastName}`.replace(/[^a-zA-Z0-9]/g, '').toLowerCase()
+          const randomStr = Math.random().toString(36).substring(2, 6)
+          const baseUsername = `${cleanName}${randomStr}`
+
+          const { error: profileError } = await supabase.from('customers').upsert({ 
+            id: data.user.id, 
+            display_email: email,
+            display_name: `${firstName} ${lastName}`.trim(),
+            username: baseUsername,
+            tier: 'free', // Everyone starts free until Stripe upgrades them
+            profile_status: 'coming_soon',
+            remember_me: rememberMe 
+          });
+
+          if (profileError) {
+            console.error("Profile Creation Error:", profileError)
+            // We won't block the user from proceeding, but we log the error for debugging
+          }
+
           const onboardingUrl = claimId ? `/onboarding?claim=${claimId}` : '/onboarding';
           router.push(onboardingUrl);
         } else {
@@ -69,7 +88,7 @@ export default function PremiumLoginPage() {
         }
       }
     } else {
-      // Logic for standard 
+      // Logic for standard Log In
       const { data, error } = await supabase.auth.signInWithPassword({ email, password })
       if (error) {
         setMessage("Invalid email or password.")
@@ -92,18 +111,12 @@ export default function PremiumLoginPage() {
       
       <div style={{ backgroundColor: 'white', padding: '40px', borderRadius: '16px', boxShadow: '0 10px 25px rgba(0,0,0,0.05)', width: '100%', maxWidth: '400px', textAlign: 'center' }}>
         
-        {/* 🔥 NEW BRANDING: Centered Logo */}
         <div style={{ textAlign: 'center', marginBottom: '30px' }}>
           <Link href="/" style={{ textDecoration: 'none', display: 'inline-block' }}>
             <h1 style={{ 
               fontFamily: '"Myriad Pro", "Segoe UI", Roboto, sans-serif', 
-              fontSize: '28px', 
-              color: '#111', 
-              margin: 0, 
-              letterSpacing: '-0.5px', 
-              display: 'flex', 
-              alignItems: 'baseline',
-              justifyContent: 'center'
+              fontSize: '28px', color: '#111', margin: 0, letterSpacing: '-0.5px', 
+              display: 'flex', alignItems: 'baseline', justifyContent: 'center'
             }}>
               <span style={{ fontWeight: '700' }}>Link</span>
               <span style={{ fontWeight: '400' }}>Supply.</span>
@@ -135,32 +148,16 @@ export default function PremiumLoginPage() {
             </div>
           )}
 
-          {/* LEGAL UI: Terms & Remember Me Blocks */}
           <div style={{ textAlign: 'left', marginBottom: '20px' }}>
             
-            {/* Remember Me Toggle */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: isSignUp ? '10px' : '0' }}>
-              <input 
-                type="checkbox" 
-                id="rememberMe" 
-                checked={rememberMe}
-                onChange={(e) => setRememberMe(e.target.checked)}
-                style={{ cursor: 'pointer', minWidth: '16px', minHeight: '16px' }}
-              />
-              <label htmlFor="rememberMe" style={{ fontSize: '13px', color: '#4b5563', fontWeight: '500', cursor: 'pointer' }}>
-                Keep me signed in
-              </label>
+              <input type="checkbox" id="rememberMe" checked={rememberMe} onChange={(e) => setRememberMe(e.target.checked)} style={{ cursor: 'pointer', minWidth: '16px', minHeight: '16px' }} />
+              <label htmlFor="rememberMe" style={{ fontSize: '13px', color: '#4b5563', fontWeight: '500', cursor: 'pointer' }}>Keep me signed in</label>
             </div>
 
             {isSignUp ? (
               <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', marginTop: '10px' }}>
-                <input 
-                  type="checkbox" 
-                  id="terms" 
-                  checked={agreedToTerms}
-                  onChange={(e) => setAgreedToTerms(e.target.checked)}
-                  style={{ marginTop: '3px', cursor: 'pointer', minWidth: '16px', minHeight: '16px' }}
-                />
+                <input type="checkbox" id="terms" checked={agreedToTerms} onChange={(e) => setAgreedToTerms(e.target.checked)} style={{ marginTop: '3px', cursor: 'pointer', minWidth: '16px', minHeight: '16px' }} />
                 <label htmlFor="terms" style={{ fontSize: '13px', color: '#6b7280', lineHeight: '1.4' }}>
                   I agree to the Link Supply <a href="/terms" target="_blank" style={{ color: '#111', textDecoration: 'underline', fontWeight: '500' }}>Terms & Conditions</a> and <a href="/privacy" target="_blank" style={{ color: '#111', textDecoration: 'underline', fontWeight: '500' }}>Privacy Policy</a>.
                 </label>
@@ -186,16 +183,7 @@ export default function PremiumLoginPage() {
         <div style={{ marginTop: '30px', borderTop: '1px solid #e5e7eb', paddingTop: '20px' }}>
           <p style={{ color: '#6b7280', fontSize: '14px' }}>
             {isSignUp ? 'Already have an account?' : "Don't have an account?"}
-            <button 
-              type="button"
-              onClick={() => { 
-                setIsSignUp(!isSignUp); 
-                setMessage(''); 
-                setAgreedToTerms(false);
-                setRememberMe(false); // Reset on flip
-              }} 
-              style={{ background: 'none', border: 'none', color: '#4f46e5', fontWeight: '700', cursor: 'pointer', marginLeft: '5px', fontSize: '14px' }}
-            >
+            <button type="button" onClick={() => { setIsSignUp(!isSignUp); setMessage(''); setAgreedToTerms(false); setRememberMe(false); }} style={{ background: 'none', border: 'none', color: '#4f46e5', fontWeight: '700', cursor: 'pointer', marginLeft: '5px', fontSize: '14px' }}>
               {isSignUp ? 'Log in here' : 'Sign up here'}
             </button>
           </p>
