@@ -1,13 +1,17 @@
 'use client'
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'; // Adjust this import to match your standard Supabase setup
+import { createClient } from '@supabase/supabase-js';
 import Head from 'next/head';
+
+// Initialize standard Supabase client using your existing environment variables
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+const supabase = createClient(supabaseUrl, supabaseKey);
 
 export default function CompanyDirectory() {
   const params = useParams();
-  const companyId = params.id;
-  const supabase = createClientComponentClient(); // Adjust if you use a different initialized client
+  const companyId = params?.id;
 
   const [companyName, setCompanyName] = useState('Loading...');
   const [teamMembers, setTeamMembers] = useState([]);
@@ -171,7 +175,6 @@ export default function CompanyDirectory() {
             <p style={{ color: '#71717a', fontSize: '14px', margin: '0 0 25px 0' }}>{companyName} Directory</p>
             
             <div style={{ backgroundColor: '#fff', padding: '15px', borderRadius: '20px', border: '2px solid #f4f4f5', display: 'inline-block', marginBottom: '20px' }}>
-              {/* Replace this placeholder image with your actual QR code component (e.g., react-qr-code) using window.location.href as the value */}
               <img src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${typeof window !== 'undefined' ? window.location.href : ''}`} alt="QR Code" style={{ width: '100%', height: 'auto', display: 'block', borderRadius: '10px' }} />
             </div>
             
