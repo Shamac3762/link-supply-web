@@ -14,7 +14,11 @@ export default function PricingSection() {
   const totalMonthly = (teamSize * pricePerUser).toFixed(2);
 
   const cardStyle = { backgroundColor: 'white', padding: '40px', borderRadius: '24px', border: '1px solid #e5e7eb', display: 'flex', flexDirection: 'column', position: 'relative', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' };
-  const checkStyle = { color: '#059669', fontWeight: 'bold', marginRight: '10px' };
+  
+  // Clean, aligned list styles
+  const listItemStyle = { display: 'flex', alignItems: 'flex-start', gap: '10px', fontSize: '14px', lineHeight: '1.4' };
+  const checkIcon = <span style={{ color: '#059669', fontWeight: '800', flexShrink: 0, marginTop: '2px' }}>✓</span>;
+  const crossIcon = <span style={{ color: '#9ca3af', fontWeight: '800', flexShrink: 0, marginTop: '2px' }}>✕</span>;
 
   return (
     <div style={{ width: '100%', animation: 'fadeIn 0.3s ease-in-out' }}>
@@ -35,11 +39,14 @@ export default function PricingSection() {
             <h3 style={{ fontSize: '20px', fontWeight: '700', color: '#111', margin: '0 0 10px 0' }}>Basic</h3>
             <p style={{ color: '#6b7280', margin: '0 0 20px 0', fontSize: '14px', minHeight: '40px' }}>Essential networking for individuals.</p>
             <div style={{ fontSize: '42px', fontWeight: '800', color: '#111', marginBottom: '30px' }}>£0<span style={{ fontSize: '14px', color: '#6b7280', fontWeight: '500' }}>/mo</span></div>
-            <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 40px 0', display: 'flex', flexDirection: 'column', gap: '15px', color: '#4b5563', fontSize: '14px' }}>
-              <li><span style={checkStyle}>✓</span> 1 Digital Business Card</li>
-              <li><span style={checkStyle}>✓</span> Up to 2 Social/Web Links</li>
-              <li><span style={checkStyle}>✓</span> Standard Dark & Light Themes</li>
-              <li><span style={checkStyle}>✓</span> 24-Hour Tap Analytics</li>
+            <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 40px 0', display: 'flex', flexDirection: 'column', gap: '15px', color: '#4b5563' }}>
+              <li style={listItemStyle}>{checkIcon} <span>1 Digital Business Card</span></li>
+              <li style={listItemStyle}>{checkIcon} <span>Up to 2 Social/Web Links</span></li>
+              <li style={listItemStyle}>{checkIcon} <span>Standard Dark & Light Themes</span></li>
+              <li style={listItemStyle}>{checkIcon} <span>24-Hour Tap Analytics</span></li>
+              <li style={{...listItemStyle, color: '#9ca3af', textDecoration: 'line-through'}}>{crossIcon} <span>Custom Theme Branding</span></li>
+              <li style={{...listItemStyle, color: '#9ca3af', textDecoration: 'line-through'}}>{crossIcon} <span>Lead Generation (Save Contact)</span></li>
+              <li style={{...listItemStyle, color: '#9ca3af', textDecoration: 'line-through'}}>{crossIcon} <span>Remove "Link Supply" Branding</span></li>
             </ul>
             <button style={{ marginTop: 'auto', padding: '12px', width: '100%', borderRadius: '10px', border: '1px solid #d1d5db', backgroundColor: '#f9fafb', color: '#4b5563', fontWeight: '700', cursor: 'pointer', fontSize: '14px' }}>Current Plan</button>
           </div>
@@ -50,11 +57,13 @@ export default function PricingSection() {
             <h3 style={{ fontSize: '20px', fontWeight: '700', color: '#111', margin: '0 0 10px 0' }}>Pro</h3>
             <p style={{ color: '#6b7280', margin: '0 0 20px 0', fontSize: '14px', minHeight: '40px' }}>Powerful tools for creators and founders.</p>
             <div style={{ fontSize: '42px', fontWeight: '800', color: '#111', marginBottom: '30px' }}>£4.99<span style={{ fontSize: '14px', color: '#6b7280', fontWeight: '500' }}>/mo</span></div>
-            <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 40px 0', display: 'flex', flexDirection: 'column', gap: '15px', color: '#4b5563', fontSize: '14px' }}>
-              <li><span style={checkStyle}>✓</span> Unlimited Links & Destinations</li>
-              <li><span style={checkStyle}>✓</span> Fully Custom Theme Branding</li>
-              <li><span style={checkStyle}>✓</span> Lead Generation (Save Contact)</li>
-              <li><span style={checkStyle}>✓</span> Advanced Engagement Insights</li>
+            <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 40px 0', display: 'flex', flexDirection: 'column', gap: '15px', color: '#4b5563' }}>
+              <li style={listItemStyle}>{checkIcon} <span>Unlimited Links & Destinations</span></li>
+              <li style={listItemStyle}>{checkIcon} <span>Fully Custom Theme Branding</span></li>
+              <li style={listItemStyle}>{checkIcon} <span>Lead Generation (Save Contact)</span></li>
+              <li style={listItemStyle}>{checkIcon} <span>Advanced Lifetime Analytics</span></li>
+              <li style={listItemStyle}>{checkIcon} <span>Custom QR Code Generation</span></li>
+              <li style={listItemStyle}>{checkIcon} <span>Remove "Link Supply" Branding</span></li>
             </ul>
             <button style={{ marginTop: 'auto', padding: '12px', width: '100%', borderRadius: '10px', border: 'none', backgroundColor: '#4f46e5', color: 'white', fontWeight: '700', cursor: 'pointer', fontSize: '14px', transition: 'background-color 0.2s' }} onMouseOver={(e) => e.target.style.backgroundColor = '#4338ca'} onMouseOut={(e) => e.target.style.backgroundColor = '#4f46e5'}>Upgrade to Pro</button>
           </div>
@@ -83,11 +92,13 @@ export default function PricingSection() {
 
             <div style={{ fontSize: '42px', fontWeight: '800', color: '#065f46', marginBottom: '30px' }}>£{totalMonthly}<span style={{ fontSize: '14px', color: '#047857', fontWeight: '500' }}>/mo</span></div>
             
-            <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 40px 0', display: 'flex', flexDirection: 'column', gap: '15px', color: '#047857', fontSize: '14px' }}>
-              <li><span style={checkStyle}>✓</span> Centralized Manager Dashboard</li>
-              <li><span style={checkStyle}>✓</span> Instant Hardware Reassignment</li>
-              <li><span style={checkStyle}>✓</span> Enterprise-Grade GDPR Security</li>
-              <li><span style={checkStyle}>✓</span> <strong>Plus all Pro features per employee</strong></li>
+            <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 40px 0', display: 'flex', flexDirection: 'column', gap: '15px', color: '#047857' }}>
+              <li style={listItemStyle}>{checkIcon} <span>Centralized Manager Dashboard</span></li>
+              <li style={listItemStyle}>{checkIcon} <span>Bulk Profile Management</span></li>
+              <li style={listItemStyle}>{checkIcon} <span>Instant Hardware Reassignment</span></li>
+              <li style={listItemStyle}>{checkIcon} <span>Enterprise-Grade GDPR Security</span></li>
+              <li style={listItemStyle}>{checkIcon} <span>Priority Business Support</span></li>
+              <li style={listItemStyle}>{checkIcon} <strong>Plus all Pro features per employee</strong></li>
             </ul>
             <button style={{ marginTop: 'auto', padding: '12px', width: '100%', borderRadius: '10px', border: 'none', backgroundColor: '#10b981', color: 'white', fontWeight: '700', cursor: 'pointer', fontSize: '14px', boxShadow: '0 4px 6px rgba(16, 185, 129, 0.2)', transition: 'background-color 0.2s' }} onMouseOver={(e) => e.target.style.backgroundColor = '#059669'} onMouseOut={(e) => e.target.style.backgroundColor = '#10b981'}>Contact Sales</button>
           </div>
