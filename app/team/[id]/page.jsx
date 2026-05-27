@@ -20,18 +20,25 @@ export default function CompanyDirectory() {
 
   useEffect(() => {
     if (companyId) {
-      fetchDirectoryData();
+      try {
+        // Un-hide the ID securely
+        const decodedId = atob(companyId); 
+        fetchDirectoryData(decodedId);
+      } catch (e) {
+        setCompanyName('Invalid Directory Link');
+        setIsLoading(false);
+      }
     }
   }, [companyId]);
 
-  const fetchDirectoryData = async () => {
+  const fetchDirectoryData = async (realId) => {
     setIsLoading(true);
     try {
-      // 1. Get Company Details
+      // 1. Get Company Details using the real, unscrambled ID
       const { data: companyData, error: companyError } = await supabase
         .from('companies')
         .select('company_name')
-        .eq('id', companyId)
+        .eq('id', realId)
         .single();
 
       if (companyError) throw companyError;
@@ -41,7 +48,7 @@ export default function CompanyDirectory() {
       const { data: employeeData, error: employeeError } = await supabase
         .from('customers')
         .select('display_name, job_title, username, profile_picture_url, theme_color')
-        .eq('company_id', companyId)
+        .eq('company_id', realId)
         .eq('profile_status', 'live')
         .order('display_name', { ascending: true });
 
