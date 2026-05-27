@@ -291,7 +291,7 @@ export default function TeamAdminSection({ teamMembers, supabase, companyId, com
         {/* 🔥 THE NEW DIRECTORY BUTTON */}
         {companyId && (
           <a 
-            href={`/team/${companyId}`} 
+            href={`/team/${btoa(companyId)}`} 
             target="_blank" 
             rel="noreferrer"
             style={{ padding: '10px 18px', backgroundColor: 'white', border: '1px solid #d1d5db', borderRadius: '8px', color: '#111', fontSize: '13px', fontWeight: '700', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', transition: 'all 0.2s', cursor: 'pointer', whiteSpace: 'nowrap' }}
