@@ -8,6 +8,7 @@ export default function TeamAdminSection({ teamMembers, supabase, companyId, com
   const [newEmpEmail, setNewEmpEmail] = useState('');
   const [newEmpTitle, setNewEmpTitle] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [cloneBranding, setCloneBranding] = useState(true); // 🔥 NEW: Default to cloning
 
   // Assign Tag State
   const [assignModalEmployee, setAssignModalEmployee] = useState(null);
@@ -51,14 +52,55 @@ export default function TeamAdminSection({ teamMembers, supabase, companyId, com
         });
       };
 
+      const newEmployeeId = generateUUID();
+
       const { error } = await supabase.from('customers').insert([{
-        id: generateUUID(), display_name: newEmpName, display_email: newEmpEmail,
+        id: newEmployeeId, display_name: newEmpName, display_email: newEmpEmail,
         job_title: newEmpTitle, company_id: companyId, username: newUsername, profile_status: 'live' 
       }]);
 
       if (error) {
         if (error.code === '23503') throw new Error("Foreign Key Constraint: Please run the SQL script to allow ghost profiles.");
         throw error;
+      }
+
+      // 🔥 NEW: CLONE BRANDING LOGIC
+      if (cloneBranding) {
+        // Get the manager's ID
+        const { data: authData } = await supabase.auth.getUser();
+        if (authData?.user) {
+          const managerId = authData.user.id;
+
+          // 1. Fetch manager profile settings
+          const { data: managerProfile } = await supabase
+            .from('customers')
+            .select('theme_color, profile_picture_url')
+            .eq('id', managerId)
+            .single();
+
+          if (managerProfile) {
+            // Apply to new employee
+            await supabase.from('customers').update({
+              theme_color: managerProfile.theme_color,
+              profile_picture_url: managerProfile.profile_picture_url
+            }).eq('id', newEmployeeId);
+          }
+
+          // 2. Fetch manager links
+          const { data: managerLinks } = await supabase
+            .from('page_links')
+            .select('*')
+            .eq('owner_id', managerId);
+
+          if (managerLinks && managerLinks.length > 0) {
+            // Strip unique IDs and reassign to new employee
+            const clonedLinks = managerLinks.map(link => {
+              const { id, created_at, ...linkDataToCopy } = link;
+              return { ...linkDataToCopy, owner_id: newEmployeeId };
+            });
+            await supabase.from('page_links').insert(clonedLinks);
+          }
+        }
       }
 
       setShowAddModal(false); setNewEmpName(''); setNewEmpEmail(''); setNewEmpTitle(''); refreshData(); 
@@ -165,7 +207,6 @@ export default function TeamAdminSection({ teamMembers, supabase, companyId, com
     setShowBulkModal(true);
   };
 
-  // 🔥 FIXED: Bulk Action Execution with URL Sanitization and Error Catching
   const handleExecuteBulkAction = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -345,7 +386,10 @@ export default function TeamAdminSection({ teamMembers, supabase, companyId, com
               {bulkActionType === 'theme' && (
                 <div>
                   <label style={labelStyle}>Select Company Theme Color</label>
-                  <input type="color" value={bulkForm.theme_color} onChange={(e) => setBulkForm({...bulkForm, theme_color: e.target.value})} style={{ width: '100%', height: '50px', borderRadius: '8px', cursor: 'pointer' }} />
+                  <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                    <input type="color" value={bulkForm.theme_color} onChange={(e) => setBulkForm({...bulkForm, theme_color: e.target.value})} style={{ width: '50px', height: '50px', borderRadius: '8px', cursor: 'pointer', padding: 0, border: 'none' }} />
+                    <input type="text" value={bulkForm.theme_color} onChange={(e) => setBulkForm({...bulkForm, theme_color: e.target.value.toUpperCase()})} maxLength={7} placeholder="#FFFFFF" style={{...inputStyle, marginBottom: 0, width: '120px', textTransform: 'uppercase', fontFamily: 'monospace', fontWeight: '600'}} />
+                  </div>
                 </div>
               )}
               {bulkActionType === 'logo' && (
@@ -420,9 +464,9 @@ export default function TeamAdminSection({ teamMembers, supabase, companyId, com
                   <input type="url" placeholder="https://..." value={editForm.profile_picture_url} onChange={(e) => setEditForm({...editForm, profile_picture_url: e.target.value})} style={inputStyle} />
 
                   <label style={labelStyle}>Theme Color</label>
-                  <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
+                  <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
                     <input type="color" value={editForm.theme_color} onChange={(e) => setEditForm({...editForm, theme_color: e.target.value})} style={{ width: '40px', height: '40px', border: 'none', borderRadius: '8px', cursor: 'pointer', padding: 0 }} />
-                    <span style={{ fontSize: '13px', color: '#6b7280', fontFamily: 'monospace' }}>{editForm.theme_color}</span>
+                    <input type="text" value={editForm.theme_color} onChange={(e) => setEditForm({...editForm, theme_color: e.target.value.toUpperCase()})} maxLength={7} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #d1d5db', width: '100px', fontSize: '14px', textTransform: 'uppercase', fontFamily: 'monospace', fontWeight: '600', outline: 'none' }} />
                   </div>
                 </div>
 
@@ -515,6 +559,21 @@ export default function TeamAdminSection({ teamMembers, supabase, companyId, com
               <input required type="email" placeholder="john@company.com" value={newEmpEmail} onChange={(e) => setNewEmpEmail(e.target.value)} style={inputStyle} />
               <label style={labelStyle}>Job Title</label>
               <input required type="text" placeholder="e.g. Sales Director" value={newEmpTitle} onChange={(e) => setNewEmpTitle(e.target.value)} style={inputStyle} />
+
+              {/* 🔥 NEW: Clone Branding Checkbox */}
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', marginTop: '15px', marginBottom: '10px', padding: '12px', backgroundColor: '#f9fafb', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
+                <input 
+                  type="checkbox" 
+                  id="cloneBrand" 
+                  checked={cloneBranding} 
+                  onChange={(e) => setCloneBranding(e.target.checked)} 
+                  style={{ marginTop: '3px', cursor: 'pointer', minWidth: '16px', minHeight: '16px' }}
+                />
+                <label htmlFor="cloneBrand" style={{ fontSize: '13px', color: '#4b5563', lineHeight: '1.4', cursor: 'pointer' }}>
+                  <strong>Clone Company Branding</strong><br/>
+                  Copy my current logo, theme color, and active links to this new employee's profile.
+                </label>
+              </div>
 
               <div style={{ marginTop: '20px', display: 'flex', gap: '10px' }}>
                 <button type="button" disabled={isSubmitting} onClick={() => setShowAddModal(false)} style={{ flex: 1, padding: '12px', backgroundColor: '#f3f4f6', color: '#4b5563', border: 'none', borderRadius: '8px', fontWeight: '700', cursor: 'pointer' }}>Cancel</button>
