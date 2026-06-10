@@ -16,10 +16,10 @@ export async function POST(req) {
     if (planType === 'pro') {
       if (interval === 'month') {
         // 🔥 REPLACE THIS STRING WITH YOUR ACTUAL PRICE ID STARTING WITH "price_"
-        priceId = 'price_XXXXX_MONTHLY_HERE'; 
+        priceId = 'prod_Ug67p7H4XUptkr'; 
       } else if (interval === 'year') {
         // 🔥 REPLACE THIS STRING WITH YOUR ACTUAL PRICE ID STARTING WITH "price_"
-        priceId = 'price_XXXXX_ANNUAL_HERE'; 
+        priceId = 'prod_Ug68Z4fSuoMnws'; 
       }
     }
 
