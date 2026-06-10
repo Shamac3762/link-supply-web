@@ -9,7 +9,7 @@ import HardwareSection from '../../components/dashboard/HardwareSection'
 import PageProfileSection from '../../components/dashboard/PageProfileSection'
 import AnalyticsSection from '../../components/dashboard/AnalyticsSection'
 import TeamAdminSection from '../../components/dashboard/TeamAdminSection'
-import PricingSection from '../../components/dashboard/PricingSection'
+import PricingSection from '../../components/dashboard/PricingSection' 
 
 function getContrastColor(hexcolor) {
   if (!hexcolor || hexcolor.startsWith('linear') || hexcolor.startsWith('radial')) return 'white';
@@ -64,6 +64,7 @@ export default function PremiumDashboard() {
   useEffect(() => {
     setIsMounted(true)
     fetchData()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const generateDefaultUsername = (firstName, lastName) => {
