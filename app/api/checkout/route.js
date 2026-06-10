@@ -15,9 +15,9 @@ export async function POST(req) {
     let priceId = '';
     if (planType === 'pro') {
       if (interval === 'month') {
-        priceId = 'price_XXXXX_PASTE_YOUR_MONTHLY_ID'; 
+        priceId = 'prod_Ug67p7H4XUptkr'; 
       } else if (interval === 'year') {
-        priceId = 'price_XXXXX_PASTE_YOUR_ANNUAL_ID'; 
+        priceId = 'prod_Ug68Z4fSuoMnws'; 
       }
     }
 
