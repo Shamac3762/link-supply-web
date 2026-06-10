@@ -9,7 +9,7 @@ import HardwareSection from '../../components/dashboard/HardwareSection'
 import PageProfileSection from '../../components/dashboard/PageProfileSection'
 import AnalyticsSection from '../../components/dashboard/AnalyticsSection'
 import TeamAdminSection from '../../components/dashboard/TeamAdminSection'
-import PricingSection from '../../components/dashboard/PricingSection' // 🔥 Added Import
+import PricingSection from '../../components/dashboard/PricingSection'
 
 function getContrastColor(hexcolor) {
   if (!hexcolor || hexcolor.startsWith('linear') || hexcolor.startsWith('radial')) return 'white';
@@ -23,6 +23,9 @@ function getContrastColor(hexcolor) {
 export default function PremiumDashboard() {
   const [activeTab, setActiveTab] = useState('hardware') 
   const [isMounted, setIsMounted] = useState(false)
+  
+  // 🔥 PHASE 4: Added userId state
+  const [userId, setUserId] = useState(null)
   
   const [stickers, setStickers] = useState([])
   const [chartData, setChartData] = useState([]) 
@@ -80,6 +83,9 @@ export default function PremiumDashboard() {
       if (claimParam) return router.push(`/login?view=signup&claim=${claimParam}`)
       return router.push('/login') 
     }
+    
+    // 🔥 PHASE 4: Save the user ID to state
+    setUserId(session.user.id)
 
     if (claimParam) {
       setActiveTab('hardware')
@@ -400,7 +406,6 @@ export default function PremiumDashboard() {
           <button onClick={() => setActiveTab('page')} style={{ flex: 1, padding: '12px', borderRadius: '8px', border: 'none', fontWeight: '700', fontSize: '15px', cursor: 'pointer', backgroundColor: activeTab === 'page' ? 'white' : 'transparent', color: activeTab === 'page' ? '#111' : '#6b7280', boxShadow: activeTab === 'page' ? '0 2px 4px rgba(0,0,0,0.05)' : 'none', transition: 'all 0.2s' }}>My Page</button>
           <button onClick={() => setActiveTab('analytics')} style={{ flex: 1, padding: '12px', borderRadius: '8px', border: 'none', fontWeight: '700', fontSize: '15px', cursor: 'pointer', backgroundColor: activeTab === 'analytics' ? 'white' : 'transparent', color: activeTab === 'analytics' ? '#111' : '#6b7280', boxShadow: activeTab === 'analytics' ? '0 2px 4px rgba(0,0,0,0.05)' : 'none', transition: 'all 0.2s' }}>📈 Analytics</button>
           
-          {/* 🔥 ADDED PRICING TAB BUTTON */}
           <button onClick={() => setActiveTab('pricing')} style={{ flex: 1, padding: '12px', borderRadius: '8px', border: 'none', fontWeight: '700', fontSize: '15px', cursor: 'pointer', backgroundColor: activeTab === 'pricing' ? '#111' : 'transparent', color: activeTab === 'pricing' ? 'white' : '#6b7280', transition: 'all 0.2s' }}>⭐ Upgrade</button>
           
           {isPremium && (
@@ -435,9 +440,9 @@ export default function PremiumDashboard() {
           />
         )}
 
-        {/* 🔥 ADDED PRICING SECTION RENDER */}
+        {/* 🔥 PHASE 4: Passing userId to PricingSection */}
         {activeTab === 'pricing' && (
-          <PricingSection />
+          <PricingSection userId={userId} />
         )}
 
         {activeTab === 'team' && isPremium && (
