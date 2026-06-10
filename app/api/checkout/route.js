@@ -15,9 +15,11 @@ export async function POST(req) {
     let priceId = '';
     if (planType === 'pro') {
       if (interval === 'month') {
-        priceId = 'prod_Ug67p7H4XUptkr'; 
+        // 🔥 REPLACE THIS STRING WITH YOUR ACTUAL PRICE ID STARTING WITH "price_"
+        priceId = 'price_XXXXX_MONTHLY_HERE'; 
       } else if (interval === 'year') {
-        priceId = 'prod_Ug68Z4fSuoMnws'; 
+        // 🔥 REPLACE THIS STRING WITH YOUR ACTUAL PRICE ID STARTING WITH "price_"
+        priceId = 'price_XXXXX_ANNUAL_HERE'; 
       }
     }
 
@@ -38,6 +40,7 @@ export async function POST(req) {
     return NextResponse.json({ url: session.url });
   } catch (error) {
     console.error("Stripe Checkout Error:", error);
-    return NextResponse.json({ error: "Failed to create checkout session" }, { status: 500 });
+    // This will now pass Stripe's exact secret error message to your screen
+    return NextResponse.json({ error: error.message }, { status: 500 }); 
   }
 }
