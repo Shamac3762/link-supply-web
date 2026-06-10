@@ -6,7 +6,7 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
 // Initiates standard connection to Supabase via admin bypass roles
 const supabase = createClient(
-  process.env.SUPABASE_URL,
+  process.env.NEXT_PUBLIC_SUPABASE_URL, // 🔥 THIS IS THE FIX 
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
