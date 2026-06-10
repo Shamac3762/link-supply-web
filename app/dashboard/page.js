@@ -23,8 +23,6 @@ function getContrastColor(hexcolor) {
 export default function PremiumDashboard() {
   const [activeTab, setActiveTab] = useState('hardware') 
   const [isMounted, setIsMounted] = useState(false)
-  
-  // 🔥 PHASE 4: Added userId state
   const [userId, setUserId] = useState(null)
   
   const [stickers, setStickers] = useState([])
@@ -85,7 +83,6 @@ export default function PremiumDashboard() {
       return router.push('/login') 
     }
     
-    // 🔥 PHASE 4: Save the user ID to state
     setUserId(session.user.id)
 
     if (claimParam) {
@@ -180,7 +177,7 @@ export default function PremiumDashboard() {
       const { data: compData } = await supabase.from('companies').select('company_name').eq('id', customerData.company_id).single();
       if (compData) setCompanyName(compData.company_name);
 
-      const { data: teamData } = await supabase
+      const { data: teamData = [] } = await supabase
         .from('customers')
         .select('id, display_name, display_email, job_title, profile_status, username') 
         .eq('company_id', customerData.company_id);
@@ -395,9 +392,31 @@ export default function PremiumDashboard() {
             <span style={{ fontWeight: '700' }}>Link</span><span style={{ fontWeight: '400' }}>Supply.</span>
           </div>
         </Link>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-          <button onClick={() => setShowSettings(true)} style={{ padding: '8px 16px', backgroundColor: '#f3f4f6', color: '#111', border: '1px solid #d1d5db', borderRadius: '6px', fontWeight: '600', cursor: 'pointer', fontSize: '14px' }}>⚙️ Settings</button>
-          <button onClick={handleLogout} style={{ padding: '8px 16px', backgroundColor: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca', borderRadius: '6px', fontWeight: '600', cursor: 'pointer', fontSize: '14px' }}>Log Out</button>
+        
+        {/* 🔥 NEW PROFESSIONAL GREETING & TIER BADGES */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '20px', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <span style={{ fontSize: '15px', fontWeight: '600', color: '#374151' }}>
+              Hello, {pageProfile.display_name || pageProfile.username || 'User'} 👋
+            </span>
+            <span style={{ 
+              fontSize: '11px', 
+              fontWeight: '800', 
+              backgroundColor: isPremium ? '#d1fae5' : '#f3f4f6', 
+              color: isPremium ? '#065f46' : '#6b7280', 
+              padding: '4px 10px', 
+              borderRadius: '20px', 
+              textTransform: 'uppercase',
+              border: isPremium ? '1px solid #86efac' : '1px solid #e5e7eb'
+            }}>
+              {pageProfile.tier} Plan
+            </span>
+          </div>
+          
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <button onClick={() => setShowSettings(true)} style={{ padding: '8px 16px', backgroundColor: '#f3f4f6', color: '#111', border: '1px solid #d1d5db', borderRadius: '6px', fontWeight: '600', cursor: 'pointer', fontSize: '14px' }}>⚙️ Settings</button>
+            <button onClick={handleLogout} style={{ padding: '8px 16px', backgroundColor: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca', borderRadius: '6px', fontWeight: '600', cursor: 'pointer', fontSize: '14px' }}>Log Out</button>
+          </div>
         </div>
       </nav>
 
@@ -407,7 +426,7 @@ export default function PremiumDashboard() {
           <button onClick={() => setActiveTab('page')} style={{ flex: 1, padding: '12px', borderRadius: '8px', border: 'none', fontWeight: '700', fontSize: '15px', cursor: 'pointer', backgroundColor: activeTab === 'page' ? 'white' : 'transparent', color: activeTab === 'page' ? '#111' : '#6b7280', boxShadow: activeTab === 'page' ? '0 2px 4px rgba(0,0,0,0.05)' : 'none', transition: 'all 0.2s' }}>My Page</button>
           <button onClick={() => setActiveTab('analytics')} style={{ flex: 1, padding: '12px', borderRadius: '8px', border: 'none', fontWeight: '700', fontSize: '15px', cursor: 'pointer', backgroundColor: activeTab === 'analytics' ? 'white' : 'transparent', color: activeTab === 'analytics' ? '#111' : '#6b7280', boxShadow: activeTab === 'analytics' ? '0 2px 4px rgba(0,0,0,0.05)' : 'none', transition: 'all 0.2s' }}>📈 Analytics</button>
           
-          <button onClick={() => setActiveTab('pricing')} style={{ flex: 1, padding: '12px', borderRadius: '8px', border: 'none', fontWeight: '700', fontSize: '15px', cursor: 'pointer', backgroundColor: activeTab === 'pricing' ? '#111' : 'transparent', color: activeTab === 'pricing' ? 'white' : '#6b7280', transition: 'all 0.2s' }}>⭐ Upgrade</button>
+          <button onClick={() => setActiveTab('pricing')} style={{ flex: 1, padding: '12px', borderRadius: '8px', border: 'none', fontWeight: '700', fontSize: '15px', cursor: 'pointer', backgroundColor: activeTab === 'pricing' ? '#111' : 'transparent', color: activeTab === 'pricing' ? 'white' : '#6b7280', transition: 'all 0.2s' }}>⭐ {isPremium ? 'My Plan' : 'Upgrade'}</button>
           
           {isPremium && (
             <button onClick={() => setActiveTab('team')} style={{ flex: 1, padding: '12px', borderRadius: '8px', border: 'none', fontWeight: '700', fontSize: '15px', cursor: 'pointer', backgroundColor: activeTab === 'team' ? 'white' : 'transparent', color: activeTab === 'team' ? '#111' : '#6b7280', boxShadow: activeTab === 'team' ? '0 2px 4px rgba(0,0,0,0.05)' : 'none', transition: 'all 0.2s' }}>🏢 Team Admin</button>
@@ -441,9 +460,9 @@ export default function PremiumDashboard() {
           />
         )}
 
-        {/* 🔥 PHASE 4: Passing userId to PricingSection */}
+        {/* 🔥 PASSED TIER TO THE PRICING SECTION */}
         {activeTab === 'pricing' && (
-          <PricingSection userId={userId} />
+          <PricingSection userId={userId} userTier={pageProfile.tier} />
         )}
 
         {activeTab === 'team' && isPremium && (
