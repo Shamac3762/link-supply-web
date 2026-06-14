@@ -2,27 +2,38 @@
 import { useState } from 'react'
 
 export default function PricingSection({ userId, userTier }) {
-  // 0 = 25 Tags, 1 = 50 Tags, 2 = 75 Tags, 3 = 150 Tags
-  const [tierIndex, setTierIndex] = useState(0); 
+  // Master Segment Toggle: 'tags' or 'teams'
+  const [pricingMode, setPricingMode] = useState('tags');
+  
+  // States
+  const [tierIndex, setTierIndex] = useState(0); // 0=25, 1=50, 2=75, 3=150
+  const [teamSize, setTeamSize] = useState(15);  // 1 to 1500 employees
   const [isAnnual, setIsAnnual] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Asset Mapping Logic
+  // --- HARDWARE TAGS LOGIC ---
   const assetOptions = [25, 50, 75, 150];
   const currentAssets = assetOptions[tierIndex];
-
   const businessPrices = {
     25: { mo: '29.99', yr: '240.00' },
     50: { mo: '49.99', yr: '400.00' },
     75: { mo: '69.99', yr: '560.00' },
     150: { mo: '99.99', yr: '800.00' }
   };
-
   const currentBusinessPrice = isAnnual ? businessPrices[currentAssets].yr : businessPrices[currentAssets].mo;
+
+  // --- TEAMS (EMPLOYEES) LOGIC ---
+  let pricePerUser = 7.99;
+  if (teamSize >= 50 && teamSize < 100) pricePerUser = 5.99;
+  if (teamSize >= 100 && teamSize < 500) pricePerUser = 3.99;
+  if (teamSize >= 500 && teamSize < 1000) pricePerUser = 2.49;
+  if (teamSize >= 1000) pricePerUser = 1.49;
+  const totalTeamsMonthly = (teamSize * pricePerUser).toFixed(2);
+
+  // --- PRO LOGIC ---
   const currentProPrice = isAnnual ? '40.00' : '4.99';
   const priceLabel = isAnnual ? '/yr' : '/mo';
 
-  // Prevent duplicate purchases
   const isAlreadyPro = userTier === 'pro';
   const isAlreadyBusiness = userTier === 'business';
 
@@ -31,9 +42,7 @@ export default function PricingSection({ userId, userTier }) {
       alert("Please wait for your session to load or log in again.");
       return;
     }
-    
     setIsLoading(true);
-    
     try {
       const response = await fetch('/api/checkout', {
         method: 'POST',
@@ -44,7 +53,6 @@ export default function PricingSection({ userId, userTier }) {
           interval: isAnnual ? 'year' : 'month'
         })
       });
-
       const data = await response.json();
       if (data.url) {
         window.location.href = data.url; 
@@ -59,6 +67,7 @@ export default function PricingSection({ userId, userTier }) {
     }
   };
 
+  // UI Styles
   const cardStyle = { backgroundColor: 'white', padding: '40px', borderRadius: '24px', border: '1px solid #e5e7eb', display: 'flex', flexDirection: 'column', position: 'relative', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' };
   const listItemStyle = { display: 'flex', alignItems: 'flex-start', gap: '10px', fontSize: '14px', lineHeight: '1.4' };
   const checkIcon = <span style={{ color: '#059669', fontWeight: '800', flexShrink: 0, marginTop: '2px' }}>✓</span>;
@@ -72,9 +81,27 @@ export default function PricingSection({ userId, userTier }) {
           <h2 style={{ fontSize: '32px', fontWeight: '800', color: '#111', margin: '0 0 10px 0', letterSpacing: '-0.5px' }}>Upgrade Your Workspace</h2>
           <p style={{ fontSize: '16px', color: '#4b5563', maxWidth: '600px', margin: '0 auto 20px auto' }}>Choose the perfect plan to grow your network, or scale up to manage physical assets globally.</p>
           
+          {/* MASTER TOGGLE: Tags vs Teams */}
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '30px' }}>
+            <div style={{ backgroundColor: '#f3f4f6', padding: '6px', borderRadius: '30px', display: 'inline-flex', gap: '10px' }}>
+              <button 
+                onClick={() => setPricingMode('tags')}
+                style={{ padding: '10px 24px', borderRadius: '24px', border: 'none', fontSize: '14px', fontWeight: '700', cursor: 'pointer', transition: 'all 0.2s', backgroundColor: pricingMode === 'tags' ? 'white' : 'transparent', color: pricingMode === 'tags' ? '#111' : '#6b7280', boxShadow: pricingMode === 'tags' ? '0 2px 4px rgba(0,0,0,0.05)' : 'none' }}
+              >
+                Manage Smart Tags
+              </button>
+              <button 
+                onClick={() => setPricingMode('teams')}
+                style={{ padding: '10px 24px', borderRadius: '24px', border: 'none', fontSize: '14px', fontWeight: '700', cursor: 'pointer', transition: 'all 0.2s', backgroundColor: pricingMode === 'teams' ? 'white' : 'transparent', color: pricingMode === 'teams' ? '#111' : '#6b7280', boxShadow: pricingMode === 'teams' ? '0 2px 4px rgba(0,0,0,0.05)' : 'none' }}
+              >
+                Manage Employees
+              </button>
+            </div>
+          </div>
+
           {/* ANNUAL VS MONTHLY TOGGLE */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '15px', marginTop: '20px', marginBottom: '20px' }}>
-            <span style={{ fontSize: '15px', fontWeight: isAnnual ? '500' : '700', color: isAnnual ? '#6b7280' : '#111' }}>Month-to-Month Rolling</span>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '15px', marginBottom: '20px' }}>
+            <span style={{ fontSize: '15px', fontWeight: isAnnual ? '500' : '700', color: isAnnual ? '#6b7280' : '#111' }}>Month-to-Month</span>
             <button 
               onClick={() => setIsAnnual(!isAnnual)}
               style={{ width: '60px', height: '32px', borderRadius: '20px', backgroundColor: '#111', border: 'none', cursor: 'pointer', position: 'relative', padding: '4px' }}
@@ -82,7 +109,7 @@ export default function PricingSection({ userId, userTier }) {
               <div style={{ width: '24px', height: '24px', borderRadius: '50%', backgroundColor: 'white', position: 'absolute', top: '4px', left: isAnnual ? '32px' : '4px', transition: 'left 0.3s ease' }} />
             </button>
             <span style={{ fontSize: '15px', fontWeight: isAnnual ? '700' : '500', color: isAnnual ? '#111' : '#6b7280' }}>
-              12-Month Annual Account <span style={{ color: '#059669', fontSize: '12px', fontWeight: '700', backgroundColor: '#d1fae5', padding: '2px 8px', borderRadius: '10px', marginLeft: '5px' }}>Save Big</span>
+              Annual Account <span style={{ color: '#059669', fontSize: '12px', fontWeight: '700', backgroundColor: '#d1fae5', padding: '2px 8px', borderRadius: '10px', marginLeft: '5px' }}>Save Big</span>
             </span>
           </div>
 
@@ -93,18 +120,17 @@ export default function PricingSection({ userId, userTier }) {
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '25px' }}>
           
-          {/* BASIC TIER */}
+          {/* CARD 1: BASIC TIER */}
           <div style={cardStyle}>
             <h3 style={{ fontSize: '20px', fontWeight: '700', color: '#111', margin: '0 0 10px 0' }}>Basic</h3>
             <p style={{ color: '#6b7280', margin: '0 0 20px 0', fontSize: '14px', minHeight: '40px' }}>Essential networking for individuals.</p>
             <div style={{ fontSize: '42px', fontWeight: '800', color: '#111', marginBottom: '30px' }}>£0<span style={{ fontSize: '14px', color: '#6b7280', fontWeight: '500' }}>/mo</span></div>
             <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 40px 0', display: 'flex', flexDirection: 'column', gap: '15px', color: '#4b5563' }}>
-              <li style={listItemStyle}>{checkIcon} <span>1 Digital Business Card</span></li>
+              <li style={listItemStyle}>{checkIcon} <span>1 Smart Profile (Link-in-Bio)</span></li>
               <li style={listItemStyle}>{checkIcon} <span>Up to 2 Social/Web Links</span></li>
               <li style={listItemStyle}>{checkIcon} <span>Standard Dark & Light Themes</span></li>
               <li style={listItemStyle}>{checkIcon} <span>24-Hour Tap Analytics</span></li>
               <li style={{...listItemStyle, color: '#9ca3af', textDecoration: 'line-through'}}>{crossIcon} <span>Custom Theme Branding</span></li>
-              <li style={{...listItemStyle, color: '#9ca3af', textDecoration: 'line-through'}}>{crossIcon} <span>Lead Generation (Save Contact)</span></li>
               <li style={{...listItemStyle, color: '#9ca3af', textDecoration: 'line-through'}}>{crossIcon} <span>Dynamic External Routing</span></li>
             </ul>
             <button disabled style={{ marginTop: 'auto', padding: '12px', width: '100%', borderRadius: '10px', border: '1px solid #d1d5db', backgroundColor: '#f9fafb', color: '#4b5563', fontWeight: '700', cursor: 'not-allowed', fontSize: '14px' }}>
@@ -112,18 +138,17 @@ export default function PricingSection({ userId, userTier }) {
             </button>
           </div>
 
-          {/* PRO TIER */}
+          {/* CARD 2: PRO TIER */}
           <div style={{...cardStyle, border: isAlreadyPro ? '1px solid #e5e7eb' : '2px solid #111', boxShadow: isAlreadyPro ? 'none' : '0 20px 25px -5px rgba(0, 0, 0, 0.1)' }}>
             {!isAlreadyPro && !isAlreadyBusiness && (
               <div style={{ position: 'absolute', top: '-12px', left: '50%', transform: 'translateX(-50%)', backgroundColor: '#111', color: 'white', padding: '4px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: '700', letterSpacing: '1px', textTransform: 'uppercase' }}>Most Popular</div>
             )}
             <h3 style={{ fontSize: '20px', fontWeight: '700', color: '#111', margin: '0 0 10px 0' }}>Pro</h3>
-            <p style={{ color: '#6b7280', margin: '0 0 20px 0', fontSize: '14px', minHeight: '40px' }}>Powerful tools for creators and solo brokers.</p>
+            <p style={{ color: '#6b7280', margin: '0 0 20px 0', fontSize: '14px', minHeight: '40px' }}>Powerful tools for creators and solo professionals.</p>
             <div style={{ fontSize: '42px', fontWeight: '800', color: '#111', marginBottom: '30px' }}>£{currentProPrice}<span style={{ fontSize: '14px', color: '#6b7280', fontWeight: '500' }}>{priceLabel}</span></div>
             <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 40px 0', display: 'flex', flexDirection: 'column', gap: '15px', color: '#4b5563' }}>
               <li style={listItemStyle}>{checkIcon} <span><strong>Up to 5 Connected Tags/QRs</strong></span></li>
-              <li style={listItemStyle}>{checkIcon} <span>Unlimited Links & Destinations</span></li>
-              <li style={listItemStyle}>{checkIcon} <span>Fully Custom Theme Branding</span></li>
+              <li style={listItemStyle}>{checkIcon} <span>Fully Custom Smart Profile</span></li>
               <li style={listItemStyle}>{checkIcon} <span>Lead Generation (Save Contact)</span></li>
               <li style={listItemStyle}>{checkIcon} <span>Advanced Lifetime Analytics</span></li>
               <li style={listItemStyle}>{checkIcon} <span>Remove "Link Supply" Branding</span></li>
@@ -137,50 +162,85 @@ export default function PricingSection({ userId, userTier }) {
             </button>
           </div>
 
-          {/* BUSINESS TIER (Interactive) */}
-          <div style={{...cardStyle, backgroundColor: '#f0fdf4', border: '1px solid #86efac' }}>
-            <h3 style={{ fontSize: '20px', fontWeight: '700', color: '#065f46', margin: '0 0 10px 0' }}>Business Workspace</h3>
-            <p style={{ color: '#047857', margin: '0 0 20px 0', fontSize: '14px', minHeight: '40px' }}>Complete dashboard to manage physical assets.</p>
-            
-            <div style={{ backgroundColor: 'white', padding: '15px', borderRadius: '12px', marginBottom: '20px', border: '1px solid #bbf7d0' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
-                <span style={{ fontSize: '13px', fontWeight: '600', color: '#4b5563' }}>Hardware Slots:</span>
-                <span style={{ fontSize: '14px', fontWeight: '800', color: '#111' }}>{currentAssets} Tags/QRs</span>
-              </div>
+          {/* CARD 3: DYNAMIC B2B/ASSET TIER */}
+          {pricingMode === 'tags' ? (
+            <div style={{...cardStyle, backgroundColor: '#f0fdf4', border: '1px solid #86efac', animation: 'fadeIn 0.3s' }}>
+              <h3 style={{ fontSize: '20px', fontWeight: '700', color: '#065f46', margin: '0 0 10px 0' }}>Business Workspace</h3>
+              <p style={{ color: '#047857', margin: '0 0 20px 0', fontSize: '14px', minHeight: '40px' }}>Complete dashboard to manage physical assets.</p>
               
-              {/* SLIDER 0 to 3 mapped to index */}
-              <input 
-                type="range" min="0" max="3" step="1" 
-                value={tierIndex} onChange={(e) => setTierIndex(Number(e.target.value))}
-                style={{ width: '100%', cursor: 'pointer', accentColor: '#10b981' }} 
-              />
-              
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '5px' }}>
-                <span style={{ fontSize: '11px', color: '#9ca3af', fontWeight: '600' }}>25</span>
-                <span style={{ fontSize: '11px', color: '#9ca3af', fontWeight: '600' }}>50</span>
-                <span style={{ fontSize: '11px', color: '#9ca3af', fontWeight: '600' }}>75</span>
-                <span style={{ fontSize: '11px', color: '#9ca3af', fontWeight: '600' }}>150</span>
+              <div style={{ backgroundColor: 'white', padding: '15px', borderRadius: '12px', marginBottom: '20px', border: '1px solid #bbf7d0' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
+                  <span style={{ fontSize: '13px', fontWeight: '600', color: '#4b5563' }}>Hardware Slots:</span>
+                  <span style={{ fontSize: '14px', fontWeight: '800', color: '#111' }}>{currentAssets} Tags</span>
+                </div>
+                <input 
+                  type="range" min="0" max="3" step="1" 
+                  value={tierIndex} onChange={(e) => setTierIndex(Number(e.target.value))}
+                  style={{ width: '100%', cursor: 'pointer', accentColor: '#10b981' }} 
+                />
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '5px' }}>
+                  <span style={{ fontSize: '11px', color: '#9ca3af', fontWeight: '600' }}>25</span>
+                  <span style={{ fontSize: '11px', color: '#9ca3af', fontWeight: '600' }}>50</span>
+                  <span style={{ fontSize: '11px', color: '#9ca3af', fontWeight: '600' }}>75</span>
+                  <span style={{ fontSize: '11px', color: '#9ca3af', fontWeight: '600' }}>150</span>
+                </div>
               </div>
-            </div>
 
-            <div style={{ fontSize: '42px', fontWeight: '800', color: '#065f46', marginBottom: '30px' }}>£{currentBusinessPrice}<span style={{ fontSize: '14px', color: '#047857', fontWeight: '500' }}>{priceLabel}</span></div>
-            
-            <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 40px 0', display: 'flex', flexDirection: 'column', gap: '15px', color: '#047857' }}>
-              <li style={listItemStyle}>{checkIcon} <span><strong>Up to {currentAssets} Connected Assets</strong></span></li>
-              <li style={listItemStyle}>{checkIcon} <span>Centralized Manager Dashboard</span></li>
-              <li style={listItemStyle}>{checkIcon} <span>Bulk Link Management</span></li>
-              <li style={listItemStyle}>{checkIcon} <span>View Real-Time Scan Analytics</span></li>
-              <li style={listItemStyle}>{checkIcon} <span>Enterprise-Grade Security</span></li>
-              <li style={listItemStyle}>{checkIcon} <strong>Plus all Pro features</strong></li>
-            </ul>
-            <button 
-              onClick={() => handleUpgrade(`business_${currentAssets}`)}
-              disabled={isLoading || (isAlreadyBusiness && currentAssets === 25)} /* Basic lock logic if they are already on this tier */
-              style={{ marginTop: 'auto', padding: '12px', width: '100%', borderRadius: '10px', border: 'none', backgroundColor: '#10b981', color: 'white', fontWeight: '700', cursor: isLoading ? 'not-allowed' : 'pointer', fontSize: '14px', boxShadow: '0 4px 6px rgba(16, 185, 129, 0.2)' }}
-            >
-              {isLoading ? 'Loading...' : `Upgrade to Business`}
-            </button>
-          </div>
+              <div style={{ fontSize: '42px', fontWeight: '800', color: '#065f46', marginBottom: '30px' }}>£{currentBusinessPrice}<span style={{ fontSize: '14px', color: '#047857', fontWeight: '500' }}>{priceLabel}</span></div>
+              
+              <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 40px 0', display: 'flex', flexDirection: 'column', gap: '15px', color: '#047857' }}>
+                <li style={listItemStyle}>{checkIcon} <span><strong>Up to {currentAssets} Connected Assets</strong></span></li>
+                <li style={listItemStyle}>{checkIcon} <span>Centralized Manager Dashboard</span></li>
+                <li style={listItemStyle}>{checkIcon} <span>Bulk Link Management</span></li>
+                <li style={listItemStyle}>{checkIcon} <span>View Real-Time Scan Analytics</span></li>
+                <li style={listItemStyle}>{checkIcon} <strong>Plus all Pro features</strong></li>
+              </ul>
+              <button 
+                onClick={() => handleUpgrade(`business_${currentAssets}`)}
+                disabled={isLoading || (isAlreadyBusiness && currentAssets === 25)}
+                style={{ marginTop: 'auto', padding: '12px', width: '100%', borderRadius: '10px', border: 'none', backgroundColor: '#10b981', color: 'white', fontWeight: '700', cursor: isLoading ? 'not-allowed' : 'pointer', fontSize: '14px', boxShadow: '0 4px 6px rgba(16, 185, 129, 0.2)' }}
+              >
+                {isLoading ? 'Loading...' : `Upgrade to Business`}
+              </button>
+            </div>
+          ) : (
+            <div style={{...cardStyle, backgroundColor: '#eff6ff', border: '1px solid #bfdbfe', animation: 'fadeIn 0.3s' }}>
+              <h3 style={{ fontSize: '20px', fontWeight: '700', color: '#1e3a8a', margin: '0 0 10px 0' }}>Enterprise Teams</h3>
+              <p style={{ color: '#1d4ed8', margin: '0 0 20px 0', fontSize: '14px', minHeight: '40px' }}>Seamless networking for corporate staff.</p>
+              
+              <div style={{ backgroundColor: 'white', padding: '15px', borderRadius: '12px', marginBottom: '20px', border: '1px solid #dbeafe' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
+                  <span style={{ fontSize: '13px', fontWeight: '600', color: '#4b5563' }}>Team Size:</span>
+                  <span style={{ fontSize: '14px', fontWeight: '800', color: '#111' }}>{teamSize} Employees</span>
+                </div>
+                <input 
+                  type="range" min="1" max="1500" step="1" 
+                  value={teamSize} onChange={(e) => setTeamSize(Number(e.target.value))}
+                  style={{ width: '100%', cursor: 'pointer', accentColor: '#3b82f6' }} 
+                />
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '10px', alignItems: 'baseline' }}>
+                  <span style={{ fontSize: '13px', color: '#6b7280' }}>Price per user:</span>
+                  <span style={{ fontSize: '20px', fontWeight: '800', color: '#2563eb' }}>£{pricePerUser}</span>
+                </div>
+              </div>
+
+              <div style={{ fontSize: '42px', fontWeight: '800', color: '#1e3a8a', marginBottom: '30px' }}>£{totalTeamsMonthly}<span style={{ fontSize: '14px', color: '#1d4ed8', fontWeight: '500' }}>/mo</span></div>
+              
+              <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 40px 0', display: 'flex', flexDirection: 'column', gap: '15px', color: '#1d4ed8' }}>
+                <li style={listItemStyle}>{checkIcon} <span>Centralized HR Manager Dashboard</span></li>
+                <li style={listItemStyle}>{checkIcon} <span>Bulk Employee Profile Management</span></li>
+                <li style={listItemStyle}>{checkIcon} <span>Instant Hardware Reassignment</span></li>
+                <li style={listItemStyle}>{checkIcon} <span>Enterprise-Grade Security (GDPR)</span></li>
+                <li style={listItemStyle}>{checkIcon} <strong>Plus all Pro features per employee</strong></li>
+              </ul>
+              <button 
+                onClick={() => window.location.href = 'mailto:support@linksupply.co.uk?subject=Enterprise Pricing Inquiry'}
+                style={{ marginTop: 'auto', padding: '12px', width: '100%', borderRadius: '10px', border: 'none', backgroundColor: '#3b82f6', color: 'white', fontWeight: '700', cursor: 'pointer', fontSize: '14px', boxShadow: '0 4px 6px rgba(59, 130, 246, 0.2)' }}
+              >
+                Contact Sales
+              </button>
+            </div>
+          )}
 
         </div>
       </div>
