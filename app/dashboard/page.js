@@ -361,6 +361,18 @@ export default function PremiumDashboard() {
         .responsive-nav { padding: 20px 40px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e5e7eb; background-color: white; position: relative; z-index: 50; }
         .responsive-tabs { display: flex; gap: 10px; margin-bottom: 30px; background-color: #e5e7eb; padding: 6px; border-radius: 12px; overflow-x: auto; white-space: nowrap; }
         
+        /* RESTORED ORIGINAL CSS */
+        .responsive-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; width: 100%; }
+        .responsive-stack { display: flex; gap: 12px; width: 100%; max-width: 100%; }
+        .link-row { display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; background-color: #f9fafb; border: 1px solid #e5e7eb; border-radius: 10px; }
+        .url-input-container { display: flex; align-items: center; background-color: #f9fafb; border: 1px solid #d1d5db; border-radius: 10px; overflow: hidden; width: 100%; }
+        .url-prefix { color: #6b7280; font-size: 15px; padding: 14px; font-weight: 500; border-right: 1px solid #e5e7eb; background-color: #f3f4f6; white-space: nowrap; }
+        .b2b-table { width: 100%; border-collapse: collapse; text-align: left; }
+        .b2b-table th { padding: 16px 20px; background-color: #f9fafb; color: #6b7280; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #e5e7eb; font-weight: 700; }
+        .b2b-table td { padding: 16px 20px; border-bottom: 1px solid #e5e7eb; vertical-align: middle; color: #111; font-size: 14px; }
+        .b2b-table tr:last-child td { border-bottom: none; }
+        .b2b-table tr:hover { background-color: #f9fafb; }
+
         /* Mobile Menu Styles */
         .mobile-menu-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 40; backdrop-filter: blur(2px); }
         .mobile-menu-drawer { display: none; position: fixed; top: 0; right: 0; bottom: 0; width: 280px; background: white; z-index: 50; flex-direction: column; padding: 20px; box-shadow: -5px 0 25px rgba(0,0,0,0.1); transform: translateX(100%); transition: transform 0.3s ease-in-out; }
@@ -372,10 +384,22 @@ export default function PremiumDashboard() {
           .responsive-nav { padding: 15px 20px; }
           .desktop-nav-elements { display: none !important; }
           .hamburger-btn { display: block; }
-          .responsive-tabs { display: none; } /* Hide horizontal tabs on mobile */
+          .responsive-tabs { display: none; }
           .mobile-menu-overlay { display: block; opacity: 0; pointer-events: none; transition: opacity 0.3s ease; }
           .mobile-menu-overlay.open { opacity: 1; pointer-events: auto; }
           .mobile-menu-drawer { display: flex; }
+          
+          /* RESTORED MOBILE CSS */
+          .responsive-grid { grid-template-columns: 1fr; }
+          .responsive-stack { flex-direction: column; align-items: stretch; }
+          .responsive-stack > input, .responsive-stack > button { width: 100% !important; max-width: 100% !important; }
+          .header-stack { flex-direction: column; align-items: flex-start !important; gap: 15px; width: 100%; flex-wrap: wrap; }
+          .header-stack .actions { width: 100%; display: flex; justify-content: space-between; }
+          .link-row { flex-direction: column; align-items: flex-start; gap: 15px; }
+          .link-row button { width: 100%; }
+          .url-input-container { flex-direction: column; align-items: stretch; }
+          .url-prefix { border-right: none; border-bottom: 1px solid #e5e7eb; font-size: 13px; padding: 10px 14px; }
+          .b2b-table-wrapper { overflow-x: auto; }
         }
       `}</style>
 
@@ -412,7 +436,6 @@ export default function PremiumDashboard() {
       </div>
       {/* ---------------------------------- */}
 
-
       <nav className="responsive-nav">
         <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
           <Link href="/" style={{ textDecoration: 'none', display: 'inline-block' }}>
@@ -430,8 +453,13 @@ export default function PremiumDashboard() {
           </span>
         </div>
         
-        {/* HAMBURGER BUTTON (Mobile Only) */}
-        <button className="hamburger-btn" onClick={() => setIsMobileMenuOpen(true)}>☰</button>
+        {/* FIXED TOGGLE HAMBURGER BUTTON */}
+        <button 
+          className="hamburger-btn" 
+          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+        >
+          {isMobileMenuOpen ? '✕' : '☰'}
+        </button>
 
         <div className="desktop-nav-elements" style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
           <span style={{ fontSize: '15px', fontWeight: '600', color: '#374151' }}>
