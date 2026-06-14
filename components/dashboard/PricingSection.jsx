@@ -2,10 +2,7 @@
 import { useState } from 'react'
 
 export default function PricingSection({ userId, userTier }) {
-  // Master Segment Toggle
   const [pricingMode, setPricingMode] = useState('tags');
-  
-  // States
   const [tierIndex, setTierIndex] = useState(0); 
   const [teamSize, setTeamSize] = useState(15);  
   const [isAnnual, setIsAnnual] = useState(false);
@@ -20,16 +17,18 @@ export default function PricingSection({ userId, userTier }) {
     75: { mo: '69.99', yr: '560.00' },
     150: { mo: '99.99', yr: '800.00' }
   };
-  const currentBusinessPrice = isAnnual ? businessPrices[currentAssets].yr : businessPrices[currentAssets].mo;
+  
+  const businessMonthlyEquivalent = (Number(businessPrices[currentAssets].yr) / 12).toFixed(2);
+  const activeBusinessMonthlyPrice = isAnnual ? businessMonthlyEquivalent : businessPrices[currentAssets].mo;
+  const totalBusinessAnnualBilled = businessPrices[currentAssets].yr;
 
-  // --- TEAMS (EMPLOYEES) LOGIC WITH ANNUAL DISCOUNT ---
+  // --- TEAMS (EMPLOYEES) LOGIC ---
   let baseMonthlyPrice = 7.99;
   if (teamSize >= 50 && teamSize < 100) baseMonthlyPrice = 5.99;
   if (teamSize >= 100 && teamSize < 500) baseMonthlyPrice = 3.99;
   if (teamSize >= 500 && teamSize < 1000) baseMonthlyPrice = 2.49;
   if (teamSize >= 1000) baseMonthlyPrice = 1.49;
 
-  // Apply a 20% discount if annual is selected
   const activePricePerUser = isAnnual ? (baseMonthlyPrice * 0.8).toFixed(2) : baseMonthlyPrice.toFixed(2);
   const totalTeamsMonthly = (teamSize * activePricePerUser).toFixed(2);
   const totalTeamsAnnualBilled = (totalTeamsMonthly * 12).toFixed(2);
@@ -71,83 +70,77 @@ export default function PricingSection({ userId, userTier }) {
     }
   };
 
-  const cardStyle = { backgroundColor: 'white', padding: '40px', borderRadius: '24px', border: '1px solid #e5e7eb', display: 'flex', flexDirection: 'column', position: 'relative', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' };
+  const cardStyle = { backgroundColor: 'white', padding: '30px', borderRadius: '24px', border: '1px solid #e5e7eb', display: 'flex', flexDirection: 'column', position: 'relative', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' };
   const listItemStyle = { display: 'flex', alignItems: 'flex-start', gap: '10px', fontSize: '14px', lineHeight: '1.4' };
   const checkIcon = <span style={{ color: '#059669', fontWeight: '800', flexShrink: 0, marginTop: '2px' }}>✓</span>;
   const crossIcon = <span style={{ color: '#9ca3af', fontWeight: '800', flexShrink: 0, marginTop: '2px' }}>✕</span>;
 
   return (
-    <div style={{ width: '100%', animation: 'fadeIn 0.3s ease-in-out' }}>
+    <div style={{ width: '100%', animation: 'fadeIn 0.3s ease-in-out', padding: '20px 0' }}>
       <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
         
-        <div style={{ textAlign: 'center', marginBottom: '40px' }}>
-          <h2 style={{ fontSize: '32px', fontWeight: '800', color: '#111', margin: '0 0 10px 0', letterSpacing: '-0.5px' }}>Upgrade Your Workspace</h2>
-          <p style={{ fontSize: '16px', color: '#4b5563', maxWidth: '600px', margin: '0 auto 20px auto' }}>Choose the perfect plan to grow your network, or scale up to manage physical assets globally.</p>
+        <div style={{ textAlign: 'center', marginBottom: '30px' }}>
+          <h2 style={{ fontSize: '28px', fontWeight: '800', color: '#111', margin: '0 0 8px 0', letterSpacing: '-0.5px' }}>Upgrade Your Workspace</h2>
           
-          {/* MASTER TOGGLE */}
-          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '15px' }}>
-            <div style={{ backgroundColor: '#f3f4f6', padding: '6px', borderRadius: '30px', display: 'inline-flex', gap: '10px' }}>
+          {/* COMPACT MASTER TOGGLE */}
+          <div style={{ display: 'flex', justifyContent: 'center', margin: '15px 0' }}>
+            <div style={{ backgroundColor: '#f3f4f6', padding: '4px', borderRadius: '30px', display: 'inline-flex', gap: '5px' }}>
               <button 
                 onClick={() => setPricingMode('tags')}
-                style={{ padding: '10px 24px', borderRadius: '24px', border: 'none', fontSize: '14px', fontWeight: '700', cursor: 'pointer', transition: 'all 0.2s', backgroundColor: pricingMode === 'tags' ? 'white' : 'transparent', color: pricingMode === 'tags' ? '#111' : '#6b7280', boxShadow: pricingMode === 'tags' ? '0 2px 4px rgba(0,0,0,0.05)' : 'none' }}
+                style={{ padding: '8px 20px', borderRadius: '24px', border: 'none', fontSize: '13px', fontWeight: '700', cursor: 'pointer', transition: 'all 0.2s', backgroundColor: pricingMode === 'tags' ? 'white' : 'transparent', color: pricingMode === 'tags' ? '#111' : '#6b7280', boxShadow: pricingMode === 'tags' ? '0 2px 4px rgba(0,0,0,0.05)' : 'none' }}
               >
                 For Venues & Agencies
               </button>
               <button 
                 onClick={() => setPricingMode('teams')}
-                style={{ padding: '10px 24px', borderRadius: '24px', border: 'none', fontSize: '14px', fontWeight: '700', cursor: 'pointer', transition: 'all 0.2s', backgroundColor: pricingMode === 'teams' ? 'white' : 'transparent', color: pricingMode === 'teams' ? '#111' : '#6b7280', boxShadow: pricingMode === 'teams' ? '0 2px 4px rgba(0,0,0,0.05)' : 'none' }}
+                style={{ padding: '8px 20px', borderRadius: '24px', border: 'none', fontSize: '13px', fontWeight: '700', cursor: 'pointer', transition: 'all 0.2s', backgroundColor: pricingMode === 'teams' ? 'white' : 'transparent', color: pricingMode === 'teams' ? '#111' : '#6b7280', boxShadow: pricingMode === 'teams' ? '0 2px 4px rgba(0,0,0,0.05)' : 'none' }}
               >
                 For Teams & Employees
               </button>
             </div>
           </div>
 
-          {/* DYNAMIC HELPER TEXT */}
-          <div style={{ minHeight: '44px', marginBottom: '30px', color: '#4b5563', fontSize: '14px', lineHeight: '1.5', maxWidth: '600px', margin: '0 auto 30px auto' }}>
+          {/* DYNAMIC HELPER TEXT - COMPACT */}
+          <div style={{ minHeight: '38px', marginBottom: '15px', color: '#4b5563', fontSize: '13px', lineHeight: '1.4', maxWidth: '500px', margin: '0 auto 15px auto' }}>
             {pricingMode === 'tags' ? (
               <span style={{ animation: 'fadeIn 0.3s' }}>
                 <strong style={{ color: '#111' }}>Ideal for:</strong> Real Estate, Restaurants, Retail, and Event Spaces.<br/>
-                Deploy physical smart tags across locations, manage routing instantly, and track engagement.
+                Deploy physical smart tags, manage routing, and track engagement.
               </span>
             ) : (
               <span style={{ animation: 'fadeIn 0.3s' }}>
                 <strong style={{ color: '#111' }}>Ideal for:</strong> Sales Fleets (e.g., AA), Corporate Staff, and Enterprise Identity.<br/>
-                Standardize digital profiles, reassign hardware instantly, and secure enterprise data at scale.
+                Standardize digital profiles and secure enterprise data at scale.
               </span>
             )}
           </div>
 
           {/* ANNUAL VS MONTHLY TOGGLE */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '15px', marginBottom: '20px' }}>
-            <span style={{ fontSize: '15px', fontWeight: isAnnual ? '500' : '700', color: isAnnual ? '#6b7280' : '#111' }}>Month-to-Month</span>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', marginBottom: '15px' }}>
+            <span style={{ fontSize: '14px', fontWeight: isAnnual ? '500' : '700', color: isAnnual ? '#6b7280' : '#111' }}>Month-to-Month</span>
             <button 
               onClick={() => setIsAnnual(!isAnnual)}
-              style={{ width: '60px', height: '32px', borderRadius: '20px', backgroundColor: '#111', border: 'none', cursor: 'pointer', position: 'relative', padding: '4px' }}
+              style={{ width: '50px', height: '28px', borderRadius: '20px', backgroundColor: '#111', border: 'none', cursor: 'pointer', position: 'relative', padding: '3px' }}
             >
-              <div style={{ width: '24px', height: '24px', borderRadius: '50%', backgroundColor: 'white', position: 'absolute', top: '4px', left: isAnnual ? '32px' : '4px', transition: 'left 0.3s ease' }} />
+              <div style={{ width: '22px', height: '22px', borderRadius: '50%', backgroundColor: 'white', position: 'absolute', top: '3px', left: isAnnual ? '25px' : '3px', transition: 'left 0.3s ease' }} />
             </button>
-            <span style={{ fontSize: '15px', fontWeight: isAnnual ? '700' : '500', color: isAnnual ? '#111' : '#6b7280' }}>
-              Annual Account <span style={{ color: '#059669', fontSize: '12px', fontWeight: '700', backgroundColor: '#d1fae5', padding: '2px 8px', borderRadius: '10px', marginLeft: '5px' }}>Save Big</span>
+            <span style={{ fontSize: '14px', fontWeight: isAnnual ? '700' : '500', color: isAnnual ? '#111' : '#6b7280' }}>
+              Annual Account <span style={{ color: '#059669', fontSize: '11px', fontWeight: '800', backgroundColor: '#d1fae5', padding: '2px 6px', borderRadius: '8px', marginLeft: '4px' }}>SAVE 20%</span>
             </span>
-          </div>
-
-          <div style={{ display: 'inline-block', backgroundColor: '#fef3c7', color: '#b45309', padding: '8px 16px', borderRadius: '20px', fontSize: '13px', fontWeight: '700', border: '1px solid #fde68a' }}>
-            ⚠️ Hardware (NFC Cards, Keyrings, Signs) is charged separately at a one-off fee.
           </div>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '25px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px' }}>
           
           {/* CARD 1: BASIC TIER */}
           <div style={cardStyle}>
-            <h3 style={{ fontSize: '20px', fontWeight: '700', color: '#111', margin: '0 0 10px 0' }}>Basic</h3>
-            <p style={{ color: '#6b7280', margin: '0 0 20px 0', fontSize: '14px', minHeight: '40px' }}>Essential networking for individuals.</p>
-            <div style={{ fontSize: '42px', fontWeight: '800', color: '#111', marginBottom: '30px' }}>£0<span style={{ fontSize: '14px', color: '#6b7280', fontWeight: '500' }}>/mo</span></div>
-            <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 40px 0', display: 'flex', flexDirection: 'column', gap: '15px', color: '#4b5563' }}>
+            <h3 style={{ fontSize: '18px', fontWeight: '700', color: '#111', margin: '0 0 8px 0' }}>Basic</h3>
+            <p style={{ color: '#6b7280', margin: '0 0 15px 0', fontSize: '13px', minHeight: '38px' }}>Essential networking for individuals.</p>
+            <div style={{ fontSize: '38px', fontWeight: '800', color: '#111', marginBottom: '25px' }}>£0<span style={{ fontSize: '14px', color: '#6b7280', fontWeight: '500' }}>/mo</span></div>
+            <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 30px 0', display: 'flex', flexDirection: 'column', gap: '12px', color: '#4b5563' }}>
               <li style={listItemStyle}>{checkIcon} <span>1 Smart Profile (Link-in-Bio)</span></li>
               <li style={listItemStyle}>{checkIcon} <span>Up to 2 Social/Web Links</span></li>
-              <li style={listItemStyle}>{checkIcon} <span>Standard Dark & Light Themes</span></li>
-              <li style={listItemStyle}>{checkIcon} <span>24-Hour Tap Analytics</span></li>
+              <li style={listItemStyle}>{checkIcon} <span>Standard Themes</span></li>
               <li style={{...listItemStyle, color: '#9ca3af', textDecoration: 'line-through'}}>{crossIcon} <span>Custom Theme Branding</span></li>
               <li style={{...listItemStyle, color: '#9ca3af', textDecoration: 'line-through'}}>{crossIcon} <span>Dynamic External Routing</span></li>
             </ul>
@@ -157,18 +150,17 @@ export default function PricingSection({ userId, userTier }) {
           </div>
 
           {/* CARD 2: PRO TIER */}
-          <div style={{...cardStyle, border: isAlreadyPro ? '1px solid #e5e7eb' : '2px solid #111', boxShadow: isAlreadyPro ? 'none' : '0 20px 25px -5px rgba(0, 0, 0, 0.1)' }}>
+          <div style={{...cardStyle, border: isAlreadyPro ? '1px solid #e5e7eb' : '2px solid #111', boxShadow: isAlreadyPro ? 'none' : '0 10px 15px -3px rgba(0, 0, 0, 0.1)' }}>
             {!isAlreadyPro && !isAlreadyBusiness && (
-              <div style={{ position: 'absolute', top: '-12px', left: '50%', transform: 'translateX(-50%)', backgroundColor: '#111', color: 'white', padding: '4px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: '700', letterSpacing: '1px', textTransform: 'uppercase' }}>Most Popular</div>
+              <div style={{ position: 'absolute', top: '-10px', left: '50%', transform: 'translateX(-50%)', backgroundColor: '#111', color: 'white', padding: '4px 12px', borderRadius: '20px', fontSize: '11px', fontWeight: '800', letterSpacing: '0.5px', textTransform: 'uppercase' }}>Most Popular</div>
             )}
-            <h3 style={{ fontSize: '20px', fontWeight: '700', color: '#111', margin: '0 0 10px 0' }}>Pro</h3>
-            <p style={{ color: '#6b7280', margin: '0 0 20px 0', fontSize: '14px', minHeight: '40px' }}>Powerful tools for creators and solo professionals.</p>
-            <div style={{ fontSize: '42px', fontWeight: '800', color: '#111', marginBottom: '30px' }}>£{currentProPrice}<span style={{ fontSize: '14px', color: '#6b7280', fontWeight: '500' }}>{priceLabel}</span></div>
-            <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 40px 0', display: 'flex', flexDirection: 'column', gap: '15px', color: '#4b5563' }}>
+            <h3 style={{ fontSize: '18px', fontWeight: '700', color: '#111', margin: '0 0 8px 0' }}>Pro</h3>
+            <p style={{ color: '#6b7280', margin: '0 0 15px 0', fontSize: '13px', minHeight: '38px' }}>Powerful tools for solo professionals.</p>
+            <div style={{ fontSize: '38px', fontWeight: '800', color: isAnnual ? '#059669' : '#111', marginBottom: '25px', transition: 'color 0.3s ease' }}>£{currentProPrice}<span style={{ fontSize: '14px', color: '#6b7280', fontWeight: '500' }}>{priceLabel}</span></div>
+            <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 30px 0', display: 'flex', flexDirection: 'column', gap: '12px', color: '#4b5563' }}>
               <li style={listItemStyle}>{checkIcon} <span><strong>Up to 5 Connected Tags/QRs</strong></span></li>
               <li style={listItemStyle}>{checkIcon} <span>Fully Custom Smart Profile</span></li>
               <li style={listItemStyle}>{checkIcon} <span>Lead Generation (Save Contact)</span></li>
-              <li style={listItemStyle}>{checkIcon} <span>Advanced Lifetime Analytics</span></li>
               <li style={listItemStyle}>{checkIcon} <span>Remove "Link Supply" Branding</span></li>
             </ul>
             <button 
@@ -183,34 +175,30 @@ export default function PricingSection({ userId, userTier }) {
           {/* CARD 3: DYNAMIC B2B/ASSET TIER */}
           {pricingMode === 'tags' ? (
             <div style={{...cardStyle, backgroundColor: '#f0fdf4', border: '1px solid #86efac', animation: 'fadeIn 0.3s' }}>
-              <h3 style={{ fontSize: '20px', fontWeight: '700', color: '#065f46', margin: '0 0 10px 0' }}>Business Workspace</h3>
-              <p style={{ color: '#047857', margin: '0 0 20px 0', fontSize: '14px', minHeight: '40px' }}>Complete dashboard to manage physical assets.</p>
+              <h3 style={{ fontSize: '18px', fontWeight: '700', color: '#065f46', margin: '0 0 8px 0' }}>Business Workspace</h3>
+              <p style={{ color: '#047857', margin: '0 0 15px 0', fontSize: '13px', minHeight: '38px' }}>Manage physical assets at scale.</p>
               
-              <div style={{ backgroundColor: 'white', padding: '15px', borderRadius: '12px', marginBottom: '20px', border: '1px solid #bbf7d0' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
-                  <span style={{ fontSize: '13px', fontWeight: '600', color: '#4b5563' }}>Hardware Slots:</span>
-                  <span style={{ fontSize: '14px', fontWeight: '800', color: '#111' }}>{currentAssets} Tags</span>
+              <div style={{ backgroundColor: 'white', padding: '12px', borderRadius: '12px', marginBottom: '15px', border: '1px solid #bbf7d0' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                  <span style={{ fontSize: '12px', fontWeight: '600', color: '#4b5563' }}>Hardware Slots:</span>
+                  <span style={{ fontSize: '13px', fontWeight: '800', color: '#111' }}>{currentAssets} Tags & QRs</span>
                 </div>
                 <input 
                   type="range" min="0" max="3" step="1" 
                   value={tierIndex} onChange={(e) => setTierIndex(Number(e.target.value))}
                   style={{ width: '100%', cursor: 'pointer', accentColor: '#10b981' }} 
                 />
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '5px' }}>
-                  <span style={{ fontSize: '11px', color: '#9ca3af', fontWeight: '600' }}>25</span>
-                  <span style={{ fontSize: '11px', color: '#9ca3af', fontWeight: '600' }}>50</span>
-                  <span style={{ fontSize: '11px', color: '#9ca3af', fontWeight: '600' }}>75</span>
-                  <span style={{ fontSize: '11px', color: '#9ca3af', fontWeight: '600' }}>150</span>
-                </div>
               </div>
 
-              <div style={{ fontSize: '42px', fontWeight: '800', color: '#065f46', marginBottom: '30px' }}>£{currentBusinessPrice}<span style={{ fontSize: '14px', color: '#047857', fontWeight: '500' }}>{priceLabel}</span></div>
+              <div style={{ marginBottom: '25px' }}>
+                <div style={{ fontSize: '38px', fontWeight: '800', color: '#065f46' }}>£{activeBusinessMonthlyPrice}<span style={{ fontSize: '14px', color: '#047857', fontWeight: '500' }}>/mo</span></div>
+                {isAnnual && <div style={{ fontSize: '12px', color: '#4b5563', marginTop: '4px', fontWeight: '600' }}>Billed annually at £{totalBusinessAnnualBilled}</div>}
+              </div>
               
-              <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 40px 0', display: 'flex', flexDirection: 'column', gap: '15px', color: '#047857' }}>
+              <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 30px 0', display: 'flex', flexDirection: 'column', gap: '12px', color: '#047857' }}>
                 <li style={listItemStyle}>{checkIcon} <span><strong>Up to {currentAssets} Connected Assets</strong></span></li>
                 <li style={listItemStyle}>{checkIcon} <span>Centralized Manager Dashboard</span></li>
                 <li style={listItemStyle}>{checkIcon} <span>Bulk Link Management</span></li>
-                <li style={listItemStyle}>{checkIcon} <span>View Real-Time Scan Analytics</span></li>
                 <li style={listItemStyle}>{checkIcon} <strong>Plus all Pro features</strong></li>
               </ul>
               <button 
@@ -223,37 +211,31 @@ export default function PricingSection({ userId, userTier }) {
             </div>
           ) : (
             <div style={{...cardStyle, backgroundColor: '#eff6ff', border: '1px solid #bfdbfe', animation: 'fadeIn 0.3s' }}>
-              <h3 style={{ fontSize: '20px', fontWeight: '700', color: '#1e3a8a', margin: '0 0 10px 0' }}>Enterprise Teams</h3>
-              <p style={{ color: '#1d4ed8', margin: '0 0 20px 0', fontSize: '14px', minHeight: '40px' }}>Seamless networking for corporate staff.</p>
+              <h3 style={{ fontSize: '18px', fontWeight: '700', color: '#1e3a8a', margin: '0 0 8px 0' }}>Enterprise Teams</h3>
+              <p style={{ color: '#1d4ed8', margin: '0 0 15px 0', fontSize: '13px', minHeight: '38px' }}>Seamless networking for corporate staff.</p>
               
-              <div style={{ backgroundColor: 'white', padding: '15px', borderRadius: '12px', marginBottom: '20px', border: '1px solid #dbeafe' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
-                  <span style={{ fontSize: '13px', fontWeight: '600', color: '#4b5563' }}>Team Size:</span>
-                  <span style={{ fontSize: '14px', fontWeight: '800', color: '#111' }}>{teamSize} Employees</span>
+              <div style={{ backgroundColor: 'white', padding: '12px', borderRadius: '12px', marginBottom: '15px', border: '1px solid #dbeafe' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                  <span style={{ fontSize: '12px', fontWeight: '600', color: '#4b5563' }}>Team Size:</span>
+                  <span style={{ fontSize: '13px', fontWeight: '800', color: '#111' }}>{teamSize} Employees</span>
                 </div>
                 <input 
                   type="range" min="1" max="1500" step="1" 
                   value={teamSize} onChange={(e) => setTeamSize(Number(e.target.value))}
                   style={{ width: '100%', cursor: 'pointer', accentColor: '#3b82f6' }} 
                 />
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '10px', alignItems: 'baseline' }}>
-                  <span style={{ fontSize: '13px', color: '#6b7280' }}>Price per user {isAnnual && <span style={{color: '#10b981', fontWeight: '700'}}>(20% Off)</span>}:</span>
-                  <span style={{ fontSize: '20px', fontWeight: '800', color: '#2563eb' }}>£{activePricePerUser}</span>
-                </div>
               </div>
 
-              <div style={{ marginBottom: '30px' }}>
-                <div style={{ fontSize: '42px', fontWeight: '800', color: '#1e3a8a' }}>£{totalTeamsMonthly}<span style={{ fontSize: '14px', color: '#1d4ed8', fontWeight: '500' }}>/mo</span></div>
-                {isAnnual && <div style={{ fontSize: '13px', color: '#4b5563', marginTop: '5px', fontWeight: '600' }}>Billed annually at £{totalTeamsAnnualBilled}</div>}
+              <div style={{ marginBottom: '25px' }}>
+                <div style={{ fontSize: '38px', fontWeight: '800', color: '#1e3a8a' }}>£{totalTeamsMonthly}<span style={{ fontSize: '14px', color: '#1d4ed8', fontWeight: '500' }}>/mo</span></div>
+                {isAnnual && <div style={{ fontSize: '12px', color: '#4b5563', marginTop: '4px', fontWeight: '600' }}>Billed annually at £{totalTeamsAnnualBilled}</div>}
               </div>
               
-              <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 40px 0', display: 'flex', flexDirection: 'column', gap: '15px', color: '#1d4ed8' }}>
-                <li style={listItemStyle}>{checkIcon} <span><strong>Up to 3 Connected Tags/QRs per Employee</strong></span></li>
+              <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 30px 0', display: 'flex', flexDirection: 'column', gap: '12px', color: '#1d4ed8' }}>
+                <li style={listItemStyle}>{checkIcon} <span><strong>Up to 3 Connected Tags per Employee</strong></span></li>
                 <li style={listItemStyle}>{checkIcon} <span>Centralized HR Manager Dashboard</span></li>
-                <li style={listItemStyle}>{checkIcon} <span>Bulk Employee Profile Management</span></li>
                 <li style={listItemStyle}>{checkIcon} <span>Instant Hardware Reassignment</span></li>
-                <li style={listItemStyle}>{checkIcon} <span>Enterprise-Grade Security (GDPR compliant)</span></li>
-                <li style={listItemStyle}>{checkIcon} <strong>The Ultimate Network Hub</strong></li>
+                <li style={listItemStyle}>{checkIcon} <strong>Enterprise-Grade Security</strong></li>
               </ul>
               <button 
                 onClick={() => window.location.href = 'mailto:support@linksupply.co.uk?subject=Enterprise Pricing Inquiry'}
