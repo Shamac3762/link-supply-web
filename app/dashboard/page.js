@@ -25,6 +25,9 @@ export default function PremiumDashboard() {
   const [isMounted, setIsMounted] = useState(false)
   const [userId, setUserId] = useState(null)
   
+  // Mobile Menu State
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  
   const [stickers, setStickers] = useState([])
   const [chartData, setChartData] = useState([]) 
   const [claimId, setClaimId] = useState('')
@@ -334,6 +337,11 @@ export default function PremiumDashboard() {
     if (confirmDelete) { setSettingsMessage("Deleting account..."); alert("Account scheduled for deletion. Please contact support to finalize.") }
   }
 
+  const handleTabClick = (tabId) => {
+    setActiveTab(tabId);
+    setIsMobileMenuOpen(false); // Auto-close menu on selection
+  }
+
   const isAtLimit = pageLinks.length >= maxLinks
   const displayLimit = maxLinks > 100 ? 'Unlimited' : maxLinks
   const isPremium = pageProfile.tier !== 'free';
@@ -350,31 +358,24 @@ export default function PremiumDashboard() {
     <div style={{ minHeight: '100vh', backgroundColor: '#f3f4f6', fontFamily: 'sans-serif', paddingBottom: '50px', overflowX: 'hidden', width: '100%' }}>
       <style>{`
         * { box-sizing: border-box; }
-        .responsive-nav { padding: 20px 40px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e5e7eb; background-color: white; }
+        .responsive-nav { padding: 20px 40px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e5e7eb; background-color: white; position: relative; z-index: 50; }
         .responsive-tabs { display: flex; gap: 10px; margin-bottom: 30px; background-color: #e5e7eb; padding: 6px; border-radius: 12px; overflow-x: auto; white-space: nowrap; }
-        .responsive-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; width: 100%; }
-        .responsive-stack { display: flex; gap: 12px; width: 100%; max-width: 100%; }
-        .link-row { display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; background-color: #f9fafb; border: 1px solid #e5e7eb; border-radius: 10px; }
-        .url-input-container { display: flex; align-items: center; background-color: #f9fafb; border: 1px solid #d1d5db; border-radius: 10px; overflow: hidden; width: 100%; }
-        .url-prefix { color: #6b7280; font-size: 15px; padding: 14px; font-weight: 500; border-right: 1px solid #e5e7eb; background-color: #f3f4f6; white-space: nowrap; }
-        .b2b-table { width: 100%; border-collapse: collapse; text-align: left; }
-        .b2b-table th { padding: 16px 20px; background-color: #f9fafb; color: #6b7280; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #e5e7eb; font-weight: 700; }
-        .b2b-table td { padding: 16px 20px; border-bottom: 1px solid #e5e7eb; vertical-align: middle; color: #111; font-size: 14px; }
-        .b2b-table tr:last-child td { border-bottom: none; }
-        .b2b-table tr:hover { background-color: #f9fafb; }
+        
+        /* Mobile Menu Styles */
+        .mobile-menu-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 40; backdrop-filter: blur(2px); }
+        .mobile-menu-drawer { display: none; position: fixed; top: 0; right: 0; bottom: 0; width: 280px; background: white; z-index: 50; flex-direction: column; padding: 20px; box-shadow: -5px 0 25px rgba(0,0,0,0.1); transform: translateX(100%); transition: transform 0.3s ease-in-out; }
+        .mobile-menu-drawer.open { transform: translateX(0); }
+        
+        .hamburger-btn { display: none; background: none; border: none; font-size: 24px; cursor: pointer; color: #111; padding: 5px; }
+
         @media (max-width: 768px) {
-          .responsive-nav { padding: 15px 20px; flex-direction: column; gap: 15px; }
-          .responsive-tabs { flex-direction: column; }
-          .responsive-grid { grid-template-columns: 1fr; }
-          .responsive-stack { flex-direction: column; align-items: stretch; }
-          .responsive-stack > input, .responsive-stack > button { width: 100% !important; max-width: 100% !important; }
-          .header-stack { flex-direction: column; align-items: flex-start !important; gap: 15px; width: 100%; flex-wrap: wrap; }
-          .header-stack .actions { width: 100%; display: flex; justify-content: space-between; }
-          .link-row { flex-direction: column; align-items: flex-start; gap: 15px; }
-          .link-row button { width: 100%; }
-          .url-input-container { flex-direction: column; align-items: stretch; }
-          .url-prefix { border-right: none; border-bottom: 1px solid #e5e7eb; font-size: 13px; padding: 10px 14px; }
-          .b2b-table-wrapper { overflow-x: auto; }
+          .responsive-nav { padding: 15px 20px; }
+          .desktop-nav-elements { display: none !important; }
+          .hamburger-btn { display: block; }
+          .responsive-tabs { display: none; } /* Hide horizontal tabs on mobile */
+          .mobile-menu-overlay { display: block; opacity: 0; pointer-events: none; transition: opacity 0.3s ease; }
+          .mobile-menu-overlay.open { opacity: 1; pointer-events: auto; }
+          .mobile-menu-drawer { display: flex; }
         }
       `}</style>
 
@@ -386,33 +387,56 @@ export default function PremiumDashboard() {
         />
       )}
 
-      <nav className="responsive-nav">
-        <Link href="/" style={{ textDecoration: 'none', display: 'inline-block' }}>
-          <div style={{ fontFamily: '"Myriad Pro", "Segoe UI", Roboto, sans-serif', fontSize: '22px', color: '#111', margin: 0, letterSpacing: '-0.5px', display: 'flex', alignItems: 'baseline' }}>
-            <span style={{ fontWeight: '700' }}>Link</span><span style={{ fontWeight: '400' }}>Supply.</span>
-          </div>
-        </Link>
+      {/* --- MOBILE SIDE DRAWER MENU --- */}
+      <div className={`mobile-menu-overlay ${isMobileMenuOpen ? 'open' : ''}`} onClick={() => setIsMobileMenuOpen(false)} />
+      <div className={`mobile-menu-drawer ${isMobileMenuOpen ? 'open' : ''}`}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px', borderBottom: '1px solid #e5e7eb', paddingBottom: '15px' }}>
+          <span style={{ fontSize: '18px', fontWeight: '800' }}>Menu</span>
+          <button onClick={() => setIsMobileMenuOpen(false)} style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', color: '#6b7280' }}>✕</button>
+        </div>
         
-        {/* 🔥 NEW PROFESSIONAL GREETING & TIER BADGES */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '20px', flexWrap: 'wrap' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <span style={{ fontSize: '15px', fontWeight: '600', color: '#374151' }}>
-              Hello, {pageProfile.display_name || pageProfile.username || 'User'} 👋
-            </span>
-            <span style={{ 
-              fontSize: '11px', 
-              fontWeight: '800', 
-              backgroundColor: isPremium ? '#d1fae5' : '#f3f4f6', 
-              color: isPremium ? '#065f46' : '#6b7280', 
-              padding: '4px 10px', 
-              borderRadius: '20px', 
-              textTransform: 'uppercase',
-              border: isPremium ? '1px solid #86efac' : '1px solid #e5e7eb'
-            }}>
-              {pageProfile.tier} Plan
-            </span>
-          </div>
+        <nav style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          <button onClick={() => handleTabClick('hardware')} style={{ textAlign: 'left', padding: '12px', borderRadius: '8px', border: 'none', fontWeight: '700', fontSize: '16px', backgroundColor: activeTab === 'hardware' ? '#f3f4f6' : 'transparent', color: activeTab === 'hardware' ? '#111' : '#4b5563' }}>My Hardware</button>
+          <button onClick={() => handleTabClick('page')} style={{ textAlign: 'left', padding: '12px', borderRadius: '8px', border: 'none', fontWeight: '700', fontSize: '16px', backgroundColor: activeTab === 'page' ? '#f3f4f6' : 'transparent', color: activeTab === 'page' ? '#111' : '#4b5563' }}>My Page</button>
+          <button onClick={() => handleTabClick('analytics')} style={{ textAlign: 'left', padding: '12px', borderRadius: '8px', border: 'none', fontWeight: '700', fontSize: '16px', backgroundColor: activeTab === 'analytics' ? '#f3f4f6' : 'transparent', color: activeTab === 'analytics' ? '#111' : '#4b5563' }}>📈 Analytics</button>
+          <button onClick={() => handleTabClick('pricing')} style={{ textAlign: 'left', padding: '12px', borderRadius: '8px', border: 'none', fontWeight: '700', fontSize: '16px', backgroundColor: activeTab === 'pricing' ? '#111' : 'transparent', color: activeTab === 'pricing' ? 'white' : '#4b5563' }}>⭐ {isPremium ? 'My Plan' : 'Upgrade'}</button>
+          {isPremium && (
+            <button onClick={() => handleTabClick('team')} style={{ textAlign: 'left', padding: '12px', borderRadius: '8px', border: 'none', fontWeight: '700', fontSize: '16px', backgroundColor: activeTab === 'team' ? '#f3f4f6' : 'transparent', color: activeTab === 'team' ? '#111' : '#4b5563' }}>🏢 Team Admin</button>
+          )}
+        </nav>
+        
+        <div style={{ marginTop: 'auto', borderTop: '1px solid #e5e7eb', paddingTop: '20px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          <button onClick={() => { setIsMobileMenuOpen(false); setShowSettings(true); }} style={{ padding: '10px', backgroundColor: '#f3f4f6', color: '#111', border: '1px solid #d1d5db', borderRadius: '6px', fontWeight: '600', cursor: 'pointer', fontSize: '15px' }}>⚙️ Settings</button>
+          <button onClick={handleLogout} style={{ padding: '10px', backgroundColor: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca', borderRadius: '6px', fontWeight: '600', cursor: 'pointer', fontSize: '15px' }}>Log Out</button>
+        </div>
+      </div>
+      {/* ---------------------------------- */}
+
+
+      <nav className="responsive-nav">
+        <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+          <Link href="/" style={{ textDecoration: 'none', display: 'inline-block' }}>
+            <div style={{ fontFamily: '"Myriad Pro", "Segoe UI", Roboto, sans-serif', fontSize: '22px', color: '#111', margin: 0, letterSpacing: '-0.5px', display: 'flex', alignItems: 'baseline' }}>
+              <span style={{ fontWeight: '700' }}>Link</span><span style={{ fontWeight: '400' }}>Supply.</span>
+            </div>
+          </Link>
           
+          <span className="desktop-nav-elements" style={{ 
+            fontSize: '11px', fontWeight: '800', backgroundColor: isPremium ? '#d1fae5' : '#f3f4f6', 
+            color: isPremium ? '#065f46' : '#6b7280', padding: '4px 10px', borderRadius: '20px', 
+            textTransform: 'uppercase', border: isPremium ? '1px solid #86efac' : '1px solid #e5e7eb'
+          }}>
+            {pageProfile.tier} Plan
+          </span>
+        </div>
+        
+        {/* HAMBURGER BUTTON (Mobile Only) */}
+        <button className="hamburger-btn" onClick={() => setIsMobileMenuOpen(true)}>☰</button>
+
+        <div className="desktop-nav-elements" style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+          <span style={{ fontSize: '15px', fontWeight: '600', color: '#374151' }}>
+            Hello, {pageProfile.display_name || pageProfile.username || 'User'} 👋
+          </span>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <button onClick={() => setShowSettings(true)} style={{ padding: '8px 16px', backgroundColor: '#f3f4f6', color: '#111', border: '1px solid #d1d5db', borderRadius: '6px', fontWeight: '600', cursor: 'pointer', fontSize: '14px' }}>⚙️ Settings</button>
             <button onClick={handleLogout} style={{ padding: '8px 16px', backgroundColor: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca', borderRadius: '6px', fontWeight: '600', cursor: 'pointer', fontSize: '14px' }}>Log Out</button>
@@ -421,6 +445,8 @@ export default function PremiumDashboard() {
       </nav>
 
       <main style={{ maxWidth: '1000px', margin: '40px auto', padding: '0 20px', width: '100%' }}>
+        
+        {/* HORIZONTAL TABS (Desktop Only) */}
         <div className="responsive-tabs">
           <button onClick={() => setActiveTab('hardware')} style={{ flex: 1, padding: '12px', borderRadius: '8px', border: 'none', fontWeight: '700', fontSize: '15px', cursor: 'pointer', backgroundColor: activeTab === 'hardware' ? 'white' : 'transparent', color: activeTab === 'hardware' ? '#111' : '#6b7280', boxShadow: activeTab === 'hardware' ? '0 2px 4px rgba(0,0,0,0.05)' : 'none', transition: 'all 0.2s' }}>My Hardware</button>
           <button onClick={() => setActiveTab('page')} style={{ flex: 1, padding: '12px', borderRadius: '8px', border: 'none', fontWeight: '700', fontSize: '15px', cursor: 'pointer', backgroundColor: activeTab === 'page' ? 'white' : 'transparent', color: activeTab === 'page' ? '#111' : '#6b7280', boxShadow: activeTab === 'page' ? '0 2px 4px rgba(0,0,0,0.05)' : 'none', transition: 'all 0.2s' }}>My Page</button>
@@ -460,7 +486,6 @@ export default function PremiumDashboard() {
           />
         )}
 
-        {/* 🔥 PASSED TIER TO THE PRICING SECTION */}
         {activeTab === 'pricing' && (
           <PricingSection userId={userId} userTier={pageProfile.tier} />
         )}
