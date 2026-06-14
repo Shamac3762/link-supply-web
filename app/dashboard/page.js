@@ -358,7 +358,10 @@ export default function PremiumDashboard() {
     <div style={{ minHeight: '100vh', backgroundColor: '#f3f4f6', fontFamily: 'sans-serif', paddingBottom: '50px', overflowX: 'hidden', width: '100%' }}>
       <style>{`
         * { box-sizing: border-box; }
-        .responsive-nav { padding: 20px 40px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e5e7eb; background-color: white; position: relative; z-index: 50; }
+        
+        /* Adjusted Z-Index logic so Drawer covers Nav */
+        .responsive-nav { padding: 20px 40px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e5e7eb; background-color: white; position: relative; z-index: 40; }
+        
         .responsive-tabs { display: flex; gap: 10px; margin-bottom: 30px; background-color: #e5e7eb; padding: 6px; border-radius: 12px; overflow-x: auto; white-space: nowrap; }
         
         .responsive-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; width: 100%; }
@@ -372,8 +375,10 @@ export default function PremiumDashboard() {
         .b2b-table tr:last-child td { border-bottom: none; }
         .b2b-table tr:hover { background-color: #f9fafb; }
 
-        .mobile-menu-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 40; backdrop-filter: blur(2px); }
-        .mobile-menu-drawer { display: none; position: fixed; top: 0; right: 0; bottom: 0; width: 280px; background: white; z-index: 50; flex-direction: column; padding: 20px; box-shadow: -5px 0 25px rgba(0,0,0,0.1); transform: translateX(100%); transition: transform 0.3s ease-in-out; }
+        .mobile-only-name { display: none; }
+
+        .mobile-menu-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 90; backdrop-filter: blur(2px); }
+        .mobile-menu-drawer { display: none; position: fixed; top: 0; right: 0; bottom: 0; width: 280px; background: white; z-index: 100; flex-direction: column; padding: 20px; box-shadow: -5px 0 25px rgba(0,0,0,0.1); transform: translateX(100%); transition: transform 0.3s ease-in-out; }
         .mobile-menu-drawer.open { transform: translateX(0); }
         
         .hamburger-btn { display: none; background: none; border: none; font-size: 24px; cursor: pointer; color: #111; padding: 5px; }
@@ -387,6 +392,9 @@ export default function PremiumDashboard() {
           .mobile-menu-overlay.open { opacity: 1; pointer-events: auto; }
           .mobile-menu-drawer { display: flex; }
           
+          /* Displays the name under the logo on mobile only */
+          .mobile-only-name { display: block; font-size: 13px; color: #6b7280; font-weight: 500; margin-top: 2px; }
+
           .responsive-grid { grid-template-columns: 1fr; }
           .responsive-stack { flex-direction: column; align-items: stretch; }
           .responsive-stack > input, .responsive-stack > button { width: 100% !important; max-width: 100% !important; }
@@ -397,10 +405,6 @@ export default function PremiumDashboard() {
           .url-input-container { flex-direction: column; align-items: stretch; }
           .url-prefix { border-right: none; border-bottom: 1px solid #e5e7eb; font-size: 13px; padding: 10px 14px; }
           .b2b-table-wrapper { overflow-x: auto; }
-
-          /* NEW MOBILE ADJUSTMENTS FOR HEADER VISIBILITY */
-          .main-content { margin: 20px auto !important; padding: 0 15px !important; }
-          .dashboard-header { flex-direction: column !important; align-items: flex-start !important; gap: 10px !important; margin-bottom: 20px !important; }
         }
       `}</style>
 
@@ -412,7 +416,7 @@ export default function PremiumDashboard() {
         />
       )}
 
-      {/* --- MOBILE SIDE DRAWER MENU --- */}
+      {/* --- MOBILE SIDE DRAWER MENU (Z-INDEX: 100) --- */}
       <div className={`mobile-menu-overlay ${isMobileMenuOpen ? 'open' : ''}`} onClick={() => setIsMobileMenuOpen(false)} />
       <div className={`mobile-menu-drawer ${isMobileMenuOpen ? 'open' : ''}`}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
@@ -452,14 +456,29 @@ export default function PremiumDashboard() {
       </div>
       {/* ---------------------------------- */}
 
-      {/* ULTRA-CLEAN TOP NAVIGATION */}
+      {/* ULTRA-CLEAN TOP NAVIGATION (Z-INDEX: 40) */}
       <nav className="responsive-nav">
         <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-          <Link href="/" style={{ textDecoration: 'none', display: 'inline-block' }}>
-            <div style={{ fontFamily: '"Myriad Pro", "Segoe UI", Roboto, sans-serif', fontSize: '22px', color: '#111', margin: 0, letterSpacing: '-0.5px', display: 'flex', alignItems: 'baseline' }}>
-              <span style={{ fontWeight: '700' }}>Link</span><span style={{ fontWeight: '400' }}>Supply.</span>
-            </div>
-          </Link>
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <Link href="/" style={{ textDecoration: 'none', display: 'inline-block' }}>
+              <div style={{ fontFamily: '"Myriad Pro", "Segoe UI", Roboto, sans-serif', fontSize: '22px', color: '#111', margin: 0, letterSpacing: '-0.5px', display: 'flex', alignItems: 'baseline' }}>
+                <span style={{ fontWeight: '700' }}>Link</span><span style={{ fontWeight: '400' }}>Supply.</span>
+              </div>
+            </Link>
+            {/* MOBILE ONLY: Name under logo */}
+            <span className="mobile-only-name">
+              {pageProfile.display_name || pageProfile.username || 'User'}
+            </span>
+          </div>
+          
+          {/* DESKTOP ONLY: Tier Badge */}
+          <span className="desktop-nav-elements" style={{ 
+            fontSize: '11px', fontWeight: '800', backgroundColor: isPremium ? '#d1fae5' : '#f3f4f6', 
+            color: isPremium ? '#065f46' : '#6b7280', padding: '4px 10px', borderRadius: '20px', 
+            textTransform: 'uppercase', border: isPremium ? '1px solid #86efac' : '1px solid #e5e7eb'
+          }}>
+            {pageProfile.tier} Plan
+          </span>
         </div>
         
         <button 
@@ -469,34 +488,20 @@ export default function PremiumDashboard() {
           {isMobileMenuOpen ? '✕' : '☰'}
         </button>
 
-        <div className="desktop-nav-elements" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <button onClick={() => setShowSettings(true)} style={{ padding: '8px 16px', backgroundColor: '#f3f4f6', color: '#111', border: '1px solid #d1d5db', borderRadius: '6px', fontWeight: '600', cursor: 'pointer', fontSize: '14px' }}>⚙️ Settings</button>
-          <button onClick={handleLogout} style={{ padding: '8px 16px', backgroundColor: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca', borderRadius: '6px', fontWeight: '600', cursor: 'pointer', fontSize: '14px' }}>Log Out</button>
+        <div className="desktop-nav-elements" style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+          {/* DESKTOP ONLY: Greeting */}
+          <span style={{ fontSize: '15px', fontWeight: '600', color: '#374151' }}>
+            Hello, {pageProfile.display_name || pageProfile.username || 'User'} 👋
+          </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <button onClick={() => setShowSettings(true)} style={{ padding: '8px 16px', backgroundColor: '#f3f4f6', color: '#111', border: '1px solid #d1d5db', borderRadius: '6px', fontWeight: '600', cursor: 'pointer', fontSize: '14px' }}>⚙️ Settings</button>
+            <button onClick={handleLogout} style={{ padding: '8px 16px', backgroundColor: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca', borderRadius: '6px', fontWeight: '600', cursor: 'pointer', fontSize: '14px' }}>Log Out</button>
+          </div>
         </div>
       </nav>
 
-      <main className="main-content" style={{ maxWidth: '1000px', margin: '40px auto', padding: '0 20px', width: '100%' }}>
+      <main style={{ maxWidth: '1000px', margin: '40px auto', padding: '0 20px', width: '100%' }}>
         
-        {/* NEW DASHBOARD HEADER: GREETING & TIER BADGE */}
-        <div className="dashboard-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '15px', marginBottom: '30px' }}>
-          <div>
-            <h1 style={{ fontSize: '24px', fontWeight: '800', color: '#111', margin: '0 0 5px 0', letterSpacing: '-0.5px' }}>
-              Welcome back, {pageProfile.display_name || pageProfile.username || 'User'} 👋
-            </h1>
-            <p style={{ margin: 0, color: '#6b7280', fontSize: '15px' }}>Manage your workspace, hardware, and digital network.</p>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center' }}>
-            <span style={{ 
-              fontSize: '12px', fontWeight: '800', backgroundColor: isPremium ? '#d1fae5' : '#f3f4f6', 
-              color: isPremium ? '#065f46' : '#6b7280', padding: '6px 14px', borderRadius: '20px', 
-              textTransform: 'uppercase', border: isPremium ? '1px solid #86efac' : '1px solid #e5e7eb',
-              boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
-            }}>
-              {pageProfile.tier} Workspace
-            </span>
-          </div>
-        </div>
-
         {/* HORIZONTAL TABS (Desktop Only) */}
         <div className="responsive-tabs">
           <button onClick={() => setActiveTab('hardware')} style={{ flex: 1, padding: '12px', borderRadius: '8px', border: 'none', fontWeight: '700', fontSize: '15px', cursor: 'pointer', backgroundColor: activeTab === 'hardware' ? 'white' : 'transparent', color: activeTab === 'hardware' ? '#111' : '#6b7280', boxShadow: activeTab === 'hardware' ? '0 2px 4px rgba(0,0,0,0.05)' : 'none', transition: 'all 0.2s' }}>My Hardware</button>
