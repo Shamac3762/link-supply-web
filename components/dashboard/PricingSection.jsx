@@ -1,23 +1,30 @@
 'use client'
 import { useState } from 'react'
 
-export default function PricingSection({ userId }) {
-  const [teamSize, setTeamSize] = useState(15);
+export default function PricingSection({ userId, userTier }) {
+  // 0 = 25 Tags, 1 = 50 Tags, 2 = 75 Tags, 3 = 150 Tags
+  const [tierIndex, setTierIndex] = useState(0); 
   const [isAnnual, setIsAnnual] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Dynamic B2B Pricing Logic
-  let pricePerUser = 7.99;
-  if (teamSize >= 50 && teamSize < 100) pricePerUser = 5.99;
-  if (teamSize >= 100 && teamSize < 500) pricePerUser = 3.99;
-  if (teamSize >= 500 && teamSize < 1000) pricePerUser = 2.49;
-  if (teamSize >= 1000) pricePerUser = 1.49;
+  // Asset Mapping Logic
+  const assetOptions = [25, 50, 75, 150];
+  const currentAssets = assetOptions[tierIndex];
 
-  const totalMonthly = (teamSize * pricePerUser).toFixed(2);
+  const businessPrices = {
+    25: { mo: '29.99', yr: '240.00' },
+    50: { mo: '49.99', yr: '400.00' },
+    75: { mo: '69.99', yr: '560.00' },
+    150: { mo: '99.99', yr: '800.00' }
+  };
 
-  // Pro Pricing Logic (Month-to-month rolling vs £40 fixed Annual)
+  const currentBusinessPrice = isAnnual ? businessPrices[currentAssets].yr : businessPrices[currentAssets].mo;
   const currentProPrice = isAnnual ? '40.00' : '4.99';
   const priceLabel = isAnnual ? '/yr' : '/mo';
+
+  // Prevent duplicate purchases
+  const isAlreadyPro = userTier === 'pro';
+  const isAlreadyBusiness = userTier === 'business';
 
   const handleUpgrade = async (planType) => {
     if (!userId) {
@@ -40,7 +47,7 @@ export default function PricingSection({ userId }) {
 
       const data = await response.json();
       if (data.url) {
-        window.location.href = data.url; // Dynamic safe redirect to Stripe
+        window.location.href = data.url; 
       } else {
         alert("Checkout Error: " + (data.error || "Unknown error"));
         setIsLoading(false);
@@ -63,7 +70,7 @@ export default function PricingSection({ userId }) {
         
         <div style={{ textAlign: 'center', marginBottom: '40px' }}>
           <h2 style={{ fontSize: '32px', fontWeight: '800', color: '#111', margin: '0 0 10px 0', letterSpacing: '-0.5px' }}>Upgrade Your Workspace</h2>
-          <p style={{ fontSize: '16px', color: '#4b5563', maxWidth: '600px', margin: '0 auto 20px auto' }}>Choose the perfect plan to grow your network, or scale up to manage an entire global team.</p>
+          <p style={{ fontSize: '16px', color: '#4b5563', maxWidth: '600px', margin: '0 auto 20px auto' }}>Choose the perfect plan to grow your network, or scale up to manage physical assets globally.</p>
           
           {/* ANNUAL VS MONTHLY TOGGLE */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '15px', marginTop: '20px', marginBottom: '20px' }}>
@@ -80,13 +87,13 @@ export default function PricingSection({ userId }) {
           </div>
 
           <div style={{ display: 'inline-block', backgroundColor: '#fef3c7', color: '#b45309', padding: '8px 16px', borderRadius: '20px', fontSize: '13px', fontWeight: '700', border: '1px solid #fde68a' }}>
-            ⚠️ Hardware (NFC Cards, Keyrings, Stickers) is charged separately at a one-off fee.
+            ⚠️ Hardware (NFC Cards, Keyrings, Signs) is charged separately at a one-off fee.
           </div>
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '25px' }}>
           
-          {/* B2C: FREE TIER */}
+          {/* BASIC TIER */}
           <div style={cardStyle}>
             <h3 style={{ fontSize: '20px', fontWeight: '700', color: '#111', margin: '0 0 10px 0' }}>Basic</h3>
             <p style={{ color: '#6b7280', margin: '0 0 20px 0', fontSize: '14px', minHeight: '40px' }}>Essential networking for individuals.</p>
@@ -98,66 +105,81 @@ export default function PricingSection({ userId }) {
               <li style={listItemStyle}>{checkIcon} <span>24-Hour Tap Analytics</span></li>
               <li style={{...listItemStyle, color: '#9ca3af', textDecoration: 'line-through'}}>{crossIcon} <span>Custom Theme Branding</span></li>
               <li style={{...listItemStyle, color: '#9ca3af', textDecoration: 'line-through'}}>{crossIcon} <span>Lead Generation (Save Contact)</span></li>
-              <li style={{...listItemStyle, color: '#9ca3af', textDecoration: 'line-through'}}>{crossIcon} <span>Remove "Link Supply" Branding</span></li>
+              <li style={{...listItemStyle, color: '#9ca3af', textDecoration: 'line-through'}}>{crossIcon} <span>Dynamic External Routing</span></li>
             </ul>
-            <button style={{ marginTop: 'auto', padding: '12px', width: '100%', borderRadius: '10px', border: '1px solid #d1d5db', backgroundColor: '#f9fafb', color: '#4b5563', fontWeight: '700', cursor: 'pointer', fontSize: '14px' }}>Current Plan</button>
+            <button disabled style={{ marginTop: 'auto', padding: '12px', width: '100%', borderRadius: '10px', border: '1px solid #d1d5db', backgroundColor: '#f9fafb', color: '#4b5563', fontWeight: '700', cursor: 'not-allowed', fontSize: '14px' }}>
+              Current Plan
+            </button>
           </div>
 
-          {/* B2C: PRO TIER */}
-          <div style={{...cardStyle, border: '2px solid #111', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)' }}>
-            <div style={{ position: 'absolute', top: '-12px', left: '50%', transform: 'translateX(-50%)', backgroundColor: '#111', color: 'white', padding: '4px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: '700', letterSpacing: '1px', textTransform: 'uppercase' }}>Most Popular</div>
+          {/* PRO TIER */}
+          <div style={{...cardStyle, border: isAlreadyPro ? '1px solid #e5e7eb' : '2px solid #111', boxShadow: isAlreadyPro ? 'none' : '0 20px 25px -5px rgba(0, 0, 0, 0.1)' }}>
+            {!isAlreadyPro && !isAlreadyBusiness && (
+              <div style={{ position: 'absolute', top: '-12px', left: '50%', transform: 'translateX(-50%)', backgroundColor: '#111', color: 'white', padding: '4px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: '700', letterSpacing: '1px', textTransform: 'uppercase' }}>Most Popular</div>
+            )}
             <h3 style={{ fontSize: '20px', fontWeight: '700', color: '#111', margin: '0 0 10px 0' }}>Pro</h3>
-            <p style={{ color: '#6b7280', margin: '0 0 20px 0', fontSize: '14px', minHeight: '40px' }}>Powerful tools for creators and founders.</p>
+            <p style={{ color: '#6b7280', margin: '0 0 20px 0', fontSize: '14px', minHeight: '40px' }}>Powerful tools for creators and solo brokers.</p>
             <div style={{ fontSize: '42px', fontWeight: '800', color: '#111', marginBottom: '30px' }}>£{currentProPrice}<span style={{ fontSize: '14px', color: '#6b7280', fontWeight: '500' }}>{priceLabel}</span></div>
             <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 40px 0', display: 'flex', flexDirection: 'column', gap: '15px', color: '#4b5563' }}>
+              <li style={listItemStyle}>{checkIcon} <span><strong>Up to 5 Connected Tags/QRs</strong></span></li>
               <li style={listItemStyle}>{checkIcon} <span>Unlimited Links & Destinations</span></li>
               <li style={listItemStyle}>{checkIcon} <span>Fully Custom Theme Branding</span></li>
               <li style={listItemStyle}>{checkIcon} <span>Lead Generation (Save Contact)</span></li>
               <li style={listItemStyle}>{checkIcon} <span>Advanced Lifetime Analytics</span></li>
-              <li style={listItemStyle}>{checkIcon} <span>Custom QR Code Generation</span></li>
               <li style={listItemStyle}>{checkIcon} <span>Remove "Link Supply" Branding</span></li>
             </ul>
             <button 
               onClick={() => handleUpgrade('pro')}
-              disabled={isLoading}
-              style={{ marginTop: 'auto', padding: '12px', width: '100%', borderRadius: '10px', border: 'none', backgroundColor: '#4f46e5', color: 'white', fontWeight: '700', cursor: isLoading ? 'not-allowed' : 'pointer', fontSize: '14px', transition: 'background-color 0.2s', opacity: isLoading ? 0.7 : 1 }} 
+              disabled={isLoading || isAlreadyPro || isAlreadyBusiness}
+              style={{ marginTop: 'auto', padding: '12px', width: '100%', borderRadius: '10px', border: 'none', backgroundColor: isAlreadyPro ? '#10b981' : (isAlreadyBusiness ? '#e5e7eb' : '#4f46e5'), color: (isAlreadyBusiness && !isAlreadyPro) ? '#9ca3af' : 'white', fontWeight: '700', cursor: (isLoading || isAlreadyPro || isAlreadyBusiness) ? 'not-allowed' : 'pointer', fontSize: '14px', transition: 'all 0.2s' }} 
             >
-              {isLoading ? 'Loading Secure Checkout...' : 'Upgrade to Pro'}
+              {isAlreadyPro ? '✓ Current Plan' : (isLoading ? 'Loading...' : 'Upgrade to Pro')}
             </button>
           </div>
 
-          {/* B2B: TEAMS TIER (Interactive) */}
+          {/* BUSINESS TIER (Interactive) */}
           <div style={{...cardStyle, backgroundColor: '#f0fdf4', border: '1px solid #86efac' }}>
-            <h3 style={{ fontSize: '20px', fontWeight: '700', color: '#065f46', margin: '0 0 10px 0' }}>Teams (B2B)</h3>
-            <p style={{ color: '#047857', margin: '0 0 20px 0', fontSize: '14px', minHeight: '40px' }}>Seamless networking for entire organizations.</p>
+            <h3 style={{ fontSize: '20px', fontWeight: '700', color: '#065f46', margin: '0 0 10px 0' }}>Business Workspace</h3>
+            <p style={{ color: '#047857', margin: '0 0 20px 0', fontSize: '14px', minHeight: '40px' }}>Complete dashboard to manage physical assets.</p>
             
             <div style={{ backgroundColor: 'white', padding: '15px', borderRadius: '12px', marginBottom: '20px', border: '1px solid #bbf7d0' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
-                <span style={{ fontSize: '13px', fontWeight: '600', color: '#4b5563' }}>Team Size:</span>
-                <span style={{ fontSize: '14px', fontWeight: '800', color: '#111' }}>{teamSize} Employees</span>
+                <span style={{ fontSize: '13px', fontWeight: '600', color: '#4b5563' }}>Hardware Slots:</span>
+                <span style={{ fontSize: '14px', fontWeight: '800', color: '#111' }}>{currentAssets} Tags/QRs</span>
               </div>
+              
+              {/* SLIDER 0 to 3 mapped to index */}
               <input 
-                type="range" min="1" max="1500" step="1" 
-                value={teamSize} onChange={(e) => setTeamSize(Number(e.target.value))}
+                type="range" min="0" max="3" step="1" 
+                value={tierIndex} onChange={(e) => setTierIndex(Number(e.target.value))}
                 style={{ width: '100%', cursor: 'pointer', accentColor: '#10b981' }} 
               />
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '10px', alignItems: 'baseline' }}>
-                <span style={{ fontSize: '13px', color: '#6b7280' }}>Price per user:</span>
-                <span style={{ fontSize: '20px', fontWeight: '800', color: '#059669' }}>£{pricePerUser}</span>
+              
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '5px' }}>
+                <span style={{ fontSize: '11px', color: '#9ca3af', fontWeight: '600' }}>25</span>
+                <span style={{ fontSize: '11px', color: '#9ca3af', fontWeight: '600' }}>50</span>
+                <span style={{ fontSize: '11px', color: '#9ca3af', fontWeight: '600' }}>75</span>
+                <span style={{ fontSize: '11px', color: '#9ca3af', fontWeight: '600' }}>150</span>
               </div>
             </div>
 
-            <div style={{ fontSize: '42px', fontWeight: '800', color: '#065f46', marginBottom: '30px' }}>£{totalMonthly}<span style={{ fontSize: '14px', color: '#047857', fontWeight: '500' }}>/mo</span></div>
+            <div style={{ fontSize: '42px', fontWeight: '800', color: '#065f46', marginBottom: '30px' }}>£{currentBusinessPrice}<span style={{ fontSize: '14px', color: '#047857', fontWeight: '500' }}>{priceLabel}</span></div>
             
             <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 40px 0', display: 'flex', flexDirection: 'column', gap: '15px', color: '#047857' }}>
+              <li style={listItemStyle}>{checkIcon} <span><strong>Up to {currentAssets} Connected Assets</strong></span></li>
               <li style={listItemStyle}>{checkIcon} <span>Centralized Manager Dashboard</span></li>
-              <li style={listItemStyle}>{checkIcon} <span>Bulk Profile Management</span></li>
-              <li style={listItemStyle}>{checkIcon} <span>Instant Hardware Reassignment</span></li>
-              <li style={listItemStyle}>{checkIcon} <span>Enterprise-Grade GDPR Security</span></li>
-              <li style={listItemStyle}>{checkIcon} <span>Priority Business Support</span></li>
-              <li style={listItemStyle}>{checkIcon} <strong>Plus all Pro features per employee</strong></li>
+              <li style={listItemStyle}>{checkIcon} <span>Bulk Link Management</span></li>
+              <li style={listItemStyle}>{checkIcon} <span>View Real-Time Scan Analytics</span></li>
+              <li style={listItemStyle}>{checkIcon} <span>Enterprise-Grade Security</span></li>
+              <li style={listItemStyle}>{checkIcon} <strong>Plus all Pro features</strong></li>
             </ul>
-            <button style={{ marginTop: 'auto', padding: '12px', width: '100%', borderRadius: '10px', border: 'none', backgroundColor: '#10b981', color: 'white', fontWeight: '700', cursor: 'pointer', fontSize: '14px', boxShadow: '0 4px 6px rgba(16, 185, 129, 0.2)', transition: 'background-color 0.2s' }}>Contact Sales</button>
+            <button 
+              onClick={() => handleUpgrade(`business_${currentAssets}`)}
+              disabled={isLoading || (isAlreadyBusiness && currentAssets === 25)} /* Basic lock logic if they are already on this tier */
+              style={{ marginTop: 'auto', padding: '12px', width: '100%', borderRadius: '10px', border: 'none', backgroundColor: '#10b981', color: 'white', fontWeight: '700', cursor: isLoading ? 'not-allowed' : 'pointer', fontSize: '14px', boxShadow: '0 4px 6px rgba(16, 185, 129, 0.2)' }}
+            >
+              {isLoading ? 'Loading...' : `Upgrade to Business`}
+            </button>
           </div>
 
         </div>
