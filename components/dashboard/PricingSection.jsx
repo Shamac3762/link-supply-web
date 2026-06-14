@@ -2,12 +2,12 @@
 import { useState } from 'react'
 
 export default function PricingSection({ userId, userTier }) {
-  // Master Segment Toggle: 'tags' or 'teams'
+  // Master Segment Toggle
   const [pricingMode, setPricingMode] = useState('tags');
   
   // States
-  const [tierIndex, setTierIndex] = useState(0); // 0=25, 1=50, 2=75, 3=150
-  const [teamSize, setTeamSize] = useState(15);  // 1 to 1500 employees
+  const [tierIndex, setTierIndex] = useState(0); 
+  const [teamSize, setTeamSize] = useState(15);  
   const [isAnnual, setIsAnnual] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -22,13 +22,17 @@ export default function PricingSection({ userId, userTier }) {
   };
   const currentBusinessPrice = isAnnual ? businessPrices[currentAssets].yr : businessPrices[currentAssets].mo;
 
-  // --- TEAMS (EMPLOYEES) LOGIC ---
-  let pricePerUser = 7.99;
-  if (teamSize >= 50 && teamSize < 100) pricePerUser = 5.99;
-  if (teamSize >= 100 && teamSize < 500) pricePerUser = 3.99;
-  if (teamSize >= 500 && teamSize < 1000) pricePerUser = 2.49;
-  if (teamSize >= 1000) pricePerUser = 1.49;
-  const totalTeamsMonthly = (teamSize * pricePerUser).toFixed(2);
+  // --- TEAMS (EMPLOYEES) LOGIC WITH ANNUAL DISCOUNT ---
+  let baseMonthlyPrice = 7.99;
+  if (teamSize >= 50 && teamSize < 100) baseMonthlyPrice = 5.99;
+  if (teamSize >= 100 && teamSize < 500) baseMonthlyPrice = 3.99;
+  if (teamSize >= 500 && teamSize < 1000) baseMonthlyPrice = 2.49;
+  if (teamSize >= 1000) baseMonthlyPrice = 1.49;
+
+  // Apply a 20% discount if annual is selected
+  const activePricePerUser = isAnnual ? (baseMonthlyPrice * 0.8).toFixed(2) : baseMonthlyPrice.toFixed(2);
+  const totalTeamsMonthly = (teamSize * activePricePerUser).toFixed(2);
+  const totalTeamsAnnualBilled = (totalTeamsMonthly * 12).toFixed(2);
 
   // --- PRO LOGIC ---
   const currentProPrice = isAnnual ? '40.00' : '4.99';
@@ -67,7 +71,6 @@ export default function PricingSection({ userId, userTier }) {
     }
   };
 
-  // UI Styles
   const cardStyle = { backgroundColor: 'white', padding: '40px', borderRadius: '24px', border: '1px solid #e5e7eb', display: 'flex', flexDirection: 'column', position: 'relative', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' };
   const listItemStyle = { display: 'flex', alignItems: 'flex-start', gap: '10px', fontSize: '14px', lineHeight: '1.4' };
   const checkIcon = <span style={{ color: '#059669', fontWeight: '800', flexShrink: 0, marginTop: '2px' }}>✓</span>;
@@ -81,22 +84,37 @@ export default function PricingSection({ userId, userTier }) {
           <h2 style={{ fontSize: '32px', fontWeight: '800', color: '#111', margin: '0 0 10px 0', letterSpacing: '-0.5px' }}>Upgrade Your Workspace</h2>
           <p style={{ fontSize: '16px', color: '#4b5563', maxWidth: '600px', margin: '0 auto 20px auto' }}>Choose the perfect plan to grow your network, or scale up to manage physical assets globally.</p>
           
-          {/* MASTER TOGGLE: Tags vs Teams */}
-          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '30px' }}>
+          {/* MASTER TOGGLE */}
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '15px' }}>
             <div style={{ backgroundColor: '#f3f4f6', padding: '6px', borderRadius: '30px', display: 'inline-flex', gap: '10px' }}>
               <button 
                 onClick={() => setPricingMode('tags')}
                 style={{ padding: '10px 24px', borderRadius: '24px', border: 'none', fontSize: '14px', fontWeight: '700', cursor: 'pointer', transition: 'all 0.2s', backgroundColor: pricingMode === 'tags' ? 'white' : 'transparent', color: pricingMode === 'tags' ? '#111' : '#6b7280', boxShadow: pricingMode === 'tags' ? '0 2px 4px rgba(0,0,0,0.05)' : 'none' }}
               >
-                Manage Smart Tags
+                For Venues & Agencies
               </button>
               <button 
                 onClick={() => setPricingMode('teams')}
                 style={{ padding: '10px 24px', borderRadius: '24px', border: 'none', fontSize: '14px', fontWeight: '700', cursor: 'pointer', transition: 'all 0.2s', backgroundColor: pricingMode === 'teams' ? 'white' : 'transparent', color: pricingMode === 'teams' ? '#111' : '#6b7280', boxShadow: pricingMode === 'teams' ? '0 2px 4px rgba(0,0,0,0.05)' : 'none' }}
               >
-                Manage Employees
+                For Teams & Employees
               </button>
             </div>
+          </div>
+
+          {/* DYNAMIC HELPER TEXT */}
+          <div style={{ minHeight: '44px', marginBottom: '30px', color: '#4b5563', fontSize: '14px', lineHeight: '1.5', maxWidth: '600px', margin: '0 auto 30px auto' }}>
+            {pricingMode === 'tags' ? (
+              <span style={{ animation: 'fadeIn 0.3s' }}>
+                <strong style={{ color: '#111' }}>Ideal for:</strong> Real Estate, Restaurants, Retail, and Event Spaces.<br/>
+                Deploy physical smart tags across locations, manage routing instantly, and track engagement.
+              </span>
+            ) : (
+              <span style={{ animation: 'fadeIn 0.3s' }}>
+                <strong style={{ color: '#111' }}>Ideal for:</strong> Sales Fleets (e.g., AA), Corporate Staff, and Enterprise Identity.<br/>
+                Standardize digital profiles, reassign hardware instantly, and secure enterprise data at scale.
+              </span>
+            )}
           </div>
 
           {/* ANNUAL VS MONTHLY TOGGLE */}
@@ -219,19 +237,23 @@ export default function PricingSection({ userId, userTier }) {
                   style={{ width: '100%', cursor: 'pointer', accentColor: '#3b82f6' }} 
                 />
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '10px', alignItems: 'baseline' }}>
-                  <span style={{ fontSize: '13px', color: '#6b7280' }}>Price per user:</span>
-                  <span style={{ fontSize: '20px', fontWeight: '800', color: '#2563eb' }}>£{pricePerUser}</span>
+                  <span style={{ fontSize: '13px', color: '#6b7280' }}>Price per user {isAnnual && <span style={{color: '#10b981', fontWeight: '700'}}>(20% Off)</span>}:</span>
+                  <span style={{ fontSize: '20px', fontWeight: '800', color: '#2563eb' }}>£{activePricePerUser}</span>
                 </div>
               </div>
 
-              <div style={{ fontSize: '42px', fontWeight: '800', color: '#1e3a8a', marginBottom: '30px' }}>£{totalTeamsMonthly}<span style={{ fontSize: '14px', color: '#1d4ed8', fontWeight: '500' }}>/mo</span></div>
+              <div style={{ marginBottom: '30px' }}>
+                <div style={{ fontSize: '42px', fontWeight: '800', color: '#1e3a8a' }}>£{totalTeamsMonthly}<span style={{ fontSize: '14px', color: '#1d4ed8', fontWeight: '500' }}>/mo</span></div>
+                {isAnnual && <div style={{ fontSize: '13px', color: '#4b5563', marginTop: '5px', fontWeight: '600' }}>Billed annually at £{totalTeamsAnnualBilled}</div>}
+              </div>
               
               <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 40px 0', display: 'flex', flexDirection: 'column', gap: '15px', color: '#1d4ed8' }}>
+                <li style={listItemStyle}>{checkIcon} <span><strong>Up to 3 Connected Tags/QRs per Employee</strong></span></li>
                 <li style={listItemStyle}>{checkIcon} <span>Centralized HR Manager Dashboard</span></li>
                 <li style={listItemStyle}>{checkIcon} <span>Bulk Employee Profile Management</span></li>
                 <li style={listItemStyle}>{checkIcon} <span>Instant Hardware Reassignment</span></li>
-                <li style={listItemStyle}>{checkIcon} <span>Enterprise-Grade Security (GDPR)</span></li>
-                <li style={listItemStyle}>{checkIcon} <strong>Plus all Pro features per employee</strong></li>
+                <li style={listItemStyle}>{checkIcon} <span>Enterprise-Grade Security (GDPR compliant)</span></li>
+                <li style={listItemStyle}>{checkIcon} <strong>The Ultimate Network Hub</strong></li>
               </ul>
               <button 
                 onClick={() => window.location.href = 'mailto:support@linksupply.co.uk?subject=Enterprise Pricing Inquiry'}
