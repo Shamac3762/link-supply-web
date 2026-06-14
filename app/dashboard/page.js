@@ -397,6 +397,10 @@ export default function PremiumDashboard() {
           .url-input-container { flex-direction: column; align-items: stretch; }
           .url-prefix { border-right: none; border-bottom: 1px solid #e5e7eb; font-size: 13px; padding: 10px 14px; }
           .b2b-table-wrapper { overflow-x: auto; }
+
+          /* NEW MOBILE ADJUSTMENTS FOR HEADER VISIBILITY */
+          .main-content { margin: 20px auto !important; padding: 0 15px !important; }
+          .dashboard-header { flex-direction: column !important; align-items: flex-start !important; gap: 10px !important; margin-bottom: 20px !important; }
         }
       `}</style>
 
@@ -411,9 +415,24 @@ export default function PremiumDashboard() {
       {/* --- MOBILE SIDE DRAWER MENU --- */}
       <div className={`mobile-menu-overlay ${isMobileMenuOpen ? 'open' : ''}`} onClick={() => setIsMobileMenuOpen(false)} />
       <div className={`mobile-menu-drawer ${isMobileMenuOpen ? 'open' : ''}`}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px', borderBottom: '1px solid #e5e7eb', paddingBottom: '15px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
           <span style={{ fontSize: '18px', fontWeight: '800' }}>Menu</span>
           <button onClick={() => setIsMobileMenuOpen(false)} style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', color: '#6b7280' }}>✕</button>
+        </div>
+
+        {/* MOBILE ONLY: GREETING & TIER BADGE IN MENU */}
+        <div style={{ marginBottom: '25px', paddingBottom: '20px', borderBottom: '1px solid #e5e7eb' }}>
+          <h2 style={{ fontSize: '18px', fontWeight: '800', color: '#111', margin: '0 0 8px 0', letterSpacing: '-0.5px' }}>
+            Hi, {pageProfile.display_name || pageProfile.username || 'User'} 👋
+          </h2>
+          <span style={{ 
+            fontSize: '11px', fontWeight: '800', backgroundColor: isPremium ? '#d1fae5' : '#f3f4f6', 
+            color: isPremium ? '#065f46' : '#6b7280', padding: '4px 10px', borderRadius: '20px', 
+            textTransform: 'uppercase', border: isPremium ? '1px solid #86efac' : '1px solid #e5e7eb',
+            display: 'inline-block'
+          }}>
+            {pageProfile.tier} Workspace
+          </span>
         </div>
         
         <nav style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -456,10 +475,10 @@ export default function PremiumDashboard() {
         </div>
       </nav>
 
-      <main style={{ maxWidth: '1000px', margin: '40px auto', padding: '0 20px', width: '100%' }}>
+      <main className="main-content" style={{ maxWidth: '1000px', margin: '40px auto', padding: '0 20px', width: '100%' }}>
         
         {/* NEW DASHBOARD HEADER: GREETING & TIER BADGE */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '15px', marginBottom: '30px' }}>
+        <div className="dashboard-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '15px', marginBottom: '30px' }}>
           <div>
             <h1 style={{ fontSize: '24px', fontWeight: '800', color: '#111', margin: '0 0 5px 0', letterSpacing: '-0.5px' }}>
               Welcome back, {pageProfile.display_name || pageProfile.username || 'User'} 👋
