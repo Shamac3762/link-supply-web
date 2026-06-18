@@ -48,6 +48,7 @@ export async function POST(req) {
       payment_method_types: ['card'],
       line_items: [{ price: priceId, quantity: 1 }],
       mode: 'subscription',
+      allow_promotion_codes: true, // Enables the promotional code box on the Stripe payment page
       success_url: `${process.env.NEXT_PUBLIC_SITE_URL}/dashboard?checkout=success`,
       cancel_url: `${process.env.NEXT_PUBLIC_SITE_URL}/dashboard?checkout=canceled`,
       client_reference_id: userId, 
