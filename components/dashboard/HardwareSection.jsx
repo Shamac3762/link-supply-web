@@ -20,7 +20,6 @@ export default function HardwareSection({
   const labelStyle = { display: 'block', fontSize: '14px', color: '#4b5563', marginBottom: '8px', fontWeight: '600' };
 
   // --- NEW CAPACITY CALCULATIONS ---
-  // Safe fallback if maxLinks isn't ready
   const limit = maxLinks || (isPremium ? 5 : 2);
   const totalTags = stickers.length;
   const isOverLimit = isPremium && totalTags > limit;
@@ -67,15 +66,14 @@ export default function HardwareSection({
           {stickers.map((sticker, index) => {
             const isEnabled = sticker.is_active !== false;
             // --- NEW SOFT LOCK LOGIC ---
-            // Only lock if they are premium AND the tag index exceeds their specific plan limit.
             const isSoftLocked = isPremium && index >= limit; 
 
             return (
               <div key={sticker.id} style={{ 
-                backgroundColor: isSoftLocked ? '#f9fafb' : 'white', // Grey background if locked
+                backgroundColor: isSoftLocked ? '#f9fafb' : 'white', 
                 padding: '30px', 
                 borderRadius: '16px', 
-                border: isSoftLocked ? '1px dashed #d1d5db' : '1px solid #e5e7eb', // Dashed border if locked
+                border: isSoftLocked ? '1px dashed #d1d5db' : '1px solid #e5e7eb', 
                 boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)', 
                 display: 'flex', flexDirection: 'column', gap: '20px', 
                 opacity: isEnabled ? 1 : 0.6, transition: 'opacity 0.2s', width: '100%', overflow: 'hidden' 
@@ -110,7 +108,6 @@ export default function HardwareSection({
                       </button>
                     </div>
                     <div className="responsive-stack">
-                      {/* Pinned to profile if not premium OR if Soft Locked */}
                       <input disabled={!isEnabled || !isPremium || isSoftLocked} type="url" value={(!isPremium || isSoftLocked) ? `https://linksupply.co.uk/u/${pageProfile.username}` : (sticker.target_url || '')} onChange={(e) => { const updated = stickers.map(s => s.id === sticker.id ? { ...s, target_url: e.target.value } : s); setStickers(updated) }} style={{ flex: 1, padding: '14px', borderRadius: '10px', border: '1px solid #d1d5db', fontSize: '16px', color: (!isPremium || isSoftLocked) ? '#6b7280' : '#111', backgroundColor: (!isPremium || isSoftLocked) ? '#f3f4f6' : 'white', outline: 'none' }} />
                       
                       {!isPremium ? (
