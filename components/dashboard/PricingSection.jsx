@@ -132,7 +132,6 @@ export default function PricingSection({ userId, userTier }) {
       <style>{`
         .desktop-toggles { display: block; }
         .mobile-toggles { display: none; }
-        /* When screen hits tablet/mobile width, hide top toggles and show them above the 3rd card */
         @media (max-width: 850px) {
           .desktop-toggles { display: none; }
           .mobile-toggles { display: block; margin-top: 10px; margin-bottom: 20px; border-top: 1px dashed #d1d5db; padding-top: 25px; }
@@ -144,7 +143,6 @@ export default function PricingSection({ userId, userTier }) {
         <div style={{ textAlign: 'center', marginBottom: '30px' }}>
           <h2 style={{ fontSize: '28px', fontWeight: '800', color: '#111', margin: '0 0 8px 0', letterSpacing: '-0.5px' }}>Upgrade Your Workspace</h2>
           
-          {/* DESKTOP TOGGLES (Hidden on mobile) */}
           <div className="desktop-toggles">
             {billingTogglesNode}
           </div>
@@ -176,7 +174,19 @@ export default function PricingSection({ userId, userTier }) {
             )}
             <h3 style={{ fontSize: '18px', fontWeight: '700', color: '#111', margin: '0 0 8px 0' }}>Pro</h3>
             <p style={{ color: '#6b7280', margin: '0 0 15px 0', fontSize: '13px', minHeight: '38px' }}>Powerful tools for solo professionals.</p>
-            <div style={{ fontSize: '38px', fontWeight: '800', color: isAnnual ? '#059669' : '#111', marginBottom: '25px', transition: 'color 0.3s ease' }}>£{currentProPrice}<span style={{ fontSize: '14px', color: '#6b7280', fontWeight: '500' }}>{priceLabel}</span></div>
+            
+            {/* NEW INLINE PRO TOGGLE */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '25px', flexWrap: 'wrap', gap: '10px' }}>
+              <div style={{ fontSize: '38px', fontWeight: '800', color: isAnnual ? '#059669' : '#111', transition: 'color 0.3s ease', lineHeight: '1' }}>
+                £{currentProPrice}<span style={{ fontSize: '14px', color: '#6b7280', fontWeight: '500' }}>{priceLabel}</span>
+              </div>
+              
+              <div style={{ backgroundColor: '#f3f4f6', padding: '3px', borderRadius: '20px', display: 'flex', alignItems: 'center' }}>
+                <button onClick={() => setIsAnnual(false)} style={{ padding: '4px 10px', borderRadius: '16px', border: 'none', fontSize: '11px', fontWeight: '700', backgroundColor: !isAnnual ? 'white' : 'transparent', color: !isAnnual ? '#111' : '#6b7280', boxShadow: !isAnnual ? '0 1px 2px rgba(0,0,0,0.05)' : 'none', cursor: 'pointer', transition: 'all 0.2s' }}>Monthly</button>
+                <button onClick={() => setIsAnnual(true)} style={{ padding: '4px 10px', borderRadius: '16px', border: 'none', fontSize: '11px', fontWeight: '700', backgroundColor: isAnnual ? '#d1fae5' : 'transparent', color: isAnnual ? '#065f46' : '#6b7280', boxShadow: isAnnual ? '0 1px 2px rgba(0,0,0,0.05)' : 'none', cursor: 'pointer', transition: 'all 0.2s' }}>Yearly</button>
+              </div>
+            </div>
+
             <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 30px 0', display: 'flex', flexDirection: 'column', gap: '12px', color: '#4b5563' }}>
               <li style={listItemStyle}>{checkIcon} <span><strong>Up to 5 Connected Tags/QRs</strong></span></li>
               <li style={listItemStyle}>{checkIcon} <span>Fully Custom Smart Profile</span></li>
@@ -195,7 +205,6 @@ export default function PricingSection({ userId, userTier }) {
           {/* CARD 3 WRAPPER: DYNAMIC B2B/ASSET TIER */}
           <div style={{ display: 'flex', flexDirection: 'column' }}>
             
-            {/* MOBILE TOGGLES (Hidden on desktop, placed right above card 3 on mobile) */}
             <div className="mobile-toggles">
               {billingTogglesNode}
             </div>
