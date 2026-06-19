@@ -521,6 +521,7 @@ export default function PremiumDashboard() {
             handleActivateTag={handleActivateTag} claimMessage={claimMessage} stickers={stickers}
             setStickers={setStickers} isPremium={isPremium} pageProfile={pageProfile}
             handleToggleActive={handleToggleActive} handleSaveHardwareChanges={handleSaveHardwareChanges} saveStatus={saveStatus}
+            maxLinks={maxLinks}
           />
         )}
 
