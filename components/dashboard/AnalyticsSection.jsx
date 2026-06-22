@@ -5,130 +5,188 @@ export default function AnalyticsSection({
   stickers,
   isPremium,
   pageProfile,
-  hasRealData,
   displayChartData,
-  isMounted
+  isMounted,
+  // These will be passed from the parent shortly to fetch real data
+  timeRange = '7d', 
+  setTimeRange = () => {} 
 }) {
-  // Local state to handle simple tooltips on our native chart
   const [hoveredDay, setHoveredDay] = useState(null);
 
-  // Calculate the highest tap day so we can scale the chart bars dynamically
-  const maxTaps = Math.max(...displayChartData.map(d => d.taps), 1);
+  // Strictly Real Data Calculations (Demo Data is completely removed)
+  const totalHardwareTaps = stickers.reduce((acc, s) => acc + (s.tap_count || 0), 0);
+  
+  // Calculate if we have any actual chart data to show
+  const chartTotalTaps = (displayChartData || []).reduce((acc, d) => acc + (d.taps || 0), 0);
+  const hasChartData = chartTotalTaps > 0;
+  const maxTaps = hasChartData ? Math.max(...displayChartData.map(d => d.taps)) : 1;
+
+  // Determine bar sizing based on how many data points we have (7d vs 30d)
+  const dataCount = displayChartData?.length || 7;
+  const barMaxWidth = dataCount > 10 ? '12px' : '40px';
+  const showAllLabels = dataCount <= 7;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '30px', width: '100%', animation: 'fadeIn 0.3s ease-in-out' }}>
+      
+      {/* TOP KPI METRICS */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px' }}>
         
         {/* TOTAL TAPS */}
-        <div style={{ backgroundColor: 'white', padding: '25px', borderRadius: '16px', border: '1px solid #e5e7eb', textAlign: 'center' }}>
-          <p style={{ color: '#6b7280', fontSize: '13px', fontWeight: '700', textTransform: 'uppercase', marginBottom: '10px' }}>Total Hardware Taps</p>
-          <p style={{ fontSize: '32px', fontWeight: '800', color: '#111', margin: 0 }}>
-            {stickers.reduce((acc, s) => acc + (s.tap_count || 0), 0)}
+        <div style={{ backgroundColor: 'white', padding: '25px', borderRadius: '16px', border: '1px solid #e5e7eb', textAlign: 'center', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>
+          <p style={{ color: '#6b7280', fontSize: '13px', fontWeight: '700', textTransform: 'uppercase', marginBottom: '10px', letterSpacing: '0.5px' }}>Total Hardware Taps</p>
+          <p style={{ fontSize: '36px', fontWeight: '800', color: '#111', margin: 0, letterSpacing: '-1px' }}>
+            {totalHardwareTaps.toLocaleString()}
           </p>
         </div>
         
         {/* PROFILE VIEWS */}
-        <div style={{ backgroundColor: 'white', padding: '25px', borderRadius: '16px', border: '1px solid #e5e7eb', textAlign: 'center', position: 'relative', overflow: 'hidden' }}>
+        <div style={{ backgroundColor: 'white', padding: '25px', borderRadius: '16px', border: '1px solid #e5e7eb', textAlign: 'center', position: 'relative', overflow: 'hidden', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginBottom: '10px' }}>
-            <p style={{ color: '#6b7280', fontSize: '13px', fontWeight: '700', textTransform: 'uppercase', margin: 0 }}>Digital Profile Views</p>
-            {!isPremium && <span style={{ fontSize: '10px', fontWeight: '700', backgroundColor: '#fef9c3', color: '#854d0e', padding: '2px 6px', borderRadius: '10px' }}>PRO</span>}
+            <p style={{ color: '#6b7280', fontSize: '13px', fontWeight: '700', textTransform: 'uppercase', margin: 0, letterSpacing: '0.5px' }}>Digital Profile Views</p>
+            {!isPremium && <span style={{ fontSize: '10px', fontWeight: '800', backgroundColor: '#fef9c3', color: '#854d0e', padding: '2px 8px', borderRadius: '12px' }}>PRO</span>}
           </div>
           
           {isPremium ? (
-            <p style={{ fontSize: '32px', fontWeight: '800', color: '#111', margin: 0 }}>
-              {pageProfile.profile_views || 0}
+            <p style={{ fontSize: '36px', fontWeight: '800', color: '#111', margin: 0, letterSpacing: '-1px' }}>
+              {(pageProfile.profile_views || 0).toLocaleString()}
             </p>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '38px' }}>
-               <p style={{ fontSize: '32px', fontWeight: '800', color: '#d1d5db', margin: 0, filter: 'blur(6px)', opacity: 0.5, userSelect: 'none' }}>
-                 {pageProfile.profile_views || 342}
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '42px' }}>
+               <p style={{ fontSize: '36px', fontWeight: '800', color: '#d1d5db', margin: 0, filter: 'blur(5px)', opacity: 0.6, userSelect: 'none' }}>
+                 1,204
                </p>
-               <button onClick={() => alert("Stripe checkout coming soon!")} style={{ position: 'absolute', padding: '8px 16px', backgroundColor: '#111', color: 'white', border: 'none', borderRadius: '8px', fontWeight: '700', fontSize: '12px', cursor: 'pointer', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
-                 🔒 Unlock to View
+               <button onClick={() => alert("Stripe checkout coming soon!")} style={{ position: 'absolute', padding: '8px 18px', backgroundColor: '#111', color: 'white', border: 'none', borderRadius: '20px', fontWeight: '700', fontSize: '12px', cursor: 'pointer', boxShadow: '0 4px 10px rgba(0,0,0,0.15)', transition: 'transform 0.2s' }} onMouseEnter={(e) => e.target.style.transform = 'scale(1.05)'} onMouseLeave={(e) => e.target.style.transform = 'scale(1)'}>
+                 🔒 Unlock Views
                </button>
             </div>
           )}
         </div>
 
         {/* BEST PERFORMING */}
-        <div style={{ backgroundColor: 'white', padding: '25px', borderRadius: '16px', border: '1px solid #e5e7eb', textAlign: 'center' }}>
-          <p style={{ color: '#6b7280', fontSize: '13px', fontWeight: '700', textTransform: 'uppercase', marginBottom: '10px' }}>Best Performing Tag</p>
-          <p style={{ fontSize: '20px', fontWeight: '800', color: '#111', margin: 0 }}>
-            {stickers.length > 0 ? [...stickers].sort((a,b) => (b.tap_count || 0) - (a.tap_count || 0))[0]?.id || 'N/A' : 'N/A'}
+        <div style={{ backgroundColor: 'white', padding: '25px', borderRadius: '16px', border: '1px solid #e5e7eb', textAlign: 'center', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>
+          <p style={{ color: '#6b7280', fontSize: '13px', fontWeight: '700', textTransform: 'uppercase', marginBottom: '10px', letterSpacing: '0.5px' }}>Top Performing Tag</p>
+          <p style={{ fontSize: '22px', fontWeight: '800', color: '#111', margin: '8px 0 0 0' }}>
+            {stickers.length > 0 ? [...stickers].sort((a,b) => (b.tap_count || 0) - (a.tap_count || 0))[0]?.id || 'None Active' : 'None Active'}
           </p>
         </div>
       </div>
 
+      {/* MASTER CHART SECTION */}
       {isPremium ? (
         <div style={{ backgroundColor: 'white', padding: '30px', borderRadius: '16px', border: '1px solid #e5e7eb', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)', width: '100%' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '35px', flexWrap: 'wrap', gap: '15px' }}>
+          
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '40px', flexWrap: 'wrap', gap: '20px' }}>
             <div>
-              <h2 style={{ fontSize: '20px', fontWeight: '800', color: '#111', margin: 0 }}>Tap Activity</h2>
-              <p style={{ color: '#6b7280', fontSize: '14px', margin: '4px 0 0 0' }}>Daily performance over the last 7 days</p>
+              <h2 style={{ fontSize: '20px', fontWeight: '800', color: '#111', margin: 0, letterSpacing: '-0.5px' }}>Engagement Activity</h2>
+              <p style={{ color: '#6b7280', fontSize: '14px', margin: '4px 0 0 0', fontWeight: '500' }}>Physical hardware scans over time</p>
             </div>
-            {hasRealData ? (
-              <span style={{ fontSize: '11px', fontWeight: '800', color: '#3b82f6', backgroundColor: '#eff6ff', padding: '6px 12px', borderRadius: '100px', letterSpacing: '1px' }}>LIVE DATA</span>
+
+            {/* NEW: TOP-TIER TIME RANGE TOGGLES */}
+            <div style={{ backgroundColor: '#f3f4f6', padding: '4px', borderRadius: '8px', display: 'flex', gap: '4px' }}>
+              {['7d', '30d', '6m'].map((range) => (
+                <button
+                  key={range}
+                  onClick={() => setTimeRange(range)}
+                  style={{
+                    padding: '6px 16px',
+                    borderRadius: '6px',
+                    border: 'none',
+                    fontSize: '13px',
+                    fontWeight: timeRange === range ? '700' : '600',
+                    backgroundColor: timeRange === range ? 'white' : 'transparent',
+                    color: timeRange === range ? '#111' : '#6b7280',
+                    boxShadow: timeRange === range ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                    textTransform: 'uppercase'
+                  }}
+                >
+                  {range === '7d' ? '7 Days' : range === '30d' ? '30 Days' : '6 Months'}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* THE CHART AREA */}
+          <div style={{ width: '100%', height: '280px', position: 'relative' }}>
+            
+            {!hasChartData ? (
+              /* THE BEAUTIFUL EMPTY STATE */
+              <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', border: '2px dashed #e5e7eb', borderRadius: '12px', backgroundColor: '#f9fafb' }}>
+                <div style={{ fontSize: '32px', marginBottom: '10px', opacity: 0.5 }}>📊</div>
+                <h3 style={{ fontSize: '16px', fontWeight: '700', color: '#374151', margin: '0 0 5px 0' }}>Awaiting Data</h3>
+                <p style={{ fontSize: '14px', color: '#6b7280', margin: 0, maxWidth: '300px', textAlign: 'center' }}>
+                  Your chart will appear here as soon as your hardware receives its first scan.
+                </p>
+              </div>
             ) : (
-              <span style={{ fontSize: '11px', fontWeight: '800', color: '#f59e0b', backgroundColor: '#fef3c7', padding: '6px 12px', borderRadius: '100px', letterSpacing: '1px' }}>DEMO DATA</span>
+              /* THE REAL DATA CHART */
+              isMounted && (
+                <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', height: '240px', paddingBottom: '20px', borderBottom: '1px solid #e5e7eb', position: 'relative' }}>
+                  
+                  {/* Subtle Background Grid Lines */}
+                  <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: '20px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', zIndex: 0, pointerEvents: 'none' }}>
+                    <div style={{ borderTop: '1px dashed #f3f4f6', width: '100%' }}></div>
+                    <div style={{ borderTop: '1px dashed #f3f4f6', width: '100%' }}></div>
+                    <div style={{ borderTop: '1px dashed #f3f4f6', width: '100%' }}></div>
+                  </div>
+
+                  {displayChartData.map((dataPoint, index) => {
+                    const heightPercent = maxTaps === 0 ? 0 : Math.max((dataPoint.taps / maxTaps) * 100, 2); 
+                    const isHovered = hoveredDay === index;
+
+                    return (
+                      <div 
+                        key={index} 
+                        onMouseEnter={() => setHoveredDay(index)}
+                        onMouseLeave={() => setHoveredDay(null)}
+                        style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1, height: '100%', position: 'relative', cursor: 'pointer', zIndex: 10 }}
+                      >
+                        {/* Interactive Tooltip */}
+                        {isHovered && (
+                          <div style={{ position: 'absolute', top: '-40px', backgroundColor: '#111', color: 'white', padding: '6px 12px', borderRadius: '8px', fontSize: '12px', fontWeight: '700', zIndex: 20, whiteSpace: 'nowrap', boxShadow: '0 4px 10px rgba(0,0,0,0.15)', animation: 'fadeIn 0.15s' }}>
+                            {dataPoint.taps} Taps
+                            <div style={{ fontSize: '10px', color: '#9ca3af', fontWeight: '500', marginTop: '2px' }}>{dataPoint.fullDate || dataPoint.name}</div>
+                          </div>
+                        )}
+
+                        {/* Bar Segment */}
+                        <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
+                          <div style={{ 
+                            width: '100%', 
+                            maxWidth: barMaxWidth, 
+                            height: `${heightPercent}%`, 
+                            backgroundColor: isHovered ? '#2563eb' : '#3b82f6', 
+                            borderRadius: '4px 4px 0 0', 
+                            transition: 'all 0.2s ease-out'
+                          }} />
+                        </div>
+
+                        {/* X-Axis Label (Only show all if 7 days, otherwise hide some to prevent overlap) */}
+                        <div style={{ position: 'absolute', bottom: '-25px', fontSize: '11px', fontWeight: '600', color: isHovered ? '#111' : '#9ca3af', transition: 'color 0.2s', opacity: (showAllLabels || index % Math.ceil(dataCount / 6) === 0 || isHovered) ? 1 : 0 }}>
+                          {dataPoint.name}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )
             )}
           </div>
-
-          {/* --- NATIVE ZERO-DEPENDENCY CHART --- */}
-          {isMounted && (
-            <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', height: '250px', paddingBottom: '20px', borderBottom: '1px dashed #e5e7eb', position: 'relative' }}>
-              {displayChartData.map((day, index) => {
-                // Calculate height percentage relative to the max taps (cap at 100%)
-                const heightPercent = maxTaps === 0 ? 0 : Math.max((day.taps / maxTaps) * 100, 2); 
-                const isHovered = hoveredDay === index;
-
-                return (
-                  <div 
-                    key={index} 
-                    onMouseEnter={() => setHoveredDay(index)}
-                    onMouseLeave={() => setHoveredDay(null)}
-                    style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1, height: '100%', position: 'relative', cursor: 'pointer' }}
-                  >
-                    {/* Tooltip */}
-                    {isHovered && (
-                      <div style={{ position: 'absolute', top: '-35px', backgroundColor: '#111', color: 'white', padding: '4px 10px', borderRadius: '8px', fontSize: '12px', fontWeight: '700', zIndex: 10, whiteSpace: 'nowrap', boxShadow: '0 4px 6px rgba(0,0,0,0.1)', animation: 'fadeIn 0.2s' }}>
-                        {day.taps} Taps
-                      </div>
-                    )}
-
-                    {/* Chart Bar */}
-                    <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', padding: '0 10%' }}>
-                      <div style={{ 
-                        width: '100%', 
-                        maxWidth: '40px', 
-                        height: `${heightPercent}%`, 
-                        backgroundColor: isHovered ? '#2563eb' : '#3b82f6', 
-                        borderRadius: '6px 6px 0 0', 
-                        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                        opacity: hasRealData ? 1 : 0.6
-                      }} />
-                    </div>
-
-                    {/* X-Axis Label */}
-                    <div style={{ position: 'absolute', bottom: '-25px', fontSize: '12px', fontWeight: '600', color: isHovered ? '#111' : '#9ca3af', transition: 'color 0.2s' }}>
-                      {day.name}
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          )}
         </div>
       ) : (
-        <div style={{ backgroundColor: 'white', padding: '60px', borderRadius: '16px', textAlign: 'center', border: '1px solid #e5e7eb', width: '100%' }}>
+        /* FREE TIER UPSOLD STATE */
+        <div style={{ backgroundColor: 'white', padding: '60px', borderRadius: '16px', textAlign: 'center', border: '1px solid #e5e7eb', width: '100%', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>
           <div style={{ fontSize: '48px', marginBottom: '20px' }}>📈</div>
-          <h2 style={{ fontSize: '24px', fontWeight: '700', color: '#111', marginBottom: '10px' }}>Advanced Analytics</h2>
-          <p style={{ color: '#6b7280', fontSize: '16px', maxWidth: '400px', margin: '0 auto 30px auto' }}>
-            Track your profile visits, link clicks, and view daily performance charts over time.
+          <h2 style={{ fontSize: '24px', fontWeight: '800', color: '#111', margin: '0 0 10px 0', letterSpacing: '-0.5px' }}>Advanced Analytics</h2>
+          <p style={{ color: '#6b7280', fontSize: '16px', maxWidth: '400px', margin: '0 auto 30px auto', lineHeight: '1.5' }}>
+            Track your profile visits, hardware scans, and view daily performance charts over time.
           </p>
-          <div style={{ display: 'inline-block', backgroundColor: '#fef9c3', color: '#854d0e', padding: '6px 12px', borderRadius: '12px', fontSize: '14px', fontWeight: '700', marginBottom: '20px' }}>
+          <div style={{ display: 'inline-block', backgroundColor: '#fef9c3', color: '#854d0e', padding: '6px 14px', borderRadius: '20px', fontSize: '12px', fontWeight: '800', marginBottom: '25px', letterSpacing: '0.5px' }}>
             PREMIUM FEATURE
           </div>
-          <button onClick={() => alert("Stripe checkout coming soon!")} style={{ display: 'block', margin: '0 auto', padding: '14px 24px', backgroundColor: '#111', color: 'white', border: 'none', borderRadius: '10px', fontWeight: '700', cursor: 'pointer' }}>
+          <button onClick={() => alert("Stripe checkout coming soon!")} style={{ display: 'block', margin: '0 auto', padding: '14px 28px', backgroundColor: '#111', color: 'white', border: 'none', borderRadius: '12px', fontWeight: '700', cursor: 'pointer', fontSize: '15px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
             Upgrade to Unlock Charts
           </button>
         </div>
