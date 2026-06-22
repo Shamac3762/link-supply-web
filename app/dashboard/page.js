@@ -30,6 +30,7 @@ export default function PremiumDashboard() {
   
   const [stickers, setStickers] = useState([])
   const [chartData, setChartData] = useState([]) 
+  const [timeRange, setTimeRange] = useState('7d') // <-- NEW Time Range State
   const [claimId, setClaimId] = useState('')
   const [claimPin, setClaimPin] = useState('')
   const [claimMessage, setClaimMessage] = useState('')
@@ -67,6 +68,14 @@ export default function PremiumDashboard() {
     fetchData()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // --- NEW: DYNAMIC ANALYTICS LISTENER ---
+  useEffect(() => {
+    if (userId) {
+      fetchAnalyticsData();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId, timeRange]);
 
   const generateDefaultUsername = (firstName, lastName) => {
     const f = (firstName || '').charAt(0).toLowerCase();
@@ -155,27 +164,6 @@ export default function PremiumDashboard() {
     const { data: linksData } = await supabase.from('page_links').select('*').eq('owner_id', session.user.id).order('sort_order', { ascending: true })
     if (linksData) setPageLinks(linksData)
 
-    const { data: tapLogs } = await supabase
-      .from('nfc_taps')
-      .select('tapped_at')
-      .eq('owner_id', session.user.id)
-      .gte('tapped_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString())
-
-    const days = [...Array(7)].map((_, i) => {
-      const d = new Date();
-      d.setDate(d.getDate() - i);
-      return { name: d.toLocaleDateString('en-GB', { weekday: 'short' }), taps: 0, fullDate: d.toDateString() };
-    }).reverse();
-
-    if (tapLogs) {
-      tapLogs.forEach(log => {
-        const dateStr = new Date(log.tapped_at).toDateString();
-        const day = days.find(d => d.fullDate === dateStr);
-        if (day) day.taps++;
-      });
-    }
-    setChartData(days);
-
     if (customerData?.company_id) {
       const { data: compData } = await supabase.from('companies').select('company_name').eq('id', customerData.company_id).single();
       if (compData) setCompanyName(compData.company_name);
@@ -204,6 +192,64 @@ export default function PremiumDashboard() {
 
     setLoading(false)
   }
+
+  // --- NEW: DYNAMIC ANALYTICS FETCH LOGIC ---
+  const fetchAnalyticsData = async () => {
+    let daysAgo = 7;
+    if (timeRange === '30d') daysAgo = 30;
+    if (timeRange === '6m') daysAgo = 180;
+
+    const { data: tapLogs } = await supabase
+      .from('nfc_taps')
+      .select('tapped_at')
+      .eq('owner_id', userId)
+      .gte('tapped_at', new Date(Date.now() - daysAgo * 24 * 60 * 60 * 1000).toISOString());
+
+    let chartPoints = [];
+
+    if (timeRange === '6m') {
+      // Group data into 6 monthly chunks for cleaner UI
+      const months = [...Array(6)].map((_, i) => {
+        const d = new Date();
+        d.setMonth(d.getMonth() - i);
+        return {
+          name: d.toLocaleDateString('en-GB', { month: 'short' }),
+          taps: 0,
+          monthKey: `${d.getFullYear()}-${d.getMonth()}`
+        };
+      }).reverse();
+
+      if (tapLogs) {
+        tapLogs.forEach(log => {
+          const date = new Date(log.tapped_at);
+          const key = `${date.getFullYear()}-${date.getMonth()}`;
+          const month = months.find(m => m.monthKey === key);
+          if (month) month.taps++;
+        });
+      }
+      chartPoints = months;
+    } else {
+      // Group data into daily chunks for 7d and 30d
+      chartPoints = [...Array(daysAgo)].map((_, i) => {
+        const d = new Date();
+        d.setDate(d.getDate() - i);
+        return { 
+          name: timeRange === '7d' ? d.toLocaleDateString('en-GB', { weekday: 'short' }) : d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }), 
+          taps: 0, 
+          fullDate: d.toDateString() 
+        };
+      }).reverse();
+
+      if (tapLogs) {
+        tapLogs.forEach(log => {
+          const dateStr = new Date(log.tapped_at).toDateString();
+          const day = chartPoints.find(d => d.fullDate === dateStr);
+          if (day) day.taps++;
+        });
+      }
+    }
+    setChartData(chartPoints);
+  };
 
   const handleToggleRememberMe = async (currentValue) => {
     const newValue = !currentValue;
@@ -346,12 +392,6 @@ export default function PremiumDashboard() {
   const displayLimit = maxLinks > 100 ? 'Unlimited' : maxLinks
   const isPremium = pageProfile.tier !== 'free';
 
-  const hasRealData = (chartData || []).reduce((acc, d) => acc + (d.taps || 0), 0) > 0;
-  const displayChartData = hasRealData ? chartData : [
-    { name: 'Mon', taps: 12 }, { name: 'Tue', taps: 19 }, { name: 'Wed', taps: 15 }, 
-    { name: 'Thu', taps: 25 }, { name: 'Fri', taps: 22 }, { name: 'Sat', taps: 35 }, { name: 'Sun', taps: 28 }
-  ];
-
   if (loading) return <div style={{ minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', backgroundColor: '#f3f4f6' }}>Loading Workspace...</div>
 
   return (
@@ -359,11 +399,8 @@ export default function PremiumDashboard() {
       <style>{`
         * { box-sizing: border-box; }
         
-        /* Adjusted Z-Index logic so Drawer covers Nav */
         .responsive-nav { padding: 20px 40px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e5e7eb; background-color: white; position: relative; z-index: 40; }
-        
         .responsive-tabs { display: flex; gap: 10px; margin-bottom: 30px; background-color: #e5e7eb; padding: 6px; border-radius: 12px; overflow-x: auto; white-space: nowrap; }
-        
         .responsive-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; width: 100%; }
         .responsive-stack { display: flex; gap: 12px; width: 100%; max-width: 100%; }
         .link-row { display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; background-color: #f9fafb; border: 1px solid #e5e7eb; border-radius: 10px; }
@@ -391,10 +428,7 @@ export default function PremiumDashboard() {
           .mobile-menu-overlay { display: block; opacity: 0; pointer-events: none; transition: opacity 0.3s ease; }
           .mobile-menu-overlay.open { opacity: 1; pointer-events: auto; }
           .mobile-menu-drawer { display: flex; }
-          
-          /* Displays the name under the logo on mobile only */
           .mobile-only-name { display: block; font-size: 13px; color: #6b7280; font-weight: 500; margin-top: 2px; }
-
           .responsive-grid { grid-template-columns: 1fr; }
           .responsive-stack { flex-direction: column; align-items: stretch; }
           .responsive-stack > input, .responsive-stack > button { width: 100% !important; max-width: 100% !important; }
@@ -539,7 +573,8 @@ export default function PremiumDashboard() {
         {activeTab === 'analytics' && (
           <AnalyticsSection 
             stickers={stickers} isPremium={isPremium} pageProfile={pageProfile}
-            hasRealData={hasRealData} displayChartData={displayChartData} isMounted={isMounted}
+            displayChartData={chartData} isMounted={isMounted}
+            timeRange={timeRange} setTimeRange={setTimeRange} 
           />
         )}
 
