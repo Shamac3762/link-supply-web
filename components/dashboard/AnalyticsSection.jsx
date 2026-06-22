@@ -1,5 +1,5 @@
 'use client'
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
+import React, { useState } from 'react'
 
 export default function AnalyticsSection({
   stickers,
@@ -9,9 +9,17 @@ export default function AnalyticsSection({
   displayChartData,
   isMounted
 }) {
+  // Local state to handle simple tooltips on our native chart
+  const [hoveredDay, setHoveredDay] = useState(null);
+
+  // Calculate the highest tap day so we can scale the chart bars dynamically
+  const maxTaps = Math.max(...displayChartData.map(d => d.taps), 1);
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '30px', width: '100%' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '30px', width: '100%', animation: 'fadeIn 0.3s ease-in-out' }}>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px' }}>
+        
+        {/* TOTAL TAPS */}
         <div style={{ backgroundColor: 'white', padding: '25px', borderRadius: '16px', border: '1px solid #e5e7eb', textAlign: 'center' }}>
           <p style={{ color: '#6b7280', fontSize: '13px', fontWeight: '700', textTransform: 'uppercase', marginBottom: '10px' }}>Total Hardware Taps</p>
           <p style={{ fontSize: '32px', fontWeight: '800', color: '#111', margin: 0 }}>
@@ -19,6 +27,7 @@ export default function AnalyticsSection({
           </p>
         </div>
         
+        {/* PROFILE VIEWS */}
         <div style={{ backgroundColor: 'white', padding: '25px', borderRadius: '16px', border: '1px solid #e5e7eb', textAlign: 'center', position: 'relative', overflow: 'hidden' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginBottom: '10px' }}>
             <p style={{ color: '#6b7280', fontSize: '13px', fontWeight: '700', textTransform: 'uppercase', margin: 0 }}>Digital Profile Views</p>
@@ -34,13 +43,14 @@ export default function AnalyticsSection({
                <p style={{ fontSize: '32px', fontWeight: '800', color: '#d1d5db', margin: 0, filter: 'blur(6px)', opacity: 0.5, userSelect: 'none' }}>
                  {pageProfile.profile_views || 342}
                </p>
-               <button onClick={() => alert("Stripe checkout coming soon!")} style={{ position: 'absolute', padding: '8px 16px', backgroundColor: '#111', color: 'white', border: 'none', borderRadius: '8px', fontWeight: '700', fontSize: '12px', cursor: 'pointer', boxShadow: '0 4px 6px rgba(0,0,0,0.1)', transition: 'transform 0.2s' }} onMouseEnter={(e) => e.target.style.transform = 'scale(1.05)'} onMouseLeave={(e) => e.target.style.transform = 'scale(1)'}>
+               <button onClick={() => alert("Stripe checkout coming soon!")} style={{ position: 'absolute', padding: '8px 16px', backgroundColor: '#111', color: 'white', border: 'none', borderRadius: '8px', fontWeight: '700', fontSize: '12px', cursor: 'pointer', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
                  🔒 Unlock to View
                </button>
             </div>
           )}
         </div>
 
+        {/* BEST PERFORMING */}
         <div style={{ backgroundColor: 'white', padding: '25px', borderRadius: '16px', border: '1px solid #e5e7eb', textAlign: 'center' }}>
           <p style={{ color: '#6b7280', fontSize: '13px', fontWeight: '700', textTransform: 'uppercase', marginBottom: '10px' }}>Best Performing Tag</p>
           <p style={{ fontSize: '20px', fontWeight: '800', color: '#111', margin: 0 }}>
@@ -50,8 +60,8 @@ export default function AnalyticsSection({
       </div>
 
       {isPremium ? (
-        <div style={{ backgroundColor: 'white', padding: '30px', borderRadius: '16px', border: '1px solid #e5e7eb', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)', width: '100%', minWidth: 0 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '25px' }}>
+        <div style={{ backgroundColor: 'white', padding: '30px', borderRadius: '16px', border: '1px solid #e5e7eb', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)', width: '100%' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '35px', flexWrap: 'wrap', gap: '15px' }}>
             <div>
               <h2 style={{ fontSize: '20px', fontWeight: '800', color: '#111', margin: 0 }}>Tap Activity</h2>
               <p style={{ color: '#6b7280', fontSize: '14px', margin: '4px 0 0 0' }}>Daily performance over the last 7 days</p>
@@ -63,25 +73,50 @@ export default function AnalyticsSection({
             )}
           </div>
 
-          <div style={{ width: '100%', height: '300px', minHeight: '300px', position: 'relative' }}>
-            {isMounted && (
-              <ResponsiveContainer width="100%" height={300}>
-                <AreaChart data={displayChartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                  <defs>
-                    <linearGradient id="colorTaps" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
-                      <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 12, fontWeight: '600'}} dy={10} />
-                  <YAxis hide={true} />
-                  <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', fontWeight: '700' }} cursor={{ stroke: '#3b82f6', strokeWidth: 2 }} />
-                  <Area type="monotone" dataKey="taps" stroke="#3b82f6" strokeWidth={4} fillOpacity={1} fill="url(#colorTaps)" animationDuration={1500} />
-                </AreaChart>
-              </ResponsiveContainer>
-            )}
-          </div>
+          {/* --- NATIVE ZERO-DEPENDENCY CHART --- */}
+          {isMounted && (
+            <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', height: '250px', paddingBottom: '20px', borderBottom: '1px dashed #e5e7eb', position: 'relative' }}>
+              {displayChartData.map((day, index) => {
+                // Calculate height percentage relative to the max taps (cap at 100%)
+                const heightPercent = maxTaps === 0 ? 0 : Math.max((day.taps / maxTaps) * 100, 2); 
+                const isHovered = hoveredDay === index;
+
+                return (
+                  <div 
+                    key={index} 
+                    onMouseEnter={() => setHoveredDay(index)}
+                    onMouseLeave={() => setHoveredDay(null)}
+                    style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1, height: '100%', position: 'relative', cursor: 'pointer' }}
+                  >
+                    {/* Tooltip */}
+                    {isHovered && (
+                      <div style={{ position: 'absolute', top: '-35px', backgroundColor: '#111', color: 'white', padding: '4px 10px', borderRadius: '8px', fontSize: '12px', fontWeight: '700', zIndex: 10, whiteSpace: 'nowrap', boxShadow: '0 4px 6px rgba(0,0,0,0.1)', animation: 'fadeIn 0.2s' }}>
+                        {day.taps} Taps
+                      </div>
+                    )}
+
+                    {/* Chart Bar */}
+                    <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', padding: '0 10%' }}>
+                      <div style={{ 
+                        width: '100%', 
+                        maxWidth: '40px', 
+                        height: `${heightPercent}%`, 
+                        backgroundColor: isHovered ? '#2563eb' : '#3b82f6', 
+                        borderRadius: '6px 6px 0 0', 
+                        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                        opacity: hasRealData ? 1 : 0.6
+                      }} />
+                    </div>
+
+                    {/* X-Axis Label */}
+                    <div style={{ position: 'absolute', bottom: '-25px', fontSize: '12px', fontWeight: '600', color: isHovered ? '#111' : '#9ca3af', transition: 'color 0.2s' }}>
+                      {day.name}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
         </div>
       ) : (
         <div style={{ backgroundColor: 'white', padding: '60px', borderRadius: '16px', textAlign: 'center', border: '1px solid #e5e7eb', width: '100%' }}>
