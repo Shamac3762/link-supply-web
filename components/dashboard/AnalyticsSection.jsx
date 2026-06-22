@@ -65,7 +65,7 @@ export default function AnalyticsSection({
 
           <div style={{ width: '100%', height: '300px', minHeight: '300px', position: 'relative' }}>
             {isMounted && (
-              <ResponsiveContainer width="100%" height="100%">
+              <ResponsiveContainer width="100%" height={300}>
                 <AreaChart data={displayChartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                   <defs>
                     <linearGradient id="colorTaps" x1="0" y1="0" x2="0" y2="1">
