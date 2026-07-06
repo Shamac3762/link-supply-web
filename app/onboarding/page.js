@@ -3,9 +3,8 @@ import { useState, Suspense } from 'react'
 import { createClient } from '../../utils/supabase/client'
 import { useRouter, useSearchParams } from 'next/navigation'
 
-// We wrap the main logic in a component to safely use useSearchParams
 function OnboardingContent() {
-  const [step, setStep] = useState(1) // 1: Socials, 2: Tiers
+  const [step, setStep] = useState(1)
   const [ig, setIg] = useState('')
   const [tiktok, setTiktok] = useState('')
   const [loading, setLoading] = useState(false)
@@ -42,15 +41,43 @@ function OnboardingContent() {
     }
 
     setLoading(false)
-    setStep(2) // Move to the premium upsell step
+    setStep(2) 
   }
 
-  const handleCheckout = (priceId) => {
+  const handleCheckout = async (interval) => {
     setLoading(true)
-    // Here we will eventually route them to your Stripe Checkout route
-    // For now, it just pushes them to the dashboard
-    console.log("Routing to checkout for:", priceId)
-    router.push(finalDestination) 
+    
+    const { data: { session } } = await supabase.auth.getSession()
+    
+    if (!session) {
+      console.error("No active session found")
+      setLoading(false)
+      return
+    }
+
+    try {
+      const response = await fetch('/api/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: session.user.id,
+          planType: 'pro',
+          interval: interval 
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        console.error("Stripe Error:", data.error);
+        setLoading(false);
+      }
+    } catch (err) {
+      console.error("Checkout request failed:", err);
+      setLoading(false);
+    }
   }
 
   const finishFree = () => {
@@ -73,7 +100,6 @@ function OnboardingContent() {
       
       <div style={{ backgroundColor: 'white', padding: '40px', borderRadius: '20px', boxShadow: '0 10px 25px rgba(0,0,0,0.05)', width: '100%', maxWidth: step === 1 ? '420px' : '800px', textAlign: 'center', transition: 'max-width 0.3s ease' }}>
         
-        {/* Brand Logo */}
         <div style={{ textAlign: 'center', marginBottom: '30px' }}>
           <h1 style={{ fontFamily: '"Myriad Pro", "Segoe UI", Roboto, sans-serif', fontSize: '28px', color: '#111', margin: 0, letterSpacing: '-0.5px', display: 'flex', alignItems: 'baseline', justifyContent: 'center' }}>
             <span style={{ fontWeight: '700' }}>Link</span><span style={{ fontWeight: '400' }}>Supply.</span>
@@ -117,21 +143,19 @@ function OnboardingContent() {
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '20px', marginBottom: '30px' }}>
               
-              {/* Monthly Option */}
               <div style={{ border: '1px solid #e5e7eb', borderRadius: '16px', padding: '30px 20px', textAlign: 'center', backgroundColor: '#fff' }}>
                 <h3 style={{ fontSize: '18px', fontWeight: '700', marginBottom: '10px' }}>Monthly Rolling</h3>
                 <div style={{ fontSize: '32px', fontWeight: '800', marginBottom: '5px' }}>£4.99<span style={{ fontSize: '14px', color: '#6b7280', fontWeight: '500' }}>/mo</span></div>
                 <p style={{ fontSize: '13px', color: '#6b7280', marginBottom: '20px' }}>Flexible 30-day contract. Cancel anytime.</p>
-                <button onClick={() => handleCheckout('price_monthly')} style={{ width: '100%', padding: '12px', backgroundColor: '#111', color: 'white', border: 'none', borderRadius: '8px', fontWeight: '700', cursor: 'pointer' }}>Select Monthly</button>
+                <button onClick={() => handleCheckout('month')} style={{ width: '100%', padding: '12px', backgroundColor: '#111', color: 'white', border: 'none', borderRadius: '8px', fontWeight: '700', cursor: 'pointer' }}>Select Monthly</button>
               </div>
 
-              {/* Annual Option (Highlighted) */}
               <div style={{ border: '2px solid #3b82f6', borderRadius: '16px', padding: '30px 20px', textAlign: 'center', backgroundColor: '#eff6ff', position: 'relative' }}>
                 <div style={{ position: 'absolute', top: '-12px', left: '50%', transform: 'translateX(-50%)', backgroundColor: '#3b82f6', color: 'white', padding: '4px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: '700' }}>BEST VALUE</div>
                 <h3 style={{ fontSize: '18px', fontWeight: '700', marginBottom: '10px', color: '#1e3a8a' }}>Annual Pro</h3>
                 <div style={{ fontSize: '32px', fontWeight: '800', marginBottom: '5px', color: '#1e3a8a' }}>£3.99<span style={{ fontSize: '14px', color: '#3b82f6', fontWeight: '500' }}>/mo</span></div>
                 <p style={{ fontSize: '13px', color: '#3b82f6', marginBottom: '20px' }}>Billed as £47.88/year. Save 20%.</p>
-                <button onClick={() => handleCheckout('price_annual')} style={{ width: '100%', padding: '12px', backgroundColor: '#3b82f6', color: 'white', border: 'none', borderRadius: '8px', fontWeight: '700', cursor: 'pointer', boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)' }}>Select Annual</button>
+                <button onClick={() => handleCheckout('year')} style={{ width: '100%', padding: '12px', backgroundColor: '#3b82f6', color: 'white', border: 'none', borderRadius: '8px', fontWeight: '700', cursor: 'pointer', boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)' }}>Select Annual</button>
               </div>
 
             </div>
