@@ -25,14 +25,14 @@ export async function GET(request, { params }) {
     return NextResponse.redirect(new URL('/', request.url)) 
   }
 
-  // 🔥 UPDATED: This now sends them directly to your new Dashboard UI to enter their 6-Digit PIN
+  // If the tag isn't owned yet, route them to claim it with their 6-digit PIN
   if (!tag.owner_id) {
     return NextResponse.redirect(new URL(`/dashboard?claim=${id}`, request.url))
   }
 
-  // 🔥 STEP 4: The Analytics Fix
+  // --- ANALYTICS ENGINE ---
   if (supabaseAdmin) {
-    // A. Update the master count
+    // A. Update the master lifetime tap count
     await supabaseAdmin
       .from('nfc_stickers')
       .update({
@@ -41,17 +41,22 @@ export async function GET(request, { params }) {
       })
       .eq('id', tag.id) 
 
-    // B. LOG THE EVENT (This powers your new live graph)
+    // B. Log the individual tap for the dashboard charts
+    const userAgent = request.headers.get('user-agent') || 'Unknown Device';
+    
     await supabaseAdmin
       .from('nfc_taps')
       .insert({
-        sticker_id: tag.id,
-        owner_id: tag.owner_id
+        tag_id: tag.id, // FIXED: Now exactly matches your Supabase table
+        owner_id: tag.owner_id,
+        user_agent: userAgent // Added non-PII device tracking
       })
   }
 
+  // --- DESTINATION ROUTING ---
   let destination = '/'
 
+  // 1. If they have a custom direct link (like a restaurant menu or google.com)
   if (tag.target_url && tag.target_url.trim() !== '') {
     destination = tag.target_url
     if (!destination.startsWith('http')) {
@@ -60,6 +65,7 @@ export async function GET(request, { params }) {
     return NextResponse.redirect(new URL(destination))
     
   } else {
+    // 2. Fallback to their built-in Link Supply profile
     const { data: customer } = await supabase
       .from('customers')
       .select('username')
