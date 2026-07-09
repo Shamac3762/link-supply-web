@@ -40,12 +40,16 @@ export default function PricingSection({ userId, userTier }) {
   const isAlreadyPro = userTier === 'pro';
   const isAlreadyBusiness = userTier === 'business';
 
+  // 🔥 UPGRADED: Secure Checkout Connection
   const handleUpgrade = async (planType) => {
     if (!userId) {
+      console.error("No active user ID found for checkout.");
       alert("Please wait for your session to load or log in again.");
       return;
     }
+    
     setIsLoading(true);
+    
     try {
       const response = await fetch('/api/checkout', {
         method: 'POST',
@@ -56,15 +60,18 @@ export default function PricingSection({ userId, userTier }) {
           interval: isAnnual ? 'year' : 'month'
         })
       });
+      
       const data = await response.json();
+      
       if (data.url) {
         window.location.href = data.url; 
       } else {
+        console.error("Stripe Error:", data.error);
         alert("Checkout Error: " + (data.error || "Unknown error"));
         setIsLoading(false);
       }
     } catch (error) {
-      console.error(error);
+      console.error("Checkout request failed:", error);
       alert("Failed to initiate secure checkout connection.");
       setIsLoading(false);
     }
