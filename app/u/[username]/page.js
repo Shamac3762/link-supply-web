@@ -28,7 +28,7 @@ export default function PublicProfilePage({ params }) {
   const [profile, setProfile] = useState(null);
   const [links, setLinks] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [showQr, setShowQr] = useState(false); // 🔥 NEW: QR Modal State
+  const [showQr, setShowQr] = useState(false);
   const supabase = createClient();
 
   useEffect(() => {
@@ -60,6 +60,9 @@ export default function PublicProfilePage({ params }) {
   const baseColor = profile.theme_color || '#111111';
   const textColor = getContrastColor(baseColor);
   
+  // 🔥 THE LOGIC: Free users ALWAYS see it. Paid users see it ONLY if they haven't removed it.
+  const showBranding = profile.tier === 'free' || !profile.remove_branding;
+
   if (profile.profile_status === 'coming_soon') {
     return (
       <div style={{ 
@@ -69,34 +72,27 @@ export default function PublicProfilePage({ params }) {
         padding: '20px', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif', color: textColor, position: 'relative', overflowX: 'hidden' 
       }}>
         <style>{`
-          @keyframes subtlePulse {
-            0% { opacity: 0.5; transform: scale(0.95); }
-            50% { opacity: 1; transform: scale(1); }
-            100% { opacity: 0.5; transform: scale(0.95); }
-          }
+          @keyframes subtlePulse { 0% { opacity: 0.5; transform: scale(0.95); } 50% { opacity: 1; transform: scale(1); } 100% { opacity: 0.5; transform: scale(0.95); } }
+          @keyframes floatUp { from { opacity: 0; bottom: 10px; } to { opacity: 1; bottom: 30px; } }
           .premium-lock { animation: subtlePulse 3.5s infinite ease-in-out; margin-bottom: 30px; }
+          .branding-floater { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 8px; padding: 12px 24px; background: ${textColor === 'white' ? 'rgba(255, 255, 255, 0.15)' : 'rgba(0, 0, 0, 0.08)'}; border: 1px solid ${textColor === 'white' ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.1)'}; border-radius: 100px; color: ${textColor}; text-decoration: none; font-size: 14px; font-weight: 700; backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); box-shadow: 0 10px 25px -5px rgba(0,0,0,0.2); z-index: 100; transition: all 0.3s ease; animation: floatUp 0.6s cubic-bezier(0.25, 0.8, 0.25, 1) 0.5s both; white-space: nowrap; }
+          .branding-floater:hover { transform: translateX(-50%) translateY(-3px); background: ${textColor === 'white' ? 'rgba(255, 255, 255, 0.25)' : 'rgba(0, 0, 0, 0.12)'}; }
         `}</style>
         
-        <div className="premium-lock" style={{ 
-          width: '80px', height: '80px', borderRadius: '50%', 
-          backgroundColor: textColor === 'white' ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)', 
-          border: `1px solid ${textColor === 'white' ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.1)'}`,
-          display: 'flex', justifyContent: 'center', alignItems: 'center', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)'
-        }}>
+        <div className="premium-lock" style={{ width: '80px', height: '80px', borderRadius: '50%', backgroundColor: textColor === 'white' ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)', border: `1px solid ${textColor === 'white' ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.1)'}`, display: 'flex', justifyContent: 'center', alignItems: 'center', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)' }}>
           <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
         </div>
         
-        <h1 style={{ fontSize: '24px', fontWeight: '800', margin: '0 0 12px 0', letterSpacing: '-0.5px', textAlign: 'center' }}>
-          @{profile.username}
-        </h1>
+        <h1 style={{ fontSize: '24px', fontWeight: '800', margin: '0 0 12px 0', letterSpacing: '-0.5px', textAlign: 'center' }}>@{profile.username}</h1>
         <p style={{ fontSize: '15px', fontWeight: '500', opacity: 0.7, margin: 0, textAlign: 'center', maxWidth: '280px', lineHeight: '1.6' }}>
           This page is currently being prepared. Please check back soon.
         </p>
 
-        {profile.tier === 'free' && (
-          <footer style={{ position: 'absolute', bottom: '40px', opacity: 0.4, fontSize: '11px', fontWeight: '800', letterSpacing: '2px' }}>
-            <a href="/" style={{ color: textColor, textDecoration: 'none' }}>⚡ POWERED BY LINKSUPPLY</a>
-          </footer>
+        {showBranding && (
+          <a href="https://linksupply.co.uk" className="branding-floater">
+            <span style={{ fontSize: '16px' }}>⚡</span>
+            <span>Get your free digital profile</span>
+          </a>
         )}
       </div>
     )
@@ -106,7 +102,6 @@ export default function PublicProfilePage({ params }) {
   const vcard = `BEGIN:VCARD\r\nVERSION:3.0\r\nFN:${profile.display_name || profile.username}\r\nTITLE:${profile.job_title || ''}\r\nORG:${profile.company || ''}\r\nTEL;TYPE=CELL:${profile.phone_number || ''}\r\nEMAIL;TYPE=WORK:${profile.display_email || ''}\r\nURL:https://linksupply.co.uk/u/${profile.username}\r\nEND:VCARD`;
   const vcardData = `data:text/vcard;charset=utf-8,${encodeURIComponent(vcard)}`;
 
-  // 🔥 URL to generate the dynamic QR Code image
   const profileUrl = typeof window !== 'undefined' ? window.location.href : `https://linksupply.co.uk/u/${profile.username}`;
   const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(profileUrl)}&margin=10`;
 
@@ -122,7 +117,8 @@ export default function PublicProfilePage({ params }) {
     <div style={{ 
       minHeight: '100vh', backgroundColor: baseColor,
       backgroundImage: profile.bg_css || `radial-gradient(at 0% 0%, rgba(0,0,0,0.4) 0px, transparent 50%), radial-gradient(at 100% 100%, rgba(0,0,0,0.3) 0px, transparent 50%)`,
-      display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '60px 20px', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif', 
+      /* 🔥 Padded bottom by 100px so links don't hide behind the floater */
+      display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '60px 20px 100px 20px', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif', 
       color: textColor, position: 'relative', overflowX: 'hidden' 
     }}>
       
@@ -131,6 +127,7 @@ export default function PublicProfilePage({ params }) {
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes modalFadeIn { from { opacity: 0; backdrop-filter: blur(0px); } to { opacity: 1; backdrop-filter: blur(15px); } }
         @keyframes popIn { 0% { transform: scale(0.9); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+        @keyframes floatUp { from { opacity: 0; bottom: 10px; } to { opacity: 1; bottom: 30px; } }
         
         main { animation: fadeIn 0.8s ease-out forwards; }
 
@@ -171,9 +168,38 @@ export default function PublicProfilePage({ params }) {
           background-color: white; padding: 35px 30px; border-radius: 32px; display: flex; flex-direction: column; align-items: center;
           box-shadow: 0 30px 60px -15px rgba(0,0,0,0.6); animation: popIn 0.4s cubic-bezier(0.25, 0.8, 0.25, 1) forwards; max-width: 320px; width: 100%;
         }
+
+        /* 🔥 BRANDING FLOATER CSS */
+        .branding-floater {
+          position: fixed;
+          bottom: 30px;
+          left: 50%;
+          transform: translateX(-50%);
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          padding: 12px 24px;
+          background: ${textColor === 'white' ? 'rgba(255, 255, 255, 0.15)' : 'rgba(0, 0, 0, 0.08)'};
+          border: 1px solid ${textColor === 'white' ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.1)'};
+          border-radius: 100px;
+          color: ${textColor};
+          text-decoration: none;
+          font-size: 14px;
+          font-weight: 700;
+          backdrop-filter: blur(16px);
+          -webkit-backdrop-filter: blur(16px);
+          box-shadow: 0 10px 25px -5px rgba(0,0,0,0.2);
+          z-index: 100;
+          transition: all 0.3s ease;
+          animation: floatUp 0.6s cubic-bezier(0.25, 0.8, 0.25, 1) 0.5s both;
+          white-space: nowrap;
+        }
+        .branding-floater:hover {
+          transform: translateX(-50%) translateY(-3px);
+          background: ${textColor === 'white' ? 'rgba(255, 255, 255, 0.25)' : 'rgba(0, 0, 0, 0.12)'};
+        }
       `}</style>
 
-      {/* 🔥 THE NEW QR BUTTON (Top Left) */}
       <div onClick={() => setShowQr(true)} className="action-trigger" style={{ left: '20px' }}>
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <rect x="3" y="3" width="7" height="7"></rect>
@@ -183,7 +209,6 @@ export default function PublicProfilePage({ params }) {
         </svg>
       </div>
 
-      {/* THE SHARE BUTTON (Top Right) */}
       <div onClick={handleShare} className="action-trigger" style={{ right: '20px' }}>
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
       </div>
@@ -238,14 +263,14 @@ export default function PublicProfilePage({ params }) {
         </div>
       </main>
 
-      {/* MARKETING: Hidden for Premium Users */}
-      {profile.tier === 'free' && (
-        <footer style={{ marginTop: 'auto', paddingTop: '80px', opacity: 0.4, fontSize: '11px', fontWeight: '800', letterSpacing: '2px' }}>
-          <a href="/" style={{ color: textColor, textDecoration: 'none' }}>⚡ POWERED BY LINKSUPPLY</a>
-        </footer>
+      {/* 🔥 THE NEW GROWTH LOOP FLOATER */}
+      {showBranding && (
+        <a href="https://linksupply.co.uk" className="branding-floater">
+          <span style={{ fontSize: '16px' }}>⚡</span>
+          <span>Get your free digital profile</span>
+        </a>
       )}
 
-      {/* 🔥 THE CINEMATIC QR MODAL OVERLAY */}
       {showQr && (
         <div className="qr-modal" onClick={() => setShowQr(false)}>
           <div className="qr-card" onClick={(e) => e.stopPropagation()}>
@@ -256,7 +281,6 @@ export default function PublicProfilePage({ params }) {
             <p style={{ margin: 0, fontSize: '14px', color: '#6b7280', fontWeight: '500' }}>Scan to view profile</p>
           </div>
           
-          {/* Close Button below the card */}
           <button onClick={() => setShowQr(false)} style={{ marginTop: '30px', backgroundColor: 'rgba(255,255,255,0.2)', backdropFilter: 'blur(10px)', color: 'white', border: '1px solid rgba(255,255,255,0.3)', borderRadius: '50%', width: '56px', height: '56px', fontSize: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'transform 0.2s' }} onMouseOver={(e) => e.target.style.transform = 'scale(1.1)'} onMouseOut={(e) => e.target.style.transform = 'scale(1)'}>
             &times;
           </button>
