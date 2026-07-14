@@ -89,6 +89,62 @@ export default function PageProfileSection({
         </div>
       </div>
 
+      {/* Branding Settings (NEW) */}
+      <div style={{ backgroundColor: 'white', padding: '30px', borderRadius: '16px', border: '1px solid #e5e7eb' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '15px', flexWrap: 'wrap', gap: '15px' }}>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '5px' }}>
+              <h2 style={{ fontSize: '20px', fontWeight: '700', color: '#111', margin: 0 }}>Link Supply Branding</h2>
+              {!isPremium && (
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '10px', fontWeight: '800', backgroundColor: '#f3f4f6', color: '#6b7280', padding: '4px 8px', borderRadius: '12px', textTransform: 'uppercase' }}>
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                  PRO
+                </span>
+              )}
+            </div>
+            <p style={{ color: '#6b7280', fontSize: '14px', margin: 0, maxWidth: '450px' }}>
+              Display the "Get your free digital profile" floater at the bottom of your public page.
+            </p>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', backgroundColor: '#f9fafb', padding: '10px 16px', borderRadius: '12px', border: '1px solid #e5e7eb' }}>
+            <label style={{ fontSize: '14px', color: '#4b5563', fontWeight: '600', cursor: isPremium ? 'pointer' : 'not-allowed' }} htmlFor="brandingToggle">Show Branding</label>
+            <button 
+              id="brandingToggle" 
+              onClick={() => {
+                if (!isPremium) {
+                  alert("Please upgrade to a Pro or Business plan to remove Link Supply branding.");
+                  return;
+                }
+                // Toggle the 'remove_branding' boolean in the database state
+                setPageProfile({ ...pageProfile, remove_branding: !pageProfile.remove_branding });
+              }} 
+              disabled={!isPremium}
+              style={{ 
+                width: '44px', height: '24px', borderRadius: '12px', border: 'none', 
+                cursor: isPremium ? 'pointer' : 'not-allowed', 
+                backgroundColor: !pageProfile.remove_branding ? '#059669' : '#d1d5db', 
+                position: 'relative', transition: 'background-color 0.2s ease',
+                opacity: !isPremium ? 0.6 : 1
+              }}
+            >
+              <div style={{ 
+                width: '20px', height: '20px', borderRadius: '50%', backgroundColor: 'white', position: 'absolute', top: '2px', 
+                left: !pageProfile.remove_branding ? '22px' : '2px', 
+                transition: 'left 0.2s cubic-bezier(0.4, 0, 0.2, 1)', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' 
+              }} />
+            </button>
+          </div>
+        </div>
+        
+        {!isPremium && (
+          <div style={{ padding: '15px', backgroundColor: '#fef9c3', borderRadius: '12px', border: '1px solid #fde047', display: 'flex', alignItems: 'center' }}>
+            <p style={{ margin: 0, fontSize: '13px', color: '#854d0e', fontWeight: '600' }}>
+              Want a fully white-labeled profile? Upgrade to Pro to remove Link Supply watermarks.
+            </p>
+          </div>
+        )}
+      </div>
+
       {/* Digital Business Card Info */}
       <div style={{ backgroundColor: 'white', padding: '30px', borderRadius: '16px', border: '1px solid #e5e7eb' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px', flexWrap: 'wrap', gap: '15px' }}>
