@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 
 // 🔒 SECURITY: Replace this with your actual admin email
-const ADMIN_EMAIL = 'admin@linksupply.co.uk' 
+const ADMIN_EMAIL = 'fitmentuk@outlook.com' 
 
 export default function MasterAdminPanel() {
   const [loading, setLoading] = useState(true)
