@@ -2,7 +2,6 @@
 import { useState, useEffect } from 'react'
 import { createClient } from '../../utils/supabase/client'
 import { useRouter } from 'next/navigation'
-import Link from 'next/link'
 
 // 🔒 SECURITY: Replace this with your actual admin email
 const ADMIN_EMAIL = 'fitmentuk@outlook.com' 
@@ -14,7 +13,7 @@ export default function MasterAdminPanel() {
   // Dashboard Data State
   const [customers, setCustomers] = useState([])
   const [pulseFeed, setPulseFeed] = useState([])
-  const [inventory, setInventory] = useState([]) // <-- NEW: Stores all hardware tags
+  const [inventory, setInventory] = useState([])
   const [kpis, setKpis] = useState({ totalUsers: 0, proUsers: 0, totalScans: 0 })
   
   // Minting State
@@ -22,6 +21,10 @@ export default function MasterAdminPanel() {
   const [mintType, setMintType] = useState('qr') // 'qr' or 'nfc'
   const [isMinting, setIsMinting] = useState(false)
   const [copiedId, setCopiedId] = useState(null)
+
+  // 🎛️ NEW: Filter & Sort State
+  const [inventoryFilter, setInventoryFilter] = useState('all') // 'all', 'active', 'inventory'
+  const [inventorySort, setInventorySort] = useState('newest') // 'newest', 'oldest', 'a-z', 'z-a'
   
   const supabase = createClient()
   const router = useRouter()
@@ -33,10 +36,9 @@ export default function MasterAdminPanel() {
   const checkAdminAccess = async () => {
     const { data: { session } } = await supabase.auth.getSession()
     
-    // 1. Frontend Security Lock
     if (!session || session.user.email !== ADMIN_EMAIL) {
       setUnauthorized(true)
-      setTimeout(() => router.push('/'), 2000) // Boot them to homepage
+      setTimeout(() => router.push('/'), 2000)
       return
     }
 
@@ -45,26 +47,24 @@ export default function MasterAdminPanel() {
   }
 
   const loadDashboardData = async () => {
-    // 2. Load Customers
     const { data: customerData } = await supabase
       .from('customers')
       .select('*')
       .order('created_at', { ascending: false })
       .limit(100)
       
-    // 3. Load Pulse Feed (Recent Scans)
     const { data: tapData } = await supabase
       .from('nfc_taps')
       .select('*, nfc_stickers(id, tag_name)')
       .order('created_at', { ascending: false })
       .limit(10)
 
-    // 4. NEW: Load Hardware Inventory for Programming
+    // Bumped limit to 500 so you can filter a larger batch of inventory
     const { data: inventoryData } = await supabase
       .from('nfc_stickers')
       .select('*')
       .order('created_at', { ascending: false })
-      .limit(100) // Shows the 100 most recently minted tags
+      .limit(500) 
 
     if (customerData) {
       setCustomers(customerData)
@@ -98,7 +98,7 @@ export default function MasterAdminPanel() {
         const sequentialNum = String(startIndex + i).padStart(3, '0')
         assetsToMint.push({
           id: `${prefix}${sequentialNum}`,
-          url_slug: Math.random().toString(36).substring(2, 10), // Secure random 8-char slug
+          url_slug: Math.random().toString(36).substring(2, 10),
           activation_code: Math.floor(Math.random() * 900000 + 100000).toString(),
           lifecycle_status: 'inventory',
           product_type: productType,
@@ -111,7 +111,6 @@ export default function MasterAdminPanel() {
       if (error) throw error
       alert(`Successfully minted ${mintAmount} new ${mintType.toUpperCase()} assets!`)
       
-      // Refresh data so the new assets instantly appear in the programming table
       loadDashboardData() 
       
     } catch (error) {
@@ -129,7 +128,22 @@ export default function MasterAdminPanel() {
     setTimeout(() => setCopiedId(null), 2000)
   }
 
-  // --- UNAUTHORIZED STATE ---
+  // 🧮 NEW: Dynamic Sorting and Filtering Logic
+  const filteredAndSortedInventory = inventory
+    .filter((item) => {
+      if (inventoryFilter === 'all') return true;
+      if (inventoryFilter === 'active') return item.lifecycle_status === 'active';
+      if (inventoryFilter === 'inventory') return item.lifecycle_status !== 'active';
+      return true;
+    })
+    .sort((a, b) => {
+      if (inventorySort === 'newest') return new Date(b.created_at) - new Date(a.created_at);
+      if (inventorySort === 'oldest') return new Date(a.created_at) - new Date(b.created_at);
+      if (inventorySort === 'a-z') return a.id.localeCompare(b.id);
+      if (inventorySort === 'z-a') return b.id.localeCompare(a.id);
+      return 0;
+    });
+
   if (unauthorized) {
     return (
       <div style={{ display: 'flex', height: '100vh', alignItems: 'center', justifyContent: 'center', backgroundColor: '#111', color: 'white', fontFamily: 'sans-serif' }}>
@@ -144,7 +158,6 @@ export default function MasterAdminPanel() {
 
   if (loading) return <div style={{ padding: '40px', fontFamily: 'sans-serif' }}>Authenticating Admin...</div>
 
-  // --- STYLES ---
   const cardStyle = { backgroundColor: 'white', padding: '25px', borderRadius: '16px', border: '1px solid #e5e7eb', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }
   const tableHeaderStyle = { textAlign: 'left', padding: '12px 16px', fontSize: '13px', color: '#6b7280', fontWeight: '700', textTransform: 'uppercase', borderBottom: '1px solid #e5e7eb' }
   const tableCellStyle = { padding: '16px', fontSize: '14px', color: '#111', borderBottom: '1px solid #f3f4f6' }
@@ -159,7 +172,7 @@ export default function MasterAdminPanel() {
             <h1 style={{ fontSize: '28px', fontWeight: '800', color: '#111', margin: '0 0 5px 0' }}>Link Supply Command Center</h1>
             <p style={{ color: '#6b7280', margin: 0, fontSize: '15px' }}>Welcome back, Boss.</p>
           </div>
-          <button onClick={loadDashboardData} style={{ padding: '10px 16px', backgroundColor: '#fff', border: '1px solid #d1d5db', borderRadius: '8px', cursor: 'pointer', fontWeight: '600' }}>
+          <button onClick={loadDashboardData} style={{ padding: '10px 16px', backgroundColor: '#fff', border: '1px solid #d1d5db', borderRadius: '8px', cursor: 'pointer', fontWeight: '600', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
             🔄 Refresh Data
           </button>
         </div>
@@ -244,7 +257,7 @@ export default function MasterAdminPanel() {
               <button 
                 onClick={handleMintAssets}
                 disabled={isMinting}
-                style={{ width: '100%', padding: '12px', backgroundColor: '#111', color: 'white', border: 'none', borderRadius: '8px', fontWeight: '700', cursor: isMinting ? 'not-allowed' : 'pointer' }}
+                style={{ width: '100%', padding: '12px', backgroundColor: '#111', color: 'white', border: 'none', borderRadius: '8px', fontWeight: '700', cursor: isMinting ? 'not-allowed' : 'pointer', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}
               >
                 {isMinting ? 'Minting...' : `Mint ${mintAmount} ${mintType.toUpperCase()}s`}
               </button>
@@ -284,14 +297,39 @@ export default function MasterAdminPanel() {
           </div>
         </div>
 
-        {/* 🆕 HARDWARE PROGRAMMING & INVENTORY TABLE */}
+        {/* HARDWARE PROGRAMMING & INVENTORY TABLE */}
         <div style={cardStyle}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '25px', flexWrap: 'wrap', gap: '15px' }}>
             <div>
               <h2 style={{ fontSize: '18px', fontWeight: '800', color: '#111', margin: '0 0 4px 0' }}>Hardware Programming & Inventory</h2>
               <p style={{ color: '#6b7280', fontSize: '14px', margin: 0 }}>Copy the exact encoding links for your physical NFC and QR production.</p>
             </div>
+            
+            {/* 🎛️ NEW: FILTER & SORT UI */}
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <select 
+                value={inventoryFilter} 
+                onChange={(e) => setInventoryFilter(e.target.value)}
+                style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid #d1d5db', fontSize: '13px', fontWeight: '600', backgroundColor: '#f9fafb', color: '#374151', cursor: 'pointer', outline: 'none' }}
+              >
+                <option value="all">Status: All</option>
+                <option value="active">Status: Active</option>
+                <option value="inventory">Status: Inactive / Unassigned</option>
+              </select>
+
+              <select 
+                value={inventorySort} 
+                onChange={(e) => setInventorySort(e.target.value)}
+                style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid #d1d5db', fontSize: '13px', fontWeight: '600', backgroundColor: '#f9fafb', color: '#374151', cursor: 'pointer', outline: 'none' }}
+              >
+                <option value="newest">Sort: Newest First</option>
+                <option value="oldest">Sort: Oldest First</option>
+                <option value="a-z">Sort: ID (A to Z)</option>
+                <option value="z-a">Sort: ID (Z to A)</option>
+              </select>
+            </div>
           </div>
+          
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
@@ -303,45 +341,53 @@ export default function MasterAdminPanel() {
                 </tr>
               </thead>
               <tbody>
-                {inventory.map((item) => (
-                  <tr key={item.id}>
-                    <td style={{...tableCellStyle, fontWeight: '700'}}>{item.id}</td>
-                    <td style={{...tableCellStyle, textTransform: 'capitalize'}}>{item.product_type.replace('_', ' ')}</td>
-                    <td style={tableCellStyle}>
-                      <span style={{ 
-                        padding: '4px 8px', borderRadius: '12px', fontSize: '12px', fontWeight: '700', textTransform: 'uppercase',
-                        backgroundColor: item.lifecycle_status === 'active' ? '#d1fae5' : '#f3f4f6',
-                        color: item.lifecycle_status === 'active' ? '#065f46' : '#4b5563'
-                      }}>
-                        {item.lifecycle_status}
-                      </span>
-                    </td>
-                    <td style={tableCellStyle}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        <code style={{ backgroundColor: '#f3f4f6', padding: '6px 10px', borderRadius: '6px', fontSize: '13px', color: '#374151', flex: 1, display: 'inline-block', maxWidth: '300px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          https://linksupply.co.uk/go/{item.url_slug}
-                        </code>
-                        <button 
-                          onClick={() => handleCopyProgrammingLink(item.url_slug, item.id)}
-                          style={{
-                            padding: '6px 12px',
-                            backgroundColor: copiedId === item.id ? '#10b981' : '#111',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: '6px',
-                            fontSize: '12px',
-                            fontWeight: '700',
-                            cursor: 'pointer',
-                            transition: 'background-color 0.2s',
-                            minWidth: '70px'
-                          }}
-                        >
-                          {copiedId === item.id ? 'Copied!' : 'Copy'}
-                        </button>
-                      </div>
+                {filteredAndSortedInventory.length === 0 ? (
+                  <tr>
+                    <td colSpan="4" style={{ padding: '30px', textAlign: 'center', color: '#6b7280', fontSize: '14px' }}>
+                      No hardware matches these filters.
                     </td>
                   </tr>
-                ))}
+                ) : (
+                  filteredAndSortedInventory.map((item) => (
+                    <tr key={item.id}>
+                      <td style={{...tableCellStyle, fontWeight: '700'}}>{item.id}</td>
+                      <td style={{...tableCellStyle, textTransform: 'capitalize'}}>{item.product_type.replace('_', ' ')}</td>
+                      <td style={tableCellStyle}>
+                        <span style={{ 
+                          padding: '4px 8px', borderRadius: '12px', fontSize: '12px', fontWeight: '700', textTransform: 'uppercase',
+                          backgroundColor: item.lifecycle_status === 'active' ? '#d1fae5' : '#f3f4f6',
+                          color: item.lifecycle_status === 'active' ? '#065f46' : '#4b5563'
+                        }}>
+                          {item.lifecycle_status}
+                        </span>
+                      </td>
+                      <td style={tableCellStyle}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          <code style={{ backgroundColor: '#f3f4f6', padding: '6px 10px', borderRadius: '6px', fontSize: '13px', color: '#374151', flex: 1, display: 'inline-block', maxWidth: '300px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            https://linksupply.co.uk/go/{item.url_slug}
+                          </code>
+                          <button 
+                            onClick={() => handleCopyProgrammingLink(item.url_slug, item.id)}
+                            style={{
+                              padding: '6px 12px',
+                              backgroundColor: copiedId === item.id ? '#10b981' : '#111',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: '6px',
+                              fontSize: '12px',
+                              fontWeight: '700',
+                              cursor: 'pointer',
+                              transition: 'background-color 0.2s',
+                              minWidth: '70px'
+                            }}
+                          >
+                            {copiedId === item.id ? 'Copied!' : 'Copy'}
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
