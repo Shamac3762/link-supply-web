@@ -136,12 +136,12 @@ export default function MasterAdminPanel() {
     else setSelectedIds([...selectedIds, id])
   }
 
-  // 📥 NEW: Flawless SVG Download Logic
+  // 📥 PERFECT VECTOR SVG DOWNLOAD LOGIC
   const handleDownloadSVG = (assetId) => {
     const svgElement = document.getElementById(`qr-${assetId}`);
     if (!svgElement) return;
     
-    // Extract perfect vector math directly from the DOM
+    // Extract perfect vector math directly from the DOM, which now includes the rotated text!
     const svgData = new XMLSerializer().serializeToString(svgElement);
     const blob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
     const url = URL.createObjectURL(blob);
@@ -149,7 +149,7 @@ export default function MasterAdminPanel() {
     // Trigger hidden download
     const link = document.createElement('a');
     link.href = url;
-    link.download = `${assetId}.svg`; // Names the file perfectly
+    link.download = `${assetId}.svg`; 
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -194,7 +194,7 @@ export default function MasterAdminPanel() {
         <div className="no-print" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '40px', paddingBottom: '20px', borderBottom: '2px solid #f3f4f6' }}>
           <div>
             <h1 style={{ fontSize: '24px', fontWeight: '800', margin: '0 0 5px 0' }}>QR Print Studio</h1>
-            <p style={{ color: '#6b7280', margin: 0 }}>Showing {selectedAssets.length} selected assets. Download pure SVGs or print the full grid as a PDF.</p>
+            <p style={{ color: '#6b7280', margin: 0 }}>Showing {selectedAssets.length} selected assets. The ID is embedded securely inside the SVG file.</p>
           </div>
           <div style={{ display: 'flex', gap: '10px' }}>
             <button onClick={() => setShowQRStudio(false)} style={{ padding: '10px 20px', backgroundColor: '#f3f4f6', color: '#111', border: '1px solid #d1d5db', borderRadius: '8px', fontWeight: '700', cursor: 'pointer' }}>Back to Dashboard</button>
@@ -202,26 +202,52 @@ export default function MasterAdminPanel() {
           </div>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '40px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '40px' }}>
           {selectedAssets.map(asset => (
             <div key={asset.id} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', breakInside: 'avoid', border: '1px solid #e5e7eb', padding: '20px', borderRadius: '16px', backgroundColor: '#f9fafb' }}>
-              <div style={{ backgroundColor: 'white', padding: '10px', borderRadius: '12px', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
-                <QRCodeSVG 
-                  id={`qr-${asset.id}`} // Required to locate the vector math for download
-                  value={`https://linksupply.co.uk/go/${asset.url_slug}`} 
-                  size={180}
-                  level="H" 
-                  includeMargin={true}
-                />
+              
+              {/* 🎨 MASTER SVG: Contains both the QR Code and the 90-degree rotated Text */}
+              <div style={{ backgroundColor: 'white', padding: '10px', borderRadius: '12px', boxShadow: '0 2px 4px rgba(0,0,0,0.05)', display: 'flex', justifyContent: 'center' }}>
+                <svg 
+                  id={`qr-${asset.id}`} 
+                  width="240" 
+                  height="180" 
+                  viewBox="0 0 240 180" 
+                  xmlns="http://www.w3.org/2000/svg" 
+                  style={{ backgroundColor: 'white' }}
+                >
+                  {/* The actual QR Code */}
+                  <svg width="180" height="180" x="0" y="0">
+                    <QRCodeSVG 
+                      value={`https://linksupply.co.uk/go/${asset.url_slug}`} 
+                      size={180}
+                      level="H" 
+                      includeMargin={true}
+                    />
+                  </svg>
+                  
+                  {/* The Rotated ID Text (perfectly spaced parallel to the QR code) */}
+                  <g transform="translate(215, 160) rotate(-90)">
+                    <text 
+                      x="0" 
+                      y="0" 
+                      fontFamily="monospace, sans-serif" 
+                      fontSize="18" 
+                      fill="#111111" 
+                      fontWeight="bold"
+                      letterSpacing="2"
+                    >
+                      ID:{asset.id}
+                    </text>
+                  </g>
+                </svg>
               </div>
-              <p style={{ fontSize: '20px', fontWeight: '800', color: '#111', marginTop: '15px', marginBottom: '0', fontFamily: 'monospace' }}>
-                {asset.id}
-              </p>
-              <p style={{ fontSize: '12px', color: '#6b7280', margin: '5px 0 15px 0', fontWeight: '500' }}>
+              
+              <p style={{ fontSize: '12px', color: '#6b7280', margin: '15px 0 15px 0', fontWeight: '500' }}>
                 linksupply.co.uk
               </p>
               
-              {/* ⬇️ NEW: SVG DOWNLOAD BUTTON */}
+              {/* SVG DOWNLOAD BUTTON */}
               <button 
                 className="no-print"
                 onClick={() => handleDownloadSVG(asset.id)} 
