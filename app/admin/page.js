@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 import { createClient } from '../../utils/supabase/client'
 import { useRouter } from 'next/navigation'
+import { QRCodeSVG } from 'qrcode.react' // 🆕 The QR Generator
 
 // 🔒 SECURITY: Replace this with your actual admin email
 const ADMIN_EMAIL = 'fitmentuk@outlook.com' 
@@ -16,17 +17,21 @@ export default function MasterAdminPanel() {
   const [inventory, setInventory] = useState([])
   const [kpis, setKpis] = useState({ totalUsers: 0, proUsers: 0, totalScans: 0 })
   
-  // 🏭 NEW: Universal Minting State
+  // Minting State
   const [mintAmount, setMintAmount] = useState(50)
   const [mintType, setMintType] = useState('qr_code') 
-  const [customMintType, setCustomMintType] = useState('') // Used when creating a brand new product
+  const [customMintType, setCustomMintType] = useState('')
   const [isMinting, setIsMinting] = useState(false)
   const [copiedId, setCopiedId] = useState(null)
 
-  // 🎛️ Filter & Sort State
+  // Filter & Sort State
   const [inventoryFilter, setInventoryFilter] = useState('all') 
   const [inventoryTypeFilter, setInventoryTypeFilter] = useState('all') 
   const [inventorySort, setInventorySort] = useState('newest') 
+
+  // 🆕 QR STUDIO STATE
+  const [selectedIds, setSelectedIds] = useState([])
+  const [showQRStudio, setShowQRStudio] = useState(false)
   
   const supabase = createClient()
   const router = useRouter()
@@ -49,31 +54,13 @@ export default function MasterAdminPanel() {
   }
 
   const loadDashboardData = async () => {
-    const { data: customerData } = await supabase
-      .from('customers')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .limit(100)
-      
-    const { data: tapData } = await supabase
-      .from('nfc_taps')
-      .select('*, nfc_stickers(id, tag_name)')
-      .order('created_at', { ascending: false })
-      .limit(10)
-
-    const { data: inventoryData } = await supabase
-      .from('nfc_stickers')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .limit(500) 
+    const { data: customerData } = await supabase.from('customers').select('*').order('created_at', { ascending: false }).limit(100)
+    const { data: tapData } = await supabase.from('nfc_taps').select('*, nfc_stickers(id, name)').order('created_at', { ascending: false }).limit(10)
+    const { data: inventoryData } = await supabase.from('nfc_stickers').select('*').order('created_at', { ascending: false }).limit(500) 
 
     if (customerData) {
       setCustomers(customerData)
-      setKpis(prev => ({ 
-        ...prev, 
-        totalUsers: customerData.length,
-        proUsers: customerData.filter(c => c.tier !== 'free').length 
-      }))
+      setKpis(prev => ({ ...prev, totalUsers: customerData.length, proUsers: customerData.filter(c => c.tier !== 'free').length }))
     }
     
     if (tapData) setPulseFeed(tapData)
@@ -81,24 +68,22 @@ export default function MasterAdminPanel() {
   }
 
   const handleMintAssets = async () => {
-    // 🧠 Universal Product Logic
     const finalProductType = mintType === 'custom' ? customMintType.toLowerCase().replace(/[^a-z0-9]/g, '_') : mintType;
     if (!finalProductType) return alert("Please specify a product type to mint.");
 
     setIsMinting(true)
     
     try {
-      // Auto-generate a smart prefix (e.g., qr_code -> QR-, metal_card -> ME-)
       let prefix = 'ST-';
       if (finalProductType === 'qr_code') prefix = 'QR-';
       else if (finalProductType === 'sticker') prefix = 'ST-';
       else prefix = finalProductType.substring(0, 2).toUpperCase() + '-';
 
-      const { count } = await supabase
-        .from('nfc_stickers')
-        .select('*', { count: 'exact', head: true })
-        .eq('product_type', finalProductType)
+      // 🛠️ FIX: Put asset_type logic back in!
+      let assetType = 'nfc';
+      if (finalProductType.includes('qr')) assetType = 'qr';
 
+      const { count } = await supabase.from('nfc_stickers').select('*', { count: 'exact', head: true }).eq('product_type', finalProductType)
       const startIndex = (count || 0) + 1
       const assetsToMint = []
 
@@ -110,16 +95,16 @@ export default function MasterAdminPanel() {
           activation_code: Math.floor(Math.random() * 900000 + 100000).toString(),
           lifecycle_status: 'inventory',
           product_type: finalProductType,
-          tag_name: `${prefix}${sequentialNum} (Inventory)`
+          asset_type: assetType, // 🛠️ FIX: Restored this column
+          name: `${prefix}${sequentialNum} (Inventory)` // 🛠️ FIX: Reverted from tag_name to name
         })
       }
 
       const { error } = await supabase.from('nfc_stickers').insert(assetsToMint)
-
       if (error) throw error
+      
       alert(`Successfully minted ${mintAmount} new ${finalProductType.replace('_', ' ').toUpperCase()} assets!`)
       
-      // Reset custom field if used, and reload dashboard
       if (mintType === 'custom') {
         setMintType(finalProductType);
         setCustomMintType('');
@@ -141,7 +126,17 @@ export default function MasterAdminPanel() {
     setTimeout(() => setCopiedId(null), 2000)
   }
 
-  // Extract all unique product types from the database for our dynamic dropdowns
+  // 🧮 Checkbox Selection Logic
+  const handleSelectAll = (e, filteredList) => {
+    if (e.target.checked) setSelectedIds(filteredList.map(item => item.id))
+    else setSelectedIds([])
+  }
+
+  const handleSelectRow = (id) => {
+    if (selectedIds.includes(id)) setSelectedIds(selectedIds.filter(i => i !== id))
+    else setSelectedIds([...selectedIds, id])
+  }
+
   const uniqueProductTypes = [...new Set(inventory.map(item => item.product_type))].filter(Boolean);
   if (!uniqueProductTypes.includes('qr_code')) uniqueProductTypes.unshift('qr_code');
   if (!uniqueProductTypes.includes('sticker')) uniqueProductTypes.push('sticker');
@@ -152,10 +147,8 @@ export default function MasterAdminPanel() {
       let statusMatch = true;
       if (inventoryFilter === 'active') statusMatch = item.lifecycle_status === 'active';
       if (inventoryFilter === 'inventory') statusMatch = item.lifecycle_status !== 'active';
-      
       let typeMatch = true;
       if (inventoryTypeFilter !== 'all') typeMatch = item.product_type === inventoryTypeFilter;
-
       return statusMatch && typeMatch;
     })
     .sort((a, b) => {
@@ -166,26 +159,65 @@ export default function MasterAdminPanel() {
       return 0;
     });
 
-  if (unauthorized) {
+  // 🖨️ QR PRINT STUDIO VIEW (Overrides the dashboard when active)
+  if (showQRStudio) {
+    const selectedAssets = inventory.filter(i => selectedIds.includes(i.id));
     return (
-      <div style={{ display: 'flex', height: '100vh', alignItems: 'center', justifyContent: 'center', backgroundColor: '#111', color: 'white', fontFamily: 'sans-serif' }}>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: '48px', marginBottom: '20px' }}>🛑</div>
-          <h1 style={{ fontSize: '24px', fontWeight: '800' }}>Access Denied</h1>
-          <p style={{ color: '#9ca3af', marginTop: '10px' }}>Redirecting to public homepage...</p>
+      <div style={{ backgroundColor: 'white', minHeight: '100vh', padding: '40px', fontFamily: 'sans-serif', color: 'black' }}>
+        <style>{`
+          @media print {
+            .no-print { display: none !important; }
+            body { background: white !important; -webkit-print-color-adjust: exact; }
+            @page { margin: 15mm; }
+          }
+        `}</style>
+        
+        <div className="no-print" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '40px', paddingBottom: '20px', borderBottom: '2px solid #f3f4f6' }}>
+          <div>
+            <h1 style={{ fontSize: '24px', fontWeight: '800', margin: '0 0 5px 0' }}>QR Print Studio</h1>
+            <p style={{ color: '#6b7280', margin: 0 }}>Showing {selectedAssets.length} selected assets. Right click any QR to copy/save as SVG, or print grid as PDF.</p>
+          </div>
+          <div style={{ display: 'flex', gap: '10px' }}>
+            <button onClick={() => setShowQRStudio(false)} style={{ padding: '10px 20px', backgroundColor: '#f3f4f6', color: '#111', border: '1px solid #d1d5db', borderRadius: '8px', fontWeight: '700', cursor: 'pointer' }}>Back to Dashboard</button>
+            <button onClick={() => window.print()} style={{ padding: '10px 20px', backgroundColor: '#111', color: 'white', border: 'none', borderRadius: '8px', fontWeight: '700', cursor: 'pointer' }}>🖨️ Save / Print as PDF</button>
+          </div>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '40px' }}>
+          {selectedAssets.map(asset => (
+            <div key={asset.id} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', breakInside: 'avoid' }}>
+              <div style={{ border: '2px solid #e5e7eb', padding: '15px', borderRadius: '16px', backgroundColor: 'white' }}>
+                <QRCodeSVG 
+                  value={`https://linksupply.co.uk/go/${asset.url_slug}`} 
+                  size={180}
+                  level="H" // High error correction
+                  includeMargin={true}
+                />
+              </div>
+              <p style={{ fontSize: '18px', fontWeight: '800', color: '#111', marginTop: '15px', marginBottom: '0', fontFamily: 'monospace' }}>
+                {asset.id}
+              </p>
+              <p style={{ fontSize: '12px', color: '#6b7280', margin: '5px 0 0 0' }}>
+                linksupply.co.uk
+              </p>
+            </div>
+          ))}
         </div>
       </div>
     )
   }
 
-  if (loading) return <div style={{ padding: '40px', fontFamily: 'sans-serif' }}>Authenticating Admin...</div>
+  // --- UNAUTHORIZED / LOADING STATES ---
+  if (unauthorized) return <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><h1>🛑 Access Denied</h1></div>
+  if (loading) return <div style={{ padding: '40px' }}>Authenticating Admin...</div>
 
+  // --- STYLES ---
   const cardStyle = { backgroundColor: 'white', padding: '25px', borderRadius: '16px', border: '1px solid #e5e7eb', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }
   const tableHeaderStyle = { textAlign: 'left', padding: '12px 16px', fontSize: '13px', color: '#6b7280', fontWeight: '700', textTransform: 'uppercase', borderBottom: '1px solid #e5e7eb' }
   const tableCellStyle = { padding: '16px', fontSize: '14px', color: '#111', borderBottom: '1px solid #f3f4f6' }
 
   return (
-    <div style={{ backgroundColor: '#f9fafb', minHeight: '100vh', fontFamily: 'sans-serif', padding: '40px' }}>
+    <div style={{ backgroundColor: '#f9fafb', minHeight: '100vh', fontFamily: 'sans-serif', padding: '40px', paddingBottom: '100px' }}>
       <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
         
         {/* HEADER */}
@@ -194,7 +226,7 @@ export default function MasterAdminPanel() {
             <h1 style={{ fontSize: '28px', fontWeight: '800', color: '#111', margin: '0 0 5px 0' }}>Link Supply Command Center</h1>
             <p style={{ color: '#6b7280', margin: 0, fontSize: '15px' }}>Welcome back, Boss.</p>
           </div>
-          <button onClick={loadDashboardData} style={{ padding: '10px 16px', backgroundColor: '#fff', border: '1px solid #d1d5db', borderRadius: '8px', cursor: 'pointer', fontWeight: '600', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
+          <button onClick={loadDashboardData} style={{ padding: '10px 16px', backgroundColor: '#fff', border: '1px solid #d1d5db', borderRadius: '8px', cursor: 'pointer', fontWeight: '600' }}>
             🔄 Refresh Data
           </button>
         </div>
@@ -255,14 +287,12 @@ export default function MasterAdminPanel() {
           {/* RIGHT COLUMN: PULSE & MINTING */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
             
-            {/* 🏭 UNIVERSAL MINTING STATION */}
+            {/* 🏭 MINTING STATION */}
             <div style={{...cardStyle, border: '2px solid #111'}}>
               <h2 style={{ fontSize: '18px', fontWeight: '800', color: '#111', marginBottom: '15px' }}>🏭 Inventory Minting</h2>
               <p style={{ fontSize: '13px', color: '#6b7280', marginBottom: '20px' }}>Generate secure hardware slugs instantly.</p>
               
               <div style={{ display: 'flex', gap: '10px', marginBottom: '15px', flexWrap: 'wrap' }}>
-                
-                {/* Dynamic Product Dropdown */}
                 <select 
                   value={mintType} 
                   onChange={(e) => setMintType(e.target.value)}
@@ -275,31 +305,26 @@ export default function MasterAdminPanel() {
                   ))}
                   <option value="custom">➕ Create New Type...</option>
                 </select>
-
-                {/* Amount Input */}
                 <input 
                   type="number" 
                   value={mintAmount} 
                   onChange={(e) => setMintAmount(Number(e.target.value))}
                   style={{ width: '80px', padding: '10px', borderRadius: '8px', border: '1px solid #d1d5db', fontSize: '14px', textAlign: 'center', fontWeight: '600' }}
                 />
-
-                {/* Show text input ONLY if they select "Create New Type" */}
                 {mintType === 'custom' && (
                   <input 
                     type="text" 
-                    placeholder="e.g. Metal Card" 
+                    placeholder="e.g. Acrylic Sign" 
                     value={customMintType}
                     onChange={(e) => setCustomMintType(e.target.value)}
                     style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #d1d5db', fontSize: '14px', fontWeight: '600', marginTop: '5px' }}
                   />
                 )}
-
               </div>
               <button 
                 onClick={handleMintAssets}
                 disabled={isMinting}
-                style={{ width: '100%', padding: '12px', backgroundColor: '#111', color: 'white', border: 'none', borderRadius: '8px', fontWeight: '700', cursor: isMinting ? 'not-allowed' : 'pointer', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}
+                style={{ width: '100%', padding: '12px', backgroundColor: '#111', color: 'white', border: 'none', borderRadius: '8px', fontWeight: '700', cursor: isMinting ? 'not-allowed' : 'pointer' }}
               >
                 {isMinting ? 'Minting...' : `Mint ${mintAmount} Assets`}
               </button>
@@ -321,9 +346,9 @@ export default function MasterAdminPanel() {
                     <div>
                       <p style={{ margin: '0 0 3px 0', fontSize: '14px', color: '#111', fontWeight: '600' }}>
                         {tap.tag_id}
-                        {tap.nfc_stickers?.tag_name && tap.nfc_stickers.tag_name !== tap.tag_id && (
+                        {tap.nfc_stickers?.name && tap.nfc_stickers.name !== tap.tag_id && (
                           <span style={{ color: '#6b7280', fontWeight: '500', marginLeft: '4px' }}>
-                            ({tap.nfc_stickers.tag_name})
+                            ({tap.nfc_stickers.name})
                           </span>
                         )} was scanned
                       </p>
@@ -344,10 +369,10 @@ export default function MasterAdminPanel() {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '25px', flexWrap: 'wrap', gap: '15px' }}>
             <div>
               <h2 style={{ fontSize: '18px', fontWeight: '800', color: '#111', margin: '0 0 4px 0' }}>Hardware Programming & Inventory</h2>
-              <p style={{ color: '#6b7280', fontSize: '14px', margin: 0 }}>Copy the exact encoding links for your physical NFC and QR production.</p>
+              <p style={{ color: '#6b7280', fontSize: '14px', margin: 0 }}>Select tags to generate QR codes, or copy encoding links for NFC production.</p>
             </div>
             
-            {/* 🎛️ FILTER & SORT UI */}
+            {/* FILTER & SORT UI */}
             <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
               <select 
                 value={inventoryTypeFilter} 
@@ -389,6 +414,14 @@ export default function MasterAdminPanel() {
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr>
+                  <th style={{...tableHeaderStyle, width: '40px'}}>
+                    <input 
+                      type="checkbox" 
+                      onChange={(e) => handleSelectAll(e, filteredAndSortedInventory)} 
+                      checked={selectedIds.length > 0 && selectedIds.length === filteredAndSortedInventory.length}
+                      style={{ cursor: 'pointer', width: '16px', height: '16px' }}
+                    />
+                  </th>
                   <th style={tableHeaderStyle}>Hardware ID</th>
                   <th style={tableHeaderStyle}>Type</th>
                   <th style={tableHeaderStyle}>Status</th>
@@ -398,13 +431,21 @@ export default function MasterAdminPanel() {
               <tbody>
                 {filteredAndSortedInventory.length === 0 ? (
                   <tr>
-                    <td colSpan="4" style={{ padding: '30px', textAlign: 'center', color: '#6b7280', fontSize: '14px' }}>
+                    <td colSpan="5" style={{ padding: '30px', textAlign: 'center', color: '#6b7280', fontSize: '14px' }}>
                       No hardware matches these filters.
                     </td>
                   </tr>
                 ) : (
                   filteredAndSortedInventory.map((item) => (
-                    <tr key={item.id}>
+                    <tr key={item.id} style={{ backgroundColor: selectedIds.includes(item.id) ? '#f0fdf4' : 'transparent' }}>
+                      <td style={tableCellStyle}>
+                        <input 
+                          type="checkbox" 
+                          checked={selectedIds.includes(item.id)}
+                          onChange={() => handleSelectRow(item.id)}
+                          style={{ cursor: 'pointer', width: '16px', height: '16px' }}
+                        />
+                      </td>
                       <td style={{...tableCellStyle, fontWeight: '700'}}>{item.id}</td>
                       <td style={{...tableCellStyle, textTransform: 'capitalize'}}>{item.product_type.replace('_', ' ')}</td>
                       <td style={tableCellStyle}>
@@ -423,18 +464,7 @@ export default function MasterAdminPanel() {
                           </code>
                           <button 
                             onClick={() => handleCopyProgrammingLink(item.url_slug, item.id)}
-                            style={{
-                              padding: '6px 12px',
-                              backgroundColor: copiedId === item.id ? '#10b981' : '#111',
-                              color: 'white',
-                              border: 'none',
-                              borderRadius: '6px',
-                              fontSize: '12px',
-                              fontWeight: '700',
-                              cursor: 'pointer',
-                              transition: 'background-color 0.2s',
-                              minWidth: '70px'
-                            }}
+                            style={{ padding: '6px 12px', backgroundColor: copiedId === item.id ? '#10b981' : '#111', color: 'white', border: 'none', borderRadius: '6px', fontSize: '12px', fontWeight: '700', cursor: 'pointer', minWidth: '70px' }}
                           >
                             {copiedId === item.id ? 'Copied!' : 'Copy'}
                           </button>
@@ -448,11 +478,26 @@ export default function MasterAdminPanel() {
           </div>
         </div>
         
+        {/* 🚀 FLOATING ACTION BAR FOR SELECTED ITEMS */}
+        {selectedIds.length > 0 && (
+          <div style={{ position: 'fixed', bottom: '30px', left: '50%', transform: 'translateX(-50%)', backgroundColor: '#111', color: 'white', padding: '15px 30px', borderRadius: '16px', display: 'flex', alignItems: 'center', gap: '30px', boxShadow: '0 10px 25px rgba(0,0,0,0.3)', zIndex: 100, animation: 'fadeInUp 0.3s' }}>
+            <span style={{ fontWeight: '700', fontSize: '15px' }}>{selectedIds.length} assets selected</span>
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button onClick={() => setSelectedIds([])} style={{ padding: '8px 16px', backgroundColor: 'transparent', color: '#9ca3af', border: '1px solid #4b5563', borderRadius: '8px', fontWeight: '600', cursor: 'pointer' }}>Cancel</button>
+              <button onClick={() => setShowQRStudio(true)} style={{ padding: '8px 20px', backgroundColor: 'white', color: '#111', border: 'none', borderRadius: '8px', fontWeight: '800', cursor: 'pointer' }}>🎨 Open QR Studio</button>
+            </div>
+          </div>
+        )}
+
         <style>{`
           @keyframes pulse {
             0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
             70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
             100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+          }
+          @keyframes fadeInUp {
+            from { transform: translate(-50%, 20px); opacity: 0; }
+            to { transform: translate(-50%, 0); opacity: 1; }
           }
         `}</style>
       </div>
