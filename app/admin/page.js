@@ -14,12 +14,14 @@ export default function MasterAdminPanel() {
   // Dashboard Data State
   const [customers, setCustomers] = useState([])
   const [pulseFeed, setPulseFeed] = useState([])
+  const [inventory, setInventory] = useState([]) // <-- NEW: Stores all hardware tags
   const [kpis, setKpis] = useState({ totalUsers: 0, proUsers: 0, totalScans: 0 })
   
   // Minting State
   const [mintAmount, setMintAmount] = useState(50)
   const [mintType, setMintType] = useState('qr') // 'qr' or 'nfc'
   const [isMinting, setIsMinting] = useState(false)
+  const [copiedId, setCopiedId] = useState(null)
   
   const supabase = createClient()
   const router = useRouter()
@@ -51,12 +53,18 @@ export default function MasterAdminPanel() {
       .limit(100)
       
     // 3. Load Pulse Feed (Recent Scans)
-    // 🛠️ FIX: We select both id and tag_name here for the professional formatting
     const { data: tapData } = await supabase
       .from('nfc_taps')
       .select('*, nfc_stickers(id, tag_name)')
       .order('created_at', { ascending: false })
       .limit(10)
+
+    // 4. NEW: Load Hardware Inventory for Programming
+    const { data: inventoryData } = await supabase
+      .from('nfc_stickers')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(100) // Shows the 100 most recently minted tags
 
     if (customerData) {
       setCustomers(customerData)
@@ -67,16 +75,14 @@ export default function MasterAdminPanel() {
       }))
     }
     
-    if (tapData) {
-      setPulseFeed(tapData)
-    }
+    if (tapData) setPulseFeed(tapData)
+    if (inventoryData) setInventory(inventoryData)
   }
 
   const handleMintAssets = async () => {
     setIsMinting(true)
     
     try {
-      // Find out how many of this asset type already exist to keep sequential IDs
       const prefix = mintType === 'qr' ? 'QR-' : 'ST-'
       const productType = mintType === 'qr' ? 'qr_code' : 'sticker'
 
@@ -88,7 +94,6 @@ export default function MasterAdminPanel() {
       const startIndex = (count || 0) + 1
       const assetsToMint = []
 
-      // Generate the batch data
       for (let i = 0; i < mintAmount; i++) {
         const sequentialNum = String(startIndex + i).padStart(3, '0')
         assetsToMint.push({
@@ -97,16 +102,17 @@ export default function MasterAdminPanel() {
           activation_code: Math.floor(Math.random() * 900000 + 100000).toString(),
           lifecycle_status: 'inventory',
           product_type: productType,
-          // 🛠️ FIX: Replaced 'name' with 'tag_name' and removed broken 'asset_type'
           tag_name: `${prefix}${sequentialNum} (Inventory)`
         })
       }
 
-      // Bulk insert directly from the frontend admin panel
       const { error } = await supabase.from('nfc_stickers').insert(assetsToMint)
 
       if (error) throw error
       alert(`Successfully minted ${mintAmount} new ${mintType.toUpperCase()} assets!`)
+      
+      // Refresh data so the new assets instantly appear in the programming table
+      loadDashboardData() 
       
     } catch (error) {
       console.error("Minting error:", error)
@@ -114,6 +120,13 @@ export default function MasterAdminPanel() {
     }
     
     setIsMinting(false)
+  }
+
+  const handleCopyProgrammingLink = (slug, id) => {
+    const fullUrl = `https://linksupply.co.uk/go/${slug}`
+    navigator.clipboard.writeText(fullUrl)
+    setCopiedId(id)
+    setTimeout(() => setCopiedId(null), 2000)
   }
 
   // --- UNAUTHORIZED STATE ---
@@ -129,7 +142,6 @@ export default function MasterAdminPanel() {
     )
   }
 
-  // --- LOADING STATE ---
   if (loading) return <div style={{ padding: '40px', fontFamily: 'sans-serif' }}>Authenticating Admin...</div>
 
   // --- STYLES ---
@@ -168,7 +180,7 @@ export default function MasterAdminPanel() {
           </div>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 350px', gap: '30px', alignItems: 'start' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 350px', gap: '30px', alignItems: 'start', marginBottom: '30px' }}>
           
           {/* LEFT COLUMN: CRM */}
           <div style={cardStyle}>
@@ -252,7 +264,6 @@ export default function MasterAdminPanel() {
                   <div key={i} style={{ display: 'flex', gap: '12px', borderBottom: i !== pulseFeed.length -1 ? '1px solid #f3f4f6' : 'none', paddingBottom: i !== pulseFeed.length -1 ? '15px' : '0' }}>
                     <div style={{ fontSize: '20px' }}>{tap.scan_method === 'qr' ? '📷' : '📱'}</div>
                     <div>
-                      {/* 🛠️ FIX: Displays the exact hardware ID, with the custom name in brackets if it exists */}
                       <p style={{ margin: '0 0 3px 0', fontSize: '14px', color: '#111', fontWeight: '600' }}>
                         {tap.tag_id}
                         {tap.nfc_stickers?.tag_name && tap.nfc_stickers.tag_name !== tap.tag_id && (
@@ -270,6 +281,69 @@ export default function MasterAdminPanel() {
               </div>
             </div>
 
+          </div>
+        </div>
+
+        {/* 🆕 HARDWARE PROGRAMMING & INVENTORY TABLE */}
+        <div style={cardStyle}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+            <div>
+              <h2 style={{ fontSize: '18px', fontWeight: '800', color: '#111', margin: '0 0 4px 0' }}>Hardware Programming & Inventory</h2>
+              <p style={{ color: '#6b7280', fontSize: '14px', margin: 0 }}>Copy the exact encoding links for your physical NFC and QR production.</p>
+            </div>
+          </div>
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr>
+                  <th style={tableHeaderStyle}>Hardware ID</th>
+                  <th style={tableHeaderStyle}>Type</th>
+                  <th style={tableHeaderStyle}>Status</th>
+                  <th style={tableHeaderStyle}>Programming Link</th>
+                </tr>
+              </thead>
+              <tbody>
+                {inventory.map((item) => (
+                  <tr key={item.id}>
+                    <td style={{...tableCellStyle, fontWeight: '700'}}>{item.id}</td>
+                    <td style={{...tableCellStyle, textTransform: 'capitalize'}}>{item.product_type.replace('_', ' ')}</td>
+                    <td style={tableCellStyle}>
+                      <span style={{ 
+                        padding: '4px 8px', borderRadius: '12px', fontSize: '12px', fontWeight: '700', textTransform: 'uppercase',
+                        backgroundColor: item.lifecycle_status === 'active' ? '#d1fae5' : '#f3f4f6',
+                        color: item.lifecycle_status === 'active' ? '#065f46' : '#4b5563'
+                      }}>
+                        {item.lifecycle_status}
+                      </span>
+                    </td>
+                    <td style={tableCellStyle}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <code style={{ backgroundColor: '#f3f4f6', padding: '6px 10px', borderRadius: '6px', fontSize: '13px', color: '#374151', flex: 1, display: 'inline-block', maxWidth: '300px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          https://linksupply.co.uk/go/{item.url_slug}
+                        </code>
+                        <button 
+                          onClick={() => handleCopyProgrammingLink(item.url_slug, item.id)}
+                          style={{
+                            padding: '6px 12px',
+                            backgroundColor: copiedId === item.id ? '#10b981' : '#111',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '6px',
+                            fontSize: '12px',
+                            fontWeight: '700',
+                            cursor: 'pointer',
+                            transition: 'background-color 0.2s',
+                            minWidth: '70px'
+                          }}
+                        >
+                          {copiedId === item.id ? 'Copied!' : 'Copy'}
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
         
