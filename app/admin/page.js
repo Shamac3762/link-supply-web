@@ -51,10 +51,10 @@ export default function MasterAdminPanel() {
       .limit(100)
       
     // 3. Load Pulse Feed (Recent Scans)
-    // Assumes you have an nfc_taps table from our earlier architecture
+    // 🛠️ FIX: We select both id and tag_name here for the professional formatting
     const { data: tapData } = await supabase
       .from('nfc_taps')
-      .select('*, nfc_stickers(name)')
+      .select('*, nfc_stickers(id, tag_name)')
       .order('created_at', { ascending: false })
       .limit(10)
 
@@ -79,7 +79,6 @@ export default function MasterAdminPanel() {
       // Find out how many of this asset type already exist to keep sequential IDs
       const prefix = mintType === 'qr' ? 'QR-' : 'ST-'
       const productType = mintType === 'qr' ? 'qr_code' : 'sticker'
-      const assetType = mintType === 'qr' ? 'qr' : 'nfc'
 
       const { count } = await supabase
         .from('nfc_stickers')
@@ -98,8 +97,8 @@ export default function MasterAdminPanel() {
           activation_code: Math.floor(Math.random() * 900000 + 100000).toString(),
           lifecycle_status: 'inventory',
           product_type: productType,
-          asset_type: assetType,
-          name: `${prefix}${sequentialNum} (Inventory)`
+          // 🛠️ FIX: Replaced 'name' with 'tag_name' and removed broken 'asset_type'
+          tag_name: `${prefix}${sequentialNum} (Inventory)`
         })
       }
 
@@ -253,8 +252,14 @@ export default function MasterAdminPanel() {
                   <div key={i} style={{ display: 'flex', gap: '12px', borderBottom: i !== pulseFeed.length -1 ? '1px solid #f3f4f6' : 'none', paddingBottom: i !== pulseFeed.length -1 ? '15px' : '0' }}>
                     <div style={{ fontSize: '20px' }}>{tap.scan_method === 'qr' ? '📷' : '📱'}</div>
                     <div>
+                      {/* 🛠️ FIX: Displays the exact hardware ID, with the custom name in brackets if it exists */}
                       <p style={{ margin: '0 0 3px 0', fontSize: '14px', color: '#111', fontWeight: '600' }}>
-                        {tap.nfc_stickers?.name || 'Asset'} was scanned
+                        {tap.tag_id}
+                        {tap.nfc_stickers?.tag_name && tap.nfc_stickers.tag_name !== tap.tag_id && (
+                          <span style={{ color: '#6b7280', fontWeight: '500', marginLeft: '4px' }}>
+                            ({tap.nfc_stickers.tag_name})
+                          </span>
+                        )} was scanned
                       </p>
                       <p style={{ margin: 0, fontSize: '12px', color: '#6b7280' }}>
                         {new Date(tap.created_at).toLocaleTimeString()} via {tap.scan_method === 'qr' ? 'Camera' : 'NFC'}
