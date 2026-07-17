@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react'
 import { createClient } from '../../utils/supabase/client'
 import { useRouter } from 'next/navigation'
-import { QRCodeSVG } from 'qrcode.react' // 🆕 The QR Generator
+import { QRCodeSVG } from 'qrcode.react'
 
 // 🔒 SECURITY: Replace this with your actual admin email
 const ADMIN_EMAIL = 'fitmentuk@outlook.com' 
@@ -29,7 +29,7 @@ export default function MasterAdminPanel() {
   const [inventoryTypeFilter, setInventoryTypeFilter] = useState('all') 
   const [inventorySort, setInventorySort] = useState('newest') 
 
-  // 🆕 QR STUDIO STATE
+  // QR STUDIO STATE
   const [selectedIds, setSelectedIds] = useState([])
   const [showQRStudio, setShowQRStudio] = useState(false)
   
@@ -79,7 +79,6 @@ export default function MasterAdminPanel() {
       else if (finalProductType === 'sticker') prefix = 'ST-';
       else prefix = finalProductType.substring(0, 2).toUpperCase() + '-';
 
-      // 🛠️ FIX: Put asset_type logic back in!
       let assetType = 'nfc';
       if (finalProductType.includes('qr')) assetType = 'qr';
 
@@ -95,8 +94,8 @@ export default function MasterAdminPanel() {
           activation_code: Math.floor(Math.random() * 900000 + 100000).toString(),
           lifecycle_status: 'inventory',
           product_type: finalProductType,
-          asset_type: assetType, // 🛠️ FIX: Restored this column
-          name: `${prefix}${sequentialNum} (Inventory)` // 🛠️ FIX: Reverted from tag_name to name
+          asset_type: assetType, 
+          name: `${prefix}${sequentialNum} (Inventory)`
         })
       }
 
@@ -126,7 +125,7 @@ export default function MasterAdminPanel() {
     setTimeout(() => setCopiedId(null), 2000)
   }
 
-  // 🧮 Checkbox Selection Logic
+  // Checkbox Selection Logic
   const handleSelectAll = (e, filteredList) => {
     if (e.target.checked) setSelectedIds(filteredList.map(item => item.id))
     else setSelectedIds([])
@@ -135,6 +134,26 @@ export default function MasterAdminPanel() {
   const handleSelectRow = (id) => {
     if (selectedIds.includes(id)) setSelectedIds(selectedIds.filter(i => i !== id))
     else setSelectedIds([...selectedIds, id])
+  }
+
+  // 📥 NEW: Flawless SVG Download Logic
+  const handleDownloadSVG = (assetId) => {
+    const svgElement = document.getElementById(`qr-${assetId}`);
+    if (!svgElement) return;
+    
+    // Extract perfect vector math directly from the DOM
+    const svgData = new XMLSerializer().serializeToString(svgElement);
+    const blob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    
+    // Trigger hidden download
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${assetId}.svg`; // Names the file perfectly
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   }
 
   const uniqueProductTypes = [...new Set(inventory.map(item => item.product_type))].filter(Boolean);
@@ -159,7 +178,7 @@ export default function MasterAdminPanel() {
       return 0;
     });
 
-  // 🖨️ QR PRINT STUDIO VIEW (Overrides the dashboard when active)
+  // 🖨️ QR PRINT STUDIO VIEW
   if (showQRStudio) {
     const selectedAssets = inventory.filter(i => selectedIds.includes(i.id));
     return (
@@ -175,31 +194,43 @@ export default function MasterAdminPanel() {
         <div className="no-print" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '40px', paddingBottom: '20px', borderBottom: '2px solid #f3f4f6' }}>
           <div>
             <h1 style={{ fontSize: '24px', fontWeight: '800', margin: '0 0 5px 0' }}>QR Print Studio</h1>
-            <p style={{ color: '#6b7280', margin: 0 }}>Showing {selectedAssets.length} selected assets. Right click any QR to copy/save as SVG, or print grid as PDF.</p>
+            <p style={{ color: '#6b7280', margin: 0 }}>Showing {selectedAssets.length} selected assets. Download pure SVGs or print the full grid as a PDF.</p>
           </div>
           <div style={{ display: 'flex', gap: '10px' }}>
             <button onClick={() => setShowQRStudio(false)} style={{ padding: '10px 20px', backgroundColor: '#f3f4f6', color: '#111', border: '1px solid #d1d5db', borderRadius: '8px', fontWeight: '700', cursor: 'pointer' }}>Back to Dashboard</button>
-            <button onClick={() => window.print()} style={{ padding: '10px 20px', backgroundColor: '#111', color: 'white', border: 'none', borderRadius: '8px', fontWeight: '700', cursor: 'pointer' }}>🖨️ Save / Print as PDF</button>
+            <button onClick={() => window.print()} style={{ padding: '10px 20px', backgroundColor: '#111', color: 'white', border: 'none', borderRadius: '8px', fontWeight: '700', cursor: 'pointer' }}>🖨️ Print Full Grid</button>
           </div>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '40px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '40px' }}>
           {selectedAssets.map(asset => (
-            <div key={asset.id} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', breakInside: 'avoid' }}>
-              <div style={{ border: '2px solid #e5e7eb', padding: '15px', borderRadius: '16px', backgroundColor: 'white' }}>
+            <div key={asset.id} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', breakInside: 'avoid', border: '1px solid #e5e7eb', padding: '20px', borderRadius: '16px', backgroundColor: '#f9fafb' }}>
+              <div style={{ backgroundColor: 'white', padding: '10px', borderRadius: '12px', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
                 <QRCodeSVG 
+                  id={`qr-${asset.id}`} // Required to locate the vector math for download
                   value={`https://linksupply.co.uk/go/${asset.url_slug}`} 
                   size={180}
-                  level="H" // High error correction
+                  level="H" 
                   includeMargin={true}
                 />
               </div>
-              <p style={{ fontSize: '18px', fontWeight: '800', color: '#111', marginTop: '15px', marginBottom: '0', fontFamily: 'monospace' }}>
+              <p style={{ fontSize: '20px', fontWeight: '800', color: '#111', marginTop: '15px', marginBottom: '0', fontFamily: 'monospace' }}>
                 {asset.id}
               </p>
-              <p style={{ fontSize: '12px', color: '#6b7280', margin: '5px 0 0 0' }}>
+              <p style={{ fontSize: '12px', color: '#6b7280', margin: '5px 0 15px 0', fontWeight: '500' }}>
                 linksupply.co.uk
               </p>
+              
+              {/* ⬇️ NEW: SVG DOWNLOAD BUTTON */}
+              <button 
+                className="no-print"
+                onClick={() => handleDownloadSVG(asset.id)} 
+                style={{ width: '100%', padding: '8px', backgroundColor: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: '6px', cursor: 'pointer', fontWeight: '700', fontSize: '13px', color: '#374151', transition: 'background-color 0.2s' }}
+                onMouseEnter={(e) => e.target.style.backgroundColor = '#e5e7eb'}
+                onMouseLeave={(e) => e.target.style.backgroundColor = '#f3f4f6'}
+              >
+                ⬇️ Download .SVG
+              </button>
             </div>
           ))}
         </div>
@@ -287,7 +318,7 @@ export default function MasterAdminPanel() {
           {/* RIGHT COLUMN: PULSE & MINTING */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
             
-            {/* 🏭 MINTING STATION */}
+            {/* MINTING STATION */}
             <div style={{...cardStyle, border: '2px solid #111'}}>
               <h2 style={{ fontSize: '18px', fontWeight: '800', color: '#111', marginBottom: '15px' }}>🏭 Inventory Minting</h2>
               <p style={{ fontSize: '13px', color: '#6b7280', marginBottom: '20px' }}>Generate secure hardware slugs instantly.</p>
@@ -369,7 +400,7 @@ export default function MasterAdminPanel() {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '25px', flexWrap: 'wrap', gap: '15px' }}>
             <div>
               <h2 style={{ fontSize: '18px', fontWeight: '800', color: '#111', margin: '0 0 4px 0' }}>Hardware Programming & Inventory</h2>
-              <p style={{ color: '#6b7280', fontSize: '14px', margin: 0 }}>Select tags to generate QR codes, or copy encoding links for NFC production.</p>
+              <p style={{ color: '#6b7280', fontSize: '14px', margin: 0 }}>Select tags to generate pure vector SVGs, or copy encoding links.</p>
             </div>
             
             {/* FILTER & SORT UI */}
@@ -478,7 +509,7 @@ export default function MasterAdminPanel() {
           </div>
         </div>
         
-        {/* 🚀 FLOATING ACTION BAR FOR SELECTED ITEMS */}
+        {/* FLOATING ACTION BAR FOR SELECTED ITEMS */}
         {selectedIds.length > 0 && (
           <div style={{ position: 'fixed', bottom: '30px', left: '50%', transform: 'translateX(-50%)', backgroundColor: '#111', color: 'white', padding: '15px 30px', borderRadius: '16px', display: 'flex', alignItems: 'center', gap: '30px', boxShadow: '0 10px 25px rgba(0,0,0,0.3)', zIndex: 100, animation: 'fadeInUp 0.3s' }}>
             <span style={{ fontWeight: '700', fontSize: '15px' }}>{selectedIds.length} assets selected</span>
