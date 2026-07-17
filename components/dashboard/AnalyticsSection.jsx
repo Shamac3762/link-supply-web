@@ -25,6 +25,7 @@ export default function AnalyticsSection({
     <div style={{ display: 'flex', flexDirection: 'column', gap: '30px', width: '100%', animation: 'fadeIn 0.3s ease-in-out' }}>
       
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px' }}>
+        
         <div style={{ backgroundColor: 'white', padding: '25px', borderRadius: '16px', border: '1px solid #e5e7eb', textAlign: 'center', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>
           <p style={{ color: '#6b7280', fontSize: '13px', fontWeight: '700', textTransform: 'uppercase', marginBottom: '10px', letterSpacing: '0.5px' }}>Total Hardware Scans</p>
           <p style={{ fontSize: '36px', fontWeight: '800', color: '#111', margin: 0, letterSpacing: '-1px' }}>
@@ -54,12 +55,28 @@ export default function AnalyticsSection({
           )}
         </div>
 
+        {/* BEST PERFORMING */}
         <div style={{ backgroundColor: 'white', padding: '25px', borderRadius: '16px', border: '1px solid #e5e7eb', textAlign: 'center', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>
           <p style={{ color: '#6b7280', fontSize: '13px', fontWeight: '700', textTransform: 'uppercase', marginBottom: '10px', letterSpacing: '0.5px' }}>Top Performing Tag</p>
-          <p style={{ fontSize: '22px', fontWeight: '800', color: '#111', margin: '8px 0 0 0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-            {/* 🛠️ FIX APPLIED: Changed .name to .tag_name */}
-            {stickers.length > 0 ? [...stickers].sort((a,b) => (b.tap_count || 0) - (a.tap_count || 0))[0]?.tag_name || 'Unnamed Tag' : 'None Active'}
-          </p>
+          <div style={{ margin: '8px 0 0 0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            {stickers.length > 0 ? (() => {
+              const topSticker = [...stickers].sort((a,b) => (b.tap_count || 0) - (a.tap_count || 0))[0];
+              return (
+                <>
+                  <span style={{ fontSize: '22px', fontWeight: '800', color: '#111' }}>
+                    {topSticker.id}
+                  </span>
+                  {topSticker.tag_name && topSticker.tag_name !== topSticker.id && (
+                    <span style={{ fontSize: '16px', fontWeight: '600', color: '#6b7280', marginLeft: '6px' }}>
+                      ({topSticker.tag_name})
+                    </span>
+                  )}
+                </>
+              );
+            })() : (
+              <span style={{ fontSize: '22px', fontWeight: '800', color: '#111' }}>None Active</span>
+            )}
+          </div>
         </div>
       </div>
 
