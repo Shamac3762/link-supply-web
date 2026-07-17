@@ -206,13 +206,13 @@ export default function MasterAdminPanel() {
           {selectedAssets.map(asset => (
             <div key={asset.id} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', breakInside: 'avoid', border: '1px solid #e5e7eb', padding: '20px', borderRadius: '16px', backgroundColor: '#f9fafb' }}>
               
-              {/* 🎨 MASTER SVG: Contains both the QR Code and the 90-degree rotated Text */}
+              {/* 🎨 MASTER SVG: Adjusted width, tighter spacing, smaller font */}
               <div style={{ backgroundColor: 'white', padding: '10px', borderRadius: '12px', boxShadow: '0 2px 4px rgba(0,0,0,0.05)', display: 'flex', justifyContent: 'center' }}>
                 <svg 
                   id={`qr-${asset.id}`} 
-                  width="240" 
+                  width="200" 
                   height="180" 
-                  viewBox="0 0 240 180" 
+                  viewBox="0 0 200 180" 
                   xmlns="http://www.w3.org/2000/svg" 
                   style={{ backgroundColor: 'white' }}
                 >
@@ -226,16 +226,16 @@ export default function MasterAdminPanel() {
                     />
                   </svg>
                   
-                  {/* The Rotated ID Text (perfectly spaced parallel to the QR code) */}
-                  <g transform="translate(215, 160) rotate(-90)">
+                  {/* The Rotated ID Text (closer to QR, smaller text) */}
+                  <g transform="translate(190, 160) rotate(-90)">
                     <text 
                       x="0" 
                       y="0" 
                       fontFamily="monospace, sans-serif" 
-                      fontSize="18" 
+                      fontSize="14" 
                       fill="#111111" 
                       fontWeight="bold"
-                      letterSpacing="2"
+                      letterSpacing="1"
                     >
                       ID:{asset.id}
                     </text>
