@@ -30,7 +30,7 @@ export default function PremiumDashboard() {
   
   const [stickers, setStickers] = useState([])
   const [chartData, setChartData] = useState([]) 
-  const [timeRange, setTimeRange] = useState('7d') // <-- NEW Time Range State
+  const [timeRange, setTimeRange] = useState('7d')
   const [claimId, setClaimId] = useState('')
   const [claimPin, setClaimPin] = useState('')
   const [claimMessage, setClaimMessage] = useState('')
@@ -69,7 +69,7 @@ export default function PremiumDashboard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // --- NEW: DYNAMIC ANALYTICS LISTENER ---
+  // --- DYNAMIC ANALYTICS LISTENER ---
   useEffect(() => {
     if (userId) {
       fetchAnalyticsData();
@@ -193,28 +193,30 @@ export default function PremiumDashboard() {
     setLoading(false)
   }
 
-  // --- NEW: DYNAMIC ANALYTICS FETCH LOGIC ---
+  // --- DYNAMIC ANALYTICS FETCH LOGIC (FIXED) ---
   const fetchAnalyticsData = async () => {
     let daysAgo = 7;
     if (timeRange === '30d') daysAgo = 30;
     if (timeRange === '6m') daysAgo = 180;
 
-    const { data: tapLogs } = await supabase
+    // 🛠️ FIX 1: We must select scan_method so the graph tooltips know what type of hardware was scanned
+    const { data: tapLogs, error } = await supabase
       .from('nfc_taps')
-      .select('tapped_at')
+      .select('tapped_at, scan_method')
       .eq('owner_id', userId)
       .gte('tapped_at', new Date(Date.now() - daysAgo * 24 * 60 * 60 * 1000).toISOString());
+
+    if (error) console.error("Analytics fetch error:", error);
 
     let chartPoints = [];
 
     if (timeRange === '6m') {
-      // Group data into 6 monthly chunks for cleaner UI
       const months = [...Array(6)].map((_, i) => {
         const d = new Date();
         d.setMonth(d.getMonth() - i);
         return {
           name: d.toLocaleDateString('en-GB', { month: 'short' }),
-          taps: 0,
+          taps: 0, nfc: 0, qr: 0, // Initialize counts
           monthKey: `${d.getFullYear()}-${d.getMonth()}`
         };
       }).reverse();
@@ -224,18 +226,21 @@ export default function PremiumDashboard() {
           const date = new Date(log.tapped_at);
           const key = `${date.getFullYear()}-${date.getMonth()}`;
           const month = months.find(m => m.monthKey === key);
-          if (month) month.taps++;
+          if (month) {
+            month.taps++;
+            if (log.scan_method === 'qr') month.qr++;
+            else month.nfc++;
+          }
         });
       }
       chartPoints = months;
     } else {
-      // Group data into daily chunks for 7d and 30d
       chartPoints = [...Array(daysAgo)].map((_, i) => {
         const d = new Date();
         d.setDate(d.getDate() - i);
         return { 
           name: timeRange === '7d' ? d.toLocaleDateString('en-GB', { weekday: 'short' }) : d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }), 
-          taps: 0, 
+          taps: 0, nfc: 0, qr: 0, // Initialize counts
           fullDate: d.toDateString() 
         };
       }).reverse();
@@ -244,7 +249,11 @@ export default function PremiumDashboard() {
         tapLogs.forEach(log => {
           const dateStr = new Date(log.tapped_at).toDateString();
           const day = chartPoints.find(d => d.fullDate === dateStr);
-          if (day) day.taps++;
+          if (day) {
+            day.taps++;
+            if (log.scan_method === 'qr') day.qr++;
+            else day.nfc++;
+          }
         });
       }
     }
@@ -575,6 +584,8 @@ export default function PremiumDashboard() {
             stickers={stickers} isPremium={isPremium} pageProfile={pageProfile}
             displayChartData={chartData} isMounted={isMounted}
             timeRange={timeRange} setTimeRange={setTimeRange} 
+            // 🛠️ FIX 2: Wired up the upgrade buttons so they take the user to the Pricing Tab!
+            onUpgradeClick={() => setActiveTab('pricing')} 
           />
         )}
 
