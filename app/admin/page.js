@@ -16,15 +16,17 @@ export default function MasterAdminPanel() {
   const [inventory, setInventory] = useState([])
   const [kpis, setKpis] = useState({ totalUsers: 0, proUsers: 0, totalScans: 0 })
   
-  // Minting State
+  // 🏭 NEW: Universal Minting State
   const [mintAmount, setMintAmount] = useState(50)
-  const [mintType, setMintType] = useState('qr') // 'qr' or 'nfc'
+  const [mintType, setMintType] = useState('qr_code') 
+  const [customMintType, setCustomMintType] = useState('') // Used when creating a brand new product
   const [isMinting, setIsMinting] = useState(false)
   const [copiedId, setCopiedId] = useState(null)
 
-  // 🎛️ NEW: Filter & Sort State
-  const [inventoryFilter, setInventoryFilter] = useState('all') // 'all', 'active', 'inventory'
-  const [inventorySort, setInventorySort] = useState('newest') // 'newest', 'oldest', 'a-z', 'z-a'
+  // 🎛️ Filter & Sort State
+  const [inventoryFilter, setInventoryFilter] = useState('all') 
+  const [inventoryTypeFilter, setInventoryTypeFilter] = useState('all') 
+  const [inventorySort, setInventorySort] = useState('newest') 
   
   const supabase = createClient()
   const router = useRouter()
@@ -59,7 +61,6 @@ export default function MasterAdminPanel() {
       .order('created_at', { ascending: false })
       .limit(10)
 
-    // Bumped limit to 500 so you can filter a larger batch of inventory
     const { data: inventoryData } = await supabase
       .from('nfc_stickers')
       .select('*')
@@ -80,16 +81,23 @@ export default function MasterAdminPanel() {
   }
 
   const handleMintAssets = async () => {
+    // 🧠 Universal Product Logic
+    const finalProductType = mintType === 'custom' ? customMintType.toLowerCase().replace(/[^a-z0-9]/g, '_') : mintType;
+    if (!finalProductType) return alert("Please specify a product type to mint.");
+
     setIsMinting(true)
     
     try {
-      const prefix = mintType === 'qr' ? 'QR-' : 'ST-'
-      const productType = mintType === 'qr' ? 'qr_code' : 'sticker'
+      // Auto-generate a smart prefix (e.g., qr_code -> QR-, metal_card -> ME-)
+      let prefix = 'ST-';
+      if (finalProductType === 'qr_code') prefix = 'QR-';
+      else if (finalProductType === 'sticker') prefix = 'ST-';
+      else prefix = finalProductType.substring(0, 2).toUpperCase() + '-';
 
       const { count } = await supabase
         .from('nfc_stickers')
         .select('*', { count: 'exact', head: true })
-        .eq('product_type', productType)
+        .eq('product_type', finalProductType)
 
       const startIndex = (count || 0) + 1
       const assetsToMint = []
@@ -101,7 +109,7 @@ export default function MasterAdminPanel() {
           url_slug: Math.random().toString(36).substring(2, 10),
           activation_code: Math.floor(Math.random() * 900000 + 100000).toString(),
           lifecycle_status: 'inventory',
-          product_type: productType,
+          product_type: finalProductType,
           tag_name: `${prefix}${sequentialNum} (Inventory)`
         })
       }
@@ -109,8 +117,13 @@ export default function MasterAdminPanel() {
       const { error } = await supabase.from('nfc_stickers').insert(assetsToMint)
 
       if (error) throw error
-      alert(`Successfully minted ${mintAmount} new ${mintType.toUpperCase()} assets!`)
+      alert(`Successfully minted ${mintAmount} new ${finalProductType.replace('_', ' ').toUpperCase()} assets!`)
       
+      // Reset custom field if used, and reload dashboard
+      if (mintType === 'custom') {
+        setMintType(finalProductType);
+        setCustomMintType('');
+      }
       loadDashboardData() 
       
     } catch (error) {
@@ -128,13 +141,22 @@ export default function MasterAdminPanel() {
     setTimeout(() => setCopiedId(null), 2000)
   }
 
-  // 🧮 NEW: Dynamic Sorting and Filtering Logic
+  // Extract all unique product types from the database for our dynamic dropdowns
+  const uniqueProductTypes = [...new Set(inventory.map(item => item.product_type))].filter(Boolean);
+  if (!uniqueProductTypes.includes('qr_code')) uniqueProductTypes.unshift('qr_code');
+  if (!uniqueProductTypes.includes('sticker')) uniqueProductTypes.push('sticker');
+  const finalProductTypes = [...new Set(uniqueProductTypes)];
+
   const filteredAndSortedInventory = inventory
     .filter((item) => {
-      if (inventoryFilter === 'all') return true;
-      if (inventoryFilter === 'active') return item.lifecycle_status === 'active';
-      if (inventoryFilter === 'inventory') return item.lifecycle_status !== 'active';
-      return true;
+      let statusMatch = true;
+      if (inventoryFilter === 'active') statusMatch = item.lifecycle_status === 'active';
+      if (inventoryFilter === 'inventory') statusMatch = item.lifecycle_status !== 'active';
+      
+      let typeMatch = true;
+      if (inventoryTypeFilter !== 'all') typeMatch = item.product_type === inventoryTypeFilter;
+
+      return statusMatch && typeMatch;
     })
     .sort((a, b) => {
       if (inventorySort === 'newest') return new Date(b.created_at) - new Date(a.created_at);
@@ -233,33 +255,53 @@ export default function MasterAdminPanel() {
           {/* RIGHT COLUMN: PULSE & MINTING */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
             
-            {/* ASSET MINTING STATION */}
+            {/* 🏭 UNIVERSAL MINTING STATION */}
             <div style={{...cardStyle, border: '2px solid #111'}}>
               <h2 style={{ fontSize: '18px', fontWeight: '800', color: '#111', marginBottom: '15px' }}>🏭 Inventory Minting</h2>
               <p style={{ fontSize: '13px', color: '#6b7280', marginBottom: '20px' }}>Generate secure hardware slugs instantly.</p>
               
-              <div style={{ display: 'flex', gap: '10px', marginBottom: '15px' }}>
+              <div style={{ display: 'flex', gap: '10px', marginBottom: '15px', flexWrap: 'wrap' }}>
+                
+                {/* Dynamic Product Dropdown */}
                 <select 
                   value={mintType} 
                   onChange={(e) => setMintType(e.target.value)}
-                  style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid #d1d5db', fontSize: '14px', fontWeight: '600' }}
+                  style={{ flex: 1, minWidth: '130px', padding: '10px', borderRadius: '8px', border: '1px solid #d1d5db', fontSize: '14px', fontWeight: '600' }}
                 >
-                  <option value="qr">Dynamic QR Codes</option>
-                  <option value="nfc">NFC Stickers/Cards</option>
+                  {finalProductTypes.map(type => (
+                    <option key={type} value={type}>
+                      {type.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                    </option>
+                  ))}
+                  <option value="custom">➕ Create New Type...</option>
                 </select>
+
+                {/* Amount Input */}
                 <input 
                   type="number" 
                   value={mintAmount} 
                   onChange={(e) => setMintAmount(Number(e.target.value))}
                   style={{ width: '80px', padding: '10px', borderRadius: '8px', border: '1px solid #d1d5db', fontSize: '14px', textAlign: 'center', fontWeight: '600' }}
                 />
+
+                {/* Show text input ONLY if they select "Create New Type" */}
+                {mintType === 'custom' && (
+                  <input 
+                    type="text" 
+                    placeholder="e.g. Metal Card" 
+                    value={customMintType}
+                    onChange={(e) => setCustomMintType(e.target.value)}
+                    style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #d1d5db', fontSize: '14px', fontWeight: '600', marginTop: '5px' }}
+                  />
+                )}
+
               </div>
               <button 
                 onClick={handleMintAssets}
                 disabled={isMinting}
                 style={{ width: '100%', padding: '12px', backgroundColor: '#111', color: 'white', border: 'none', borderRadius: '8px', fontWeight: '700', cursor: isMinting ? 'not-allowed' : 'pointer', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}
               >
-                {isMinting ? 'Minting...' : `Mint ${mintAmount} ${mintType.toUpperCase()}s`}
+                {isMinting ? 'Minting...' : `Mint ${mintAmount} Assets`}
               </button>
             </div>
 
@@ -305,8 +347,21 @@ export default function MasterAdminPanel() {
               <p style={{ color: '#6b7280', fontSize: '14px', margin: 0 }}>Copy the exact encoding links for your physical NFC and QR production.</p>
             </div>
             
-            {/* 🎛️ NEW: FILTER & SORT UI */}
-            <div style={{ display: 'flex', gap: '10px' }}>
+            {/* 🎛️ FILTER & SORT UI */}
+            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+              <select 
+                value={inventoryTypeFilter} 
+                onChange={(e) => setInventoryTypeFilter(e.target.value)}
+                style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid #d1d5db', fontSize: '13px', fontWeight: '600', backgroundColor: '#f9fafb', color: '#374151', cursor: 'pointer', outline: 'none' }}
+              >
+                <option value="all">Type: All</option>
+                {finalProductTypes.map(type => (
+                  <option key={type} value={type}>
+                    Type: {type.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                  </option>
+                ))}
+              </select>
+
               <select 
                 value={inventoryFilter} 
                 onChange={(e) => setInventoryFilter(e.target.value)}
