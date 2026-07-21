@@ -8,7 +8,7 @@ export default function TeamAdminSection({ teamMembers, supabase, companyId, com
   const [newEmpEmail, setNewEmpEmail] = useState('');
   const [newEmpTitle, setNewEmpTitle] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [cloneBranding, setCloneBranding] = useState(true); // 🔥 NEW: Default to cloning
+  const [cloneBranding, setCloneBranding] = useState(true);
 
   // Assign Tag State
   const [assignModalEmployee, setAssignModalEmployee] = useState(null);
@@ -31,6 +31,13 @@ export default function TeamAdminSection({ teamMembers, supabase, companyId, com
   const [showBulkModal, setShowBulkModal] = useState(false);
   const [bulkActionType, setBulkActionType] = useState(''); 
   const [bulkForm, setBulkForm] = useState({ theme_color: '#111111', profile_picture_url: '', show_save_contact: true, link_title: '', link_url: '' });
+
+  // 📢 NEW: Secure Dispatch State
+  const [dispatchEmployee, setDispatchEmployee] = useState(null);
+  const [dispatchMessage, setDispatchMessage] = useState('');
+  const [dispatchHistory, setDispatchHistory] = useState([]);
+  const [isSendingDispatch, setIsSendingDispatch] = useState(false);
+  const [isLoadingDispatches, setIsLoadingDispatches] = useState(false);
 
   // --- Handlers ---
 
@@ -64,14 +71,11 @@ export default function TeamAdminSection({ teamMembers, supabase, companyId, com
         throw error;
       }
 
-      // 🔥 NEW: CLONE BRANDING LOGIC
       if (cloneBranding) {
-        // Get the manager's ID
         const { data: authData } = await supabase.auth.getUser();
         if (authData?.user) {
           const managerId = authData.user.id;
 
-          // 1. Fetch manager profile settings
           const { data: managerProfile } = await supabase
             .from('customers')
             .select('theme_color, profile_picture_url')
@@ -79,21 +83,18 @@ export default function TeamAdminSection({ teamMembers, supabase, companyId, com
             .single();
 
           if (managerProfile) {
-            // Apply to new employee
             await supabase.from('customers').update({
               theme_color: managerProfile.theme_color,
               profile_picture_url: managerProfile.profile_picture_url
             }).eq('id', newEmployeeId);
           }
 
-          // 2. Fetch manager links
           const { data: managerLinks } = await supabase
             .from('page_links')
             .select('*')
             .eq('owner_id', managerId);
 
           if (managerLinks && managerLinks.length > 0) {
-            // Strip unique IDs and reassign to new employee
             const clonedLinks = managerLinks.map(link => {
               const { id, created_at, ...linkDataToCopy } = link;
               return { ...linkDataToCopy, owner_id: newEmployeeId };
@@ -191,7 +192,6 @@ export default function TeamAdminSection({ teamMembers, supabase, companyId, com
     if (!error) setEmployeeLinks(employeeLinks.filter(l => l.id !== linkId));
   };
 
-  // Checkbox & Bulk Handlers
   const handleSelectAll = (e) => {
     if (e.target.checked) setSelectedIds(teamMembers.map(m => m.id));
     else setSelectedIds([]);
@@ -234,7 +234,7 @@ export default function TeamAdminSection({ teamMembers, supabase, companyId, com
           owner_id: id, 
           title: bulkForm.link_title, 
           url: cleanUrl, 
-          sort_order: 99 // Put global links at the bottom
+          sort_order: 99 
         }));
         
         const { error } = await supabase.from('page_links').insert(linksToInsert);
@@ -249,6 +249,61 @@ export default function TeamAdminSection({ teamMembers, supabase, companyId, com
     }
   };
 
+  // 📢 NEW: Secure Dispatch Handlers
+  const openDispatchModal = async (member) => {
+    setDispatchEmployee(member);
+    setIsLoadingDispatches(true);
+    const { data, error } = await supabase
+      .from('team_dispatches')
+      .select('*')
+      .eq('employee_id', member.id)
+      .order('created_at', { ascending: false });
+    
+    if (data) setDispatchHistory(data);
+    setIsLoadingDispatches(false);
+  };
+
+  const handleSendDispatch = async (e) => {
+    e.preventDefault();
+    if (!dispatchMessage.trim()) return;
+    setIsSendingDispatch(true);
+    
+    try {
+      const { data: authData } = await supabase.auth.getUser();
+      const managerId = authData?.user?.id;
+
+      const { error } = await supabase.from('team_dispatches').insert([{
+        company_id: companyId,
+        employee_id: dispatchEmployee.id,
+        assigned_by: managerId,
+        message: dispatchMessage,
+        status: 'active'
+      }]);
+      
+      if (error) throw error;
+      
+      setDispatchMessage('');
+      openDispatchModal(dispatchEmployee); // Refresh history
+    } catch (error) {
+      alert("Error sending dispatch. Ensure you ran the SQL script in Supabase! Details: " + error.message);
+    } finally {
+      setIsSendingDispatch(false);
+    }
+  };
+
+  const handleCompleteDispatch = async (dispatchId) => {
+    try {
+      await supabase
+        .from('team_dispatches')
+        .update({ status: 'completed', completed_at: new Date().toISOString() })
+        .eq('id', dispatchId);
+      openDispatchModal(dispatchEmployee); // Refresh
+    } catch(e) {
+      console.error(e);
+    }
+  };
+
+
   // --- Styles ---
   const inputStyle = { width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #d1d5db', fontSize: '14px', color: '#111', outline: 'none', boxSizing: 'border-box', marginBottom: '12px' };
   const labelStyle = { display: 'block', fontSize: '13px', color: '#4b5563', marginBottom: '6px', fontWeight: '600' };
@@ -257,7 +312,6 @@ export default function TeamAdminSection({ teamMembers, supabase, companyId, com
   return (
     <div className="admin-wrapper" style={{ display: 'flex', flexDirection: 'column', gap: '30px', width: '100%' }}>
       
-      {/* 🔥 STRICT MOBILE CSS FIXES INJECTED HERE */}
       <style>{`
         .admin-wrapper { max-width: 100vw; overflow-x: hidden; box-sizing: border-box; }
         .admin-table { width: 100%; border-collapse: separate; border-spacing: 0; text-align: left; }
@@ -265,6 +319,12 @@ export default function TeamAdminSection({ teamMembers, supabase, companyId, com
         .admin-table th { background-color: #f9fafb; color: #6b7280; font-size: 12px; text-transform: uppercase; font-weight: 700; border-top: none; }
         .admin-table tr:last-child td { border-bottom: none; }
         .admin-table-wrap { overflow-x: auto; width: 100%; border-radius: 12px; border: 1px solid #e5e7eb; background: white; }
+        
+        .custom-scrollbar::-webkit-scrollbar { width: 8px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
+
         @media (max-width: 768px) {
           .mobile-stack { flex-direction: column !important; align-items: flex-start !important; }
           .mobile-stack > div, .mobile-stack > button { width: 100% !important; margin-top: 10px; }
@@ -288,7 +348,6 @@ export default function TeamAdminSection({ teamMembers, supabase, companyId, com
           </div>
         </div>
 
-        {/* 🔥 THE NEW DIRECTORY BUTTON */}
         {companyId && (
           <a 
             href={`/team/${btoa(companyId)}`} 
@@ -329,12 +388,12 @@ export default function TeamAdminSection({ teamMembers, supabase, companyId, com
         </div>
       )}
 
-      {/* DIRECTORY TABLE WITH NEW CSS CLASSES */}
+      {/* DIRECTORY TABLE */}
       <div style={{ backgroundColor: 'white', borderRadius: '16px', border: 'none', overflow: 'hidden', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' }}>
         <div className="mobile-stack" style={{ padding: '25px 30px', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '15px' }}>
           <div>
             <h2 style={{ fontSize: '20px', fontWeight: '800', color: '#111', margin: '0 0 5px 0' }}>Employee Directory</h2>
-            <p style={{ color: '#6b7280', fontSize: '14px', margin: 0 }}>Select checkboxes to apply company-wide changes.</p>
+            <p style={{ color: '#6b7280', fontSize: '14px', margin: 0 }}>Manage profiles and assign secure dispatch tasks.</p>
           </div>
           <button onClick={() => setShowAddModal(true)} style={{ padding: '10px 20px', backgroundColor: '#111', color: 'white', border: 'none', borderRadius: '8px', fontWeight: '700', cursor: 'pointer', fontSize: '14px' }}>+ Add Employee</button>
         </div>
@@ -381,9 +440,13 @@ export default function TeamAdminSection({ teamMembers, supabase, companyId, com
                       <button onClick={() => setAssignModalEmployee(member)} style={{ fontWeight: '700', color: '#f59e0b', backgroundColor: '#fef3c7', border: '1px solid #fde68a', padding: '4px 10px', borderRadius: '20px', fontSize: '12px', cursor: 'pointer', whiteSpace: 'nowrap' }}>+ Assign Tag</button>
                     )}
                   </td>
-                  <td style={{ textAlign: 'right', display: 'flex', gap: '10px', justifyContent: 'flex-end', alignItems: 'center' }}>
-                    <a href={`/u/${member.username}`} target="_blank" rel="noreferrer" style={{ color: '#6b7280', fontWeight: '600', textDecoration: 'none', fontSize: '13px' }}>View ↗</a>
-                    <button onClick={() => openEditModal(member)} style={{ background: '#f3f4f6', border: '1px solid #d1d5db', color: '#111', fontWeight: '600', cursor: 'pointer', fontSize: '13px', padding: '6px 12px', borderRadius: '6px' }}>Edit</button>
+                  <td style={{ textAlign: 'right', display: 'flex', gap: '8px', justifyContent: 'flex-end', alignItems: 'center' }}>
+                    
+                    {/* 📢 NEW DISPATCH BUTTON */}
+                    <button onClick={() => openDispatchModal(member)} style={{ background: '#e0e7ff', border: '1px solid #c7d2fe', color: '#4f46e5', fontWeight: '700', cursor: 'pointer', fontSize: '12px', padding: '6px 12px', borderRadius: '6px' }}>Dispatch</button>
+                    
+                    <button onClick={() => openEditModal(member)} style={{ background: '#f3f4f6', border: '1px solid #d1d5db', color: '#111', fontWeight: '600', cursor: 'pointer', fontSize: '12px', padding: '6px 12px', borderRadius: '6px' }}>Edit</button>
+                    <a href={`/u/${member.username}`} target="_blank" rel="noreferrer" style={{ color: '#6b7280', fontWeight: '600', textDecoration: 'none', fontSize: '12px', marginLeft: '4px' }}>View ↗</a>
                   </td>
                 </tr>
               ))}
@@ -391,6 +454,97 @@ export default function TeamAdminSection({ teamMembers, supabase, companyId, com
           </table>
         </div>
       </div>
+
+      {/* 📢 SECURE DISPATCH MODAL */}
+      {dispatchEmployee && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.6)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, padding: '20px' }}>
+          <div style={{ backgroundColor: '#f9fafb', padding: 0, borderRadius: '20px', width: '100%', maxWidth: '600px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', maxHeight: '90vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+            
+            {/* Header */}
+            <div style={{ padding: '25px', backgroundColor: 'white', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <div>
+                <h2 style={{ margin: '0 0 5px 0', fontSize: '20px', fontWeight: '800', color: '#111' }}>Active Dispatches</h2>
+                <p style={{ margin: 0, fontSize: '14px', color: '#6b7280' }}>Managing tasks for <strong>{dispatchEmployee.name}</strong></p>
+              </div>
+              <button onClick={() => setDispatchEmployee(null)} style={{ background: '#f3f4f6', border: 'none', fontSize: '20px', width: '36px', height: '36px', borderRadius: '50%', cursor: 'pointer', color: '#4b5563', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>&times;</button>
+            </div>
+
+            {/* Content Area */}
+            <div style={{ padding: '25px', overflowY: 'auto' }} className="custom-scrollbar">
+              
+              {/* ⚠️ LIABILITY DISCLAIMER */}
+              <div style={{ backgroundColor: '#fffbeb', border: '1px solid #fde68a', padding: '15px', borderRadius: '12px', marginBottom: '25px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '5px' }}>
+                  <span style={{ fontSize: '16px' }}>⚠️</span>
+                  <strong style={{ color: '#92400e', fontSize: '13px', textTransform: 'uppercase' }}>Data Liability Notice</strong>
+                </div>
+                <p style={{ margin: 0, fontSize: '12px', color: '#b45309', lineHeight: '1.5' }}>
+                  LinkSupply is a communication conduit. Do not transmit secure medical (HIPAA) or financial (PCI) data. By using this feature, you and your organization assume all legal liability for any Personally Identifiable Information (PII) shared.
+                </p>
+              </div>
+
+              {/* New Dispatch Form */}
+              <form onSubmit={handleSendDispatch} style={{ marginBottom: '30px' }}>
+                <label style={{ display: 'block', fontSize: '13px', color: '#111', marginBottom: '8px', fontWeight: '700' }}>New Dispatch Memo</label>
+                <textarea 
+                  required
+                  placeholder="e.g., Fix plumbing at 123 Main St at 2:00 PM. Gate code is 1234."
+                  value={dispatchMessage}
+                  onChange={(e) => setDispatchMessage(e.target.value)}
+                  style={{ ...inputStyle, minHeight: '80px', resize: 'vertical', backgroundColor: 'white' }}
+                />
+                <button 
+                  type="submit" 
+                  disabled={isSendingDispatch} 
+                  style={{ width: '100%', padding: '12px', backgroundColor: '#111', color: 'white', border: 'none', borderRadius: '8px', fontWeight: '700', cursor: isSendingDispatch ? 'not-allowed' : 'pointer' }}
+                >
+                  {isSendingDispatch ? 'Sending...' : 'Send Secure Dispatch'}
+                </button>
+              </form>
+
+              {/* Dispatch History Log */}
+              <div>
+                <h3 style={{ fontSize: '15px', fontWeight: '800', color: '#111', margin: '0 0 15px 0' }}>Dispatch Log</h3>
+                
+                {isLoadingDispatches ? (
+                  <p style={{ fontSize: '13px', color: '#6b7280', textAlign: 'center' }}>Loading history...</p>
+                ) : dispatchHistory.length === 0 ? (
+                  <div style={{ padding: '20px', textAlign: 'center', backgroundColor: 'white', borderRadius: '12px', border: '1px dashed #d1d5db' }}>
+                    <p style={{ fontSize: '13px', color: '#6b7280', margin: 0 }}>No past or active dispatches.</p>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    {dispatchHistory.map((item) => (
+                      <div key={item.id} style={{ backgroundColor: 'white', padding: '15px', borderRadius: '12px', border: item.status === 'active' ? '2px solid #4f46e5' : '1px solid #e5e7eb', opacity: item.status === 'completed' ? 0.7 : 1 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
+                          <span style={{ fontSize: '11px', fontWeight: '700', color: item.status === 'active' ? '#4f46e5' : '#6b7280', textTransform: 'uppercase' }}>
+                            {item.status === 'active' ? '🟢 Active' : '✓ Completed'}
+                          </span>
+                          <span style={{ fontSize: '11px', color: '#9ca3af', fontWeight: '600' }}>
+                            {new Date(item.created_at).toLocaleDateString()}
+                          </span>
+                        </div>
+                        <p style={{ margin: '0 0 15px 0', fontSize: '14px', color: '#111', lineHeight: '1.5', whiteSpace: 'pre-wrap' }}>
+                          {item.message}
+                        </p>
+                        {item.status === 'active' && (
+                          <button 
+                            onClick={() => handleCompleteDispatch(item.id)}
+                            style={{ padding: '6px 12px', backgroundColor: '#ecfdf5', color: '#059669', border: '1px solid #a7f3d0', borderRadius: '6px', fontSize: '12px', fontWeight: '700', cursor: 'pointer' }}
+                          >
+                            Mark as Completed
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* BULK ACTION MODAL */}
       {showBulkModal && (
@@ -575,7 +729,6 @@ export default function TeamAdminSection({ teamMembers, supabase, companyId, com
               <label style={labelStyle}>Job Title</label>
               <input required type="text" placeholder="e.g. Sales Director" value={newEmpTitle} onChange={(e) => setNewEmpTitle(e.target.value)} style={inputStyle} />
 
-              {/* 🔥 NEW: Clone Branding Checkbox */}
               <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', marginTop: '15px', marginBottom: '10px', padding: '12px', backgroundColor: '#f9fafb', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
                 <input 
                   type="checkbox" 
