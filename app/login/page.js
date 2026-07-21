@@ -13,6 +13,9 @@ export default function PremiumLoginPage() {
   const [message, setMessage] = useState('')
   const [loading, setLoading] = useState(false)
   
+  // 🆕 Password Visibility State
+  const [showPassword, setShowPassword] = useState(false)
+  
   // Compliance States
   const [agreedToTerms, setAgreedToTerms] = useState(false)
   const [rememberMe, setRememberMe] = useState(false) 
@@ -61,7 +64,7 @@ export default function PremiumLoginPage() {
         const { error: signInError } = await supabase.auth.signInWithPassword({ email, password })
         
         if (!signInError) {
-          // 🔥 THE FIX: Generate a clean base username and create a COMPLETE customer profile
+          // Generate a clean base username and create a COMPLETE customer profile
           const cleanName = `${firstName}${lastName}`.replace(/[^a-zA-Z0-9]/g, '').toLowerCase()
           const randomStr = Math.random().toString(36).substring(2, 6)
           const baseUsername = `${cleanName}${randomStr}`
@@ -71,14 +74,13 @@ export default function PremiumLoginPage() {
             display_email: email,
             display_name: `${firstName} ${lastName}`.trim(),
             username: baseUsername,
-            tier: 'free', // Everyone starts free until Stripe upgrades them
+            tier: 'free', 
             profile_status: 'coming_soon',
             remember_me: rememberMe 
           });
 
           if (profileError) {
             console.error("Profile Creation Error:", profileError)
-            // We won't block the user from proceeding, but we log the error for debugging
           }
 
           const onboardingUrl = claimId ? `/onboarding?claim=${claimId}` : '/onboarding';
@@ -134,16 +136,51 @@ export default function PremiumLoginPage() {
         <form onSubmit={handleAuth}>
           {isSignUp && (
             <div style={{ display: 'flex', gap: '10px' }}>
-              <input required placeholder="First Name" onChange={(e) => setFirstName(e.target.value)} style={inputStyle} />
-              <input required placeholder="Last Name" onChange={(e) => setLastName(e.target.value)} style={inputStyle} />
+              {/* 📱 Added autoComplete for names */}
+              <input required placeholder="First Name" onChange={(e) => setFirstName(e.target.value)} style={inputStyle} autoComplete="given-name" />
+              <input required placeholder="Last Name" onChange={(e) => setLastName(e.target.value)} style={inputStyle} autoComplete="family-name" />
             </div>
           )}
           
-          <input required type="email" placeholder="Email Address" onChange={(e) => setEmail(e.target.value)} style={inputStyle} />
-          <input required type="password" placeholder="Password" onChange={(e) => setPassword(e.target.value)} style={{ ...inputStyle, marginBottom: isSignUp ? '5px' : '15px' }} />
+          {/* 📱 Added autoComplete for email/username */}
+          <input required type="email" placeholder="Email Address" onChange={(e) => setEmail(e.target.value)} style={inputStyle} autoComplete="username email" />
+          
+          {/* 👁️ Password wrapper with visibility toggle and smart autoComplete */}
+          <div style={{ position: 'relative', marginBottom: isSignUp ? '5px' : '15px' }}>
+            <input 
+              required 
+              type={showPassword ? "text" : "password"} 
+              placeholder="Password" 
+              onChange={(e) => setPassword(e.target.value)} 
+              style={{ ...inputStyle, marginBottom: 0, paddingRight: '45px' }} 
+              autoComplete={isSignUp ? "new-password" : "current-password"}
+            />
+            <button 
+              type="button" 
+              onClick={() => setShowPassword(!showPassword)}
+              style={{
+                position: 'absolute',
+                right: '12px',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                fontSize: '18px',
+                color: '#6b7280',
+                padding: '4px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
+              title={showPassword ? "Hide Password" : "Show Password"}
+            >
+              {showPassword ? '🙈' : '👁️'}
+            </button>
+          </div>
 
           {!isSignUp && (
-            <div style={{ textAlign: 'right', marginTop: '-10px', marginBottom: '15px' }}>
+            <div style={{ textAlign: 'right', marginTop: '10px', marginBottom: '15px' }}>
               <a href="/forgot-password" style={{ fontSize: '13px', color: '#4f46e5', textDecoration: 'none', fontWeight: '600' }}>Forgot password?</a>
             </div>
           )}
@@ -183,7 +220,7 @@ export default function PremiumLoginPage() {
         <div style={{ marginTop: '30px', borderTop: '1px solid #e5e7eb', paddingTop: '20px' }}>
           <p style={{ color: '#6b7280', fontSize: '14px' }}>
             {isSignUp ? 'Already have an account?' : "Don't have an account?"}
-            <button type="button" onClick={() => { setIsSignUp(!isSignUp); setMessage(''); setAgreedToTerms(false); setRememberMe(false); }} style={{ background: 'none', border: 'none', color: '#4f46e5', fontWeight: '700', cursor: 'pointer', marginLeft: '5px', fontSize: '14px' }}>
+            <button type="button" onClick={() => { setIsSignUp(!isSignUp); setMessage(''); setAgreedToTerms(false); setRememberMe(false); setShowPassword(false); }} style={{ background: 'none', border: 'none', color: '#4f46e5', fontWeight: '700', cursor: 'pointer', marginLeft: '5px', fontSize: '14px' }}>
               {isSignUp ? 'Log in here' : 'Sign up here'}
             </button>
           </p>
