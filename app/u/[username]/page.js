@@ -60,7 +60,6 @@ export default function PublicProfilePage({ params }) {
   const baseColor = profile.theme_color || '#111111';
   const textColor = getContrastColor(baseColor);
   
-  // 🔥 THE LOGIC: Free users ALWAYS see it. Paid users see it ONLY if they haven't removed it.
   const showBranding = profile.tier === 'free' || !profile.remove_branding;
 
   if (profile.profile_status === 'coming_soon') {
@@ -99,8 +98,35 @@ export default function PublicProfilePage({ params }) {
   }
 
   const showContactBtn = profile.show_save_contact !== false;
-  const vcard = `BEGIN:VCARD\r\nVERSION:3.0\r\nFN:${profile.display_name || profile.username}\r\nTITLE:${profile.job_title || ''}\r\nORG:${profile.company || ''}\r\nTEL;TYPE=CELL:${profile.phone_number || ''}\r\nEMAIL;TYPE=WORK:${profile.display_email || ''}\r\nURL:https://linksupply.co.uk/u/${profile.username}\r\nEND:VCARD`;
-  const vcardData = `data:text/vcard;charset=utf-8,${encodeURIComponent(vcard)}`;
+  
+  // 🔥 iOS BYPASS: Custom Save Contact Handler
+  const handleSaveContact = (e) => {
+    e.preventDefault();
+    const vcard = `BEGIN:VCARD\r\nVERSION:3.0\r\nFN:${profile.display_name || profile.username}\r\nTITLE:${profile.job_title || ''}\r\nORG:${profile.company || ''}\r\nTEL;TYPE=CELL:${profile.phone_number || ''}\r\nEMAIL;TYPE=WORK:${profile.display_email || ''}\r\nURL:https://linksupply.co.uk/u/${profile.username}\r\nEND:VCARD`;
+    
+    // Create a Blob from the VCard data
+    const blob = new Blob([vcard], { type: 'text/vcard' });
+    const url = URL.createObjectURL(blob);
+    
+    // Check if the user is on an iOS device (iPhone/iPad/iPod)
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    
+    if (isIOS) {
+      // Force iOS to navigate to the Blob directly, triggering the native contact sheet
+      window.location.assign(url);
+    } else {
+      // Standard download for Android & Desktop
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${profile.display_name || profile.username}.vcf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+    
+    // Clean up memory
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
 
   const profileUrl = typeof window !== 'undefined' ? window.location.href : `https://linksupply.co.uk/u/${profile.username}`;
   const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(profileUrl)}&margin=10`;
@@ -117,7 +143,6 @@ export default function PublicProfilePage({ params }) {
     <div style={{ 
       minHeight: '100vh', backgroundColor: baseColor,
       backgroundImage: profile.bg_css || `radial-gradient(at 0% 0%, rgba(0,0,0,0.4) 0px, transparent 50%), radial-gradient(at 100% 100%, rgba(0,0,0,0.3) 0px, transparent 50%)`,
-      /* 🔥 Padded bottom by 100px so links don't hide behind the floater */
       display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '60px 20px 100px 20px', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif', 
       color: textColor, position: 'relative', overflowX: 'hidden' 
     }}>
@@ -143,7 +168,7 @@ export default function PublicProfilePage({ params }) {
         .contact-btn {
           display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; max-width: 100%; padding: 18px 20px; 
           background-color: ${textColor === 'white' ? 'white' : '#111111'}; color: ${textColor === 'white' ? baseColor : 'white'}; 
-          border-radius: 100px; text-decoration: none; font-size: 16px; font-weight: 700; text-align: center;
+          border-radius: 100px; text-decoration: none; font-size: 16px; font-weight: 700; text-align: center; cursor: pointer; border: none;
           margin-bottom: 30px; box-shadow: 0 8px 24px -6px rgba(0,0,0,0.3); transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
         }
         .contact-btn:hover { transform: translateY(-2px); box-shadow: 0 12px 28px -8px rgba(0,0,0,0.4); }
@@ -169,7 +194,6 @@ export default function PublicProfilePage({ params }) {
           box-shadow: 0 30px 60px -15px rgba(0,0,0,0.6); animation: popIn 0.4s cubic-bezier(0.25, 0.8, 0.25, 1) forwards; max-width: 320px; width: 100%;
         }
 
-        /* 🔥 BRANDING FLOATER CSS */
         .branding-floater {
           position: fixed;
           bottom: 30px;
@@ -243,7 +267,7 @@ export default function PublicProfilePage({ params }) {
 
         <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '16px' }}>
           {showContactBtn && (
-            <a href={vcardData} download={`${profile.display_name || profile.username}.vcf`} className="contact-btn">
+            <button onClick={handleSaveContact} className="contact-btn">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
                 <circle cx="9" cy="7" r="4" />
@@ -251,7 +275,7 @@ export default function PublicProfilePage({ params }) {
                 <line x1="22" y1="11" x2="16" y2="11" />
               </svg>
               Save to Contacts
-            </a>
+            </button>
           )}
 
           {links.map((link, index) => (
@@ -263,7 +287,6 @@ export default function PublicProfilePage({ params }) {
         </div>
       </main>
 
-      {/* 🔥 THE NEW GROWTH LOOP FLOATER */}
       {showBranding && (
         <a href="https://linksupply.co.uk" className="branding-floater">
           <span style={{ fontSize: '16px' }}>⚡</span>
