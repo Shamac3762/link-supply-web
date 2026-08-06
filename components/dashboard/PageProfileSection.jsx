@@ -15,7 +15,6 @@ export default function PageProfileSection({
   pageLinks,
   isAtLimit,
   displayLimit,
-  // We override these locally for frictionless updates
   handleDeleteLink,
   newLinkTitle,
   setNewLinkTitle,
@@ -33,7 +32,7 @@ export default function PageProfileSection({
     if (pageLinks) setLocalLinks(pageLinks.sort((a, b) => a.sort_order - b.sort_order));
   }, [pageLinks])
 
-  // --- RESTORED ORIGINAL STYLES ---
+  // --- ORIGINAL CLEAN STYLES ---
   const inputStyle = { width: '100%', padding: '12px 14px', borderRadius: '10px', border: '1px solid #d1d5db', fontSize: '15px', color: '#111', outline: 'none', boxSizing: 'border-box' };
   const labelStyle = { display: 'block', fontSize: '14px', color: '#4b5563', marginBottom: '8px', fontWeight: '600' };
 
@@ -198,25 +197,25 @@ export default function PageProfileSection({
         </div>
       </div>
 
-      {/* 4. Your Links (With Chevrons) */}
+      {/* 4. Your Links (Up/Down Buttons on the Far-Left) */}
       <div style={{ backgroundColor: 'white', padding: '30px', borderRadius: '16px', border: '1px solid #e5e7eb' }}>
         <div className="header-stack" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '5px' }}>
           <h2 style={{ fontSize: '20px', fontWeight: '700', color: '#111', margin: 0 }}>Your Links</h2>
           <span style={{ fontSize: '14px', fontWeight: '600', color: isAtLimit && displayLimit !== 'Unlimited' ? '#dc2626' : '#6b7280', backgroundColor: '#f3f4f6', padding: '4px 10px', borderRadius: '20px' }}>{localLinks.length} / {displayLimit} Used</span>
         </div>
-        <p style={{ color: '#6b7280', fontSize: '14px', marginBottom: '20px' }}>Add and reorder buttons for your profile.</p>
+        <p style={{ color: '#6b7280', fontSize: '14px', marginBottom: '20px' }}>Add and reorder buttons for your profile using the arrows on the left.</p>
         
         <div style={{ display: 'flex', flexDirection: 'column', gap: '15px', marginBottom: '30px' }}>
           {localLinks.length === 0 ? <div style={{ padding: '20px', backgroundColor: '#f9fafb', borderRadius: '10px', textAlign: 'center', color: '#6b7280', fontSize: '14px' }}>No links added yet.</div> : localLinks.map((link, index) => (
               <div key={link.id} className="link-row" style={{ display: 'flex', alignItems: 'center', padding: '15px 20px', backgroundColor: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '10px' }}>
                 
-                {/* SORT ARROWS */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginRight: '15px' }}>
-                  <button type="button" onClick={() => moveLink(index, 'up')} disabled={index === 0} style={{ background: 'none', border: 'none', padding: 0, cursor: index === 0 ? 'not-allowed' : 'pointer', color: index === 0 ? '#d1d5db' : '#111' }}>
-                    <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7"/></svg>
+                {/* ⬆️ ⬇️ SORT ARROWS ON FAR LEFT */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginRight: '16px', alignItems: 'center' }}>
+                  <button type="button" onClick={() => moveLink(index, 'up')} disabled={index === 0} style={{ background: 'none', border: 'none', padding: '2px', cursor: index === 0 ? 'not-allowed' : 'pointer', color: index === 0 ? '#d1d5db' : '#111', display: 'flex' }}>
+                    <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7"/></svg>
                   </button>
-                  <button type="button" onClick={() => moveLink(index, 'down')} disabled={index === localLinks.length - 1} style={{ background: 'none', border: 'none', padding: 0, cursor: index === localLinks.length - 1 ? 'not-allowed' : 'pointer', color: index === localLinks.length - 1 ? '#d1d5db' : '#111' }}>
-                    <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7"/></svg>
+                  <button type="button" onClick={() => moveLink(index, 'down')} disabled={index === localLinks.length - 1} style={{ background: 'none', border: 'none', padding: '2px', cursor: index === localLinks.length - 1 ? 'not-allowed' : 'pointer', color: index === localLinks.length - 1 ? '#d1d5db' : '#111', display: 'flex' }}>
+                    <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7"/></svg>
                   </button>
                 </div>
 
@@ -245,63 +244,7 @@ export default function PageProfileSection({
         )}
       </div>
 
-      {/* 5. Branding Settings */}
-      <div style={{ backgroundColor: 'white', padding: '30px', borderRadius: '16px', border: '1px solid #e5e7eb' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '15px', flexWrap: 'wrap', gap: '15px' }}>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '5px' }}>
-              <h2 style={{ fontSize: '20px', fontWeight: '700', color: '#111', margin: 0 }}>Link Supply Branding</h2>
-              {!isPremium && (
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '10px', fontWeight: '800', backgroundColor: '#f3f4f6', color: '#6b7280', padding: '4px 8px', borderRadius: '12px', textTransform: 'uppercase' }}>
-                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
-                  PRO
-                </span>
-              )}
-            </div>
-            <p style={{ color: '#6b7280', fontSize: '14px', margin: 0, maxWidth: '450px' }}>
-              Display the "Get your free digital profile" floater at the bottom of your public page.
-            </p>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', backgroundColor: '#f9fafb', padding: '10px 16px', borderRadius: '12px', border: '1px solid #e5e7eb' }}>
-            <label style={{ fontSize: '14px', color: '#4b5563', fontWeight: '600', cursor: isPremium ? 'pointer' : 'not-allowed' }} htmlFor="brandingToggle">Show Branding</label>
-            <button 
-              id="brandingToggle" 
-              type="button"
-              onClick={() => {
-                if (!isPremium) {
-                  alert("Please upgrade to a Pro or Business plan to remove Link Supply branding.");
-                  return;
-                }
-                setPageProfile({ ...pageProfile, remove_branding: !pageProfile.remove_branding });
-              }} 
-              disabled={!isPremium}
-              style={{ 
-                width: '44px', height: '24px', borderRadius: '12px', border: 'none', 
-                cursor: isPremium ? 'pointer' : 'not-allowed', 
-                backgroundColor: !pageProfile.remove_branding ? '#059669' : '#d1d5db', 
-                position: 'relative', transition: 'background-color 0.2s ease',
-                opacity: !isPremium ? 0.6 : 1
-              }}
-            >
-              <div style={{ 
-                width: '20px', height: '20px', borderRadius: '50%', backgroundColor: 'white', position: 'absolute', top: '2px', 
-                left: !pageProfile.remove_branding ? '22px' : '2px', 
-                transition: 'left 0.2s cubic-bezier(0.4, 0, 0.2, 1)', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' 
-              }} />
-            </button>
-          </div>
-        </div>
-        
-        {!isPremium && (
-          <div style={{ padding: '15px', backgroundColor: '#fef9c3', borderRadius: '12px', border: '1px solid #fde047', display: 'flex', alignItems: 'center' }}>
-            <p style={{ margin: 0, fontSize: '13px', color: '#854d0e', fontWeight: '600' }}>
-              Want a fully white-labeled profile? Upgrade to Pro to remove Link Supply watermarks.
-            </p>
-          </div>
-        )}
-      </div>
-
-      {/* 6. Massive Save Button */}
+      {/* 5. Massive Save Button */}
       <div style={{ marginTop: '10px' }}>
         <button 
           onClick={handleSaveProfile} 
@@ -320,6 +263,52 @@ export default function PageProfileSection({
         >
           {saveStatus.profile || '🚀 Update Public Profile'}
         </button>
+      </div>
+
+      {/* 6. Branding Settings (Compact Box placed under Save Button) */}
+      <div style={{ backgroundColor: 'white', padding: '16px 20px', borderRadius: '12px', border: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '2px' }}>
+            <h3 style={{ fontSize: '14px', fontWeight: '700', color: '#374151', margin: 0 }}>Link Supply Branding</h3>
+            {!isPremium && (
+              <span style={{ fontSize: '10px', fontWeight: '800', backgroundColor: '#f3f4f6', color: '#6b7280', padding: '2px 6px', borderRadius: '10px', textTransform: 'uppercase' }}>
+                PRO
+              </span>
+            )}
+          </div>
+          <p style={{ color: '#9ca3af', fontSize: '12px', margin: 0 }}>
+            Display the "Get your free digital profile" footer watermark on your public page.
+          </p>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <label style={{ fontSize: '13px', color: '#6b7280', fontWeight: '600', cursor: isPremium ? 'pointer' : 'not-allowed' }} htmlFor="brandingToggle">Show Branding</label>
+          <button 
+            id="brandingToggle" 
+            type="button"
+            onClick={() => {
+              if (!isPremium) {
+                alert("Please upgrade to a Pro or Business plan to remove Link Supply branding.");
+                return;
+              }
+              setPageProfile({ ...pageProfile, remove_branding: !pageProfile.remove_branding });
+            }} 
+            disabled={!isPremium}
+            style={{ 
+              width: '38px', height: '22px', borderRadius: '12px', border: 'none', 
+              cursor: isPremium ? 'pointer' : 'not-allowed', 
+              backgroundColor: !pageProfile.remove_branding ? '#059669' : '#d1d5db', 
+              position: 'relative', transition: 'background-color 0.2s ease',
+              opacity: !isPremium ? 0.6 : 1
+            }}
+          >
+            <div style={{ 
+              width: '18px', height: '18px', borderRadius: '50%', backgroundColor: 'white', position: 'absolute', top: '2px', 
+              left: !pageProfile.remove_branding ? '18px' : '2px', 
+              transition: 'left 0.2s cubic-bezier(0.4, 0, 0.2, 1)', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' 
+            }} />
+          </button>
+        </div>
       </div>
 
     </div>
