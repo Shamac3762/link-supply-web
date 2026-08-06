@@ -69,7 +69,6 @@ export default function PremiumDashboard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // --- DYNAMIC ANALYTICS LISTENER ---
   useEffect(() => {
     if (userId) {
       fetchAnalyticsData();
@@ -193,13 +192,11 @@ export default function PremiumDashboard() {
     setLoading(false)
   }
 
-  // --- DYNAMIC ANALYTICS FETCH LOGIC (FIXED) ---
   const fetchAnalyticsData = async () => {
     let daysAgo = 7;
     if (timeRange === '30d') daysAgo = 30;
     if (timeRange === '6m') daysAgo = 180;
 
-    // 🛠️ FIX 1: We must select scan_method so the graph tooltips know what type of hardware was scanned
     const { data: tapLogs, error } = await supabase
       .from('nfc_taps')
       .select('tapped_at, scan_method')
@@ -216,7 +213,7 @@ export default function PremiumDashboard() {
         d.setMonth(d.getMonth() - i);
         return {
           name: d.toLocaleDateString('en-GB', { month: 'short' }),
-          taps: 0, nfc: 0, qr: 0, // Initialize counts
+          taps: 0, nfc: 0, qr: 0,
           monthKey: `${d.getFullYear()}-${d.getMonth()}`
         };
       }).reverse();
@@ -240,7 +237,7 @@ export default function PremiumDashboard() {
         d.setDate(d.getDate() - i);
         return { 
           name: timeRange === '7d' ? d.toLocaleDateString('en-GB', { weekday: 'short' }) : d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }), 
-          taps: 0, nfc: 0, qr: 0, // Initialize counts
+          taps: 0, nfc: 0, qr: 0,
           fullDate: d.toDateString() 
         };
       }).reverse();
@@ -333,6 +330,9 @@ export default function PremiumDashboard() {
 
       const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(fileName);
       setPageProfile({ ...pageProfile, profile_picture_url: publicUrl });
+      
+      // Auto-save the new picture immediately
+      handleSaveProfile({ ...pageProfile, profile_picture_url: publicUrl });
     } catch (error) {
       alert("Error uploading image: " + error.message);
     } finally {
@@ -340,27 +340,39 @@ export default function PremiumDashboard() {
     }
   };
 
-  const handleSaveProfile = async () => {
+  // 🔥 NEW: Optimized handleSaveProfile for Auto-Saving
+  const handleSaveProfile = async (overrideProfile = null) => {
+    // Allows the child component to pass in real-time data so we don't accidentally save stale state
+    const dataToSave = overrideProfile || pageProfile;
+    
     setSaveStatus({ ...saveStatus, profile: 'Saving...' })
     const { data: { session } } = await supabase.auth.getSession()
-    let cleanUsername = pageProfile.username;
-    const isPremium = pageProfile.tier !== 'free';
+    
+    let cleanUsername = dataToSave.username;
+    const isPremium = dataToSave.tier !== 'free';
     
     const updateData = { 
-        id: session.user.id, display_name: pageProfile.display_name, bio: pageProfile.bio, theme_color: pageProfile.theme_color, 
-        profile_picture_url: pageProfile.profile_picture_url, job_title: pageProfile.job_title, company: pageProfile.company, 
-        phone_number: pageProfile.phone_number, display_email: pageProfile.display_email, profile_status: pageProfile.profile_status, 
-        remember_me: pageProfile.remember_me, show_save_contact: pageProfile.show_save_contact
+        id: session.user.id, display_name: dataToSave.display_name, bio: dataToSave.bio, theme_color: dataToSave.theme_color, 
+        profile_picture_url: dataToSave.profile_picture_url, job_title: dataToSave.job_title, company: dataToSave.company, 
+        phone_number: dataToSave.phone_number, display_email: dataToSave.display_email, profile_status: dataToSave.profile_status, 
+        remember_me: dataToSave.remember_me, show_save_contact: dataToSave.show_save_contact
     }
 
     if (isPremium) {
-        cleanUsername = pageProfile.username.toLowerCase().replace(/[^a-z0-9_]/g, '');
+        cleanUsername = dataToSave.username.toLowerCase().replace(/[^a-z0-9_]/g, '');
         updateData.username = cleanUsername;
     }
 
     const { error } = await supabase.from('customers').upsert(updateData)
-    if (error) { alert("Database Error: " + error.message); setSaveStatus({ ...saveStatus, profile: 'Error!' }) } 
-    else { setPageProfile({ ...pageProfile, username: cleanUsername }); setSaveStatus({ ...saveStatus, profile: 'Saved! ✓' }); setTimeout(() => setSaveStatus((prev) => ({ ...prev, profile: '' })), 2000) }
+    
+    if (error) { 
+      alert("Database Error: " + error.message); 
+      setSaveStatus({ ...saveStatus, profile: 'Error!' }) 
+    } else { 
+      setPageProfile({ ...dataToSave, username: cleanUsername }); 
+      setSaveStatus({ ...saveStatus, profile: 'Saved! ✓' }); 
+      setTimeout(() => setSaveStatus((prev) => ({ ...prev, profile: '' })), 2000) 
+    }
   }
 
   const handleAddLink = async (e) => {
@@ -573,7 +585,7 @@ export default function PremiumDashboard() {
             pageProfile={pageProfile} setPageProfile={setPageProfile} getContrastColor={getContrastColor}
             fileInputRef={fileInputRef} handleImageUpload={handleImageUpload} isUploading={isUploading}
             isPremium={isPremium} handleSaveProfile={handleSaveProfile} saveStatus={saveStatus}
-            pageLinks={pageLinks} isAtLimit={isAtLimit} displayLimit={displayLimit} handleDeleteLink={handleDeleteLink}
+            pageLinks={pageLinks} setPageLinks={setPageLinks} isAtLimit={isAtLimit} displayLimit={displayLimit} handleDeleteLink={handleDeleteLink}
             newLinkTitle={newLinkTitle} setNewLinkTitle={setNewLinkTitle} newLinkUrl={newLinkUrl} setNewLinkUrl={setNewLinkUrl}
             handleAddLink={handleAddLink}
           />
@@ -584,7 +596,6 @@ export default function PremiumDashboard() {
             stickers={stickers} isPremium={isPremium} pageProfile={pageProfile}
             displayChartData={chartData} isMounted={isMounted}
             timeRange={timeRange} setTimeRange={setTimeRange} 
-            // 🛠️ FIX 2: Wired up the upgrade buttons so they take the user to the Pricing Tab!
             onUpgradeClick={() => setActiveTab('pricing')} 
           />
         )}
