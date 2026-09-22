@@ -10,7 +10,7 @@ export default function PrivacyPage() {
         </Link>
 
         <h1 style={{ fontSize: '32px', fontWeight: '800', marginBottom: '10px', letterSpacing: '-0.5px' }}>Privacy Policy</h1>
-        <p style={{ color: '#6b7280', fontSize: '14px', marginBottom: '30px' }}>Last Updated: Septembe 2026</p>
+        <p style={{ color: '#6b7280', fontSize: '14px', marginBottom: '30px' }}>Last Updated: September 2026</p>
 
         <div style={{ lineHeight: '1.6', fontSize: '15px', color: '#374151' }}>
           <h2 style={{ fontSize: '20px', fontWeight: '700', marginTop: '30px', marginBottom: '10px', color: '#111' }}>1. Introduction</h2>
