@@ -10,7 +10,7 @@ export default function PrivacyPage() {
         </Link>
 
         <h1 style={{ fontSize: '32px', fontWeight: '800', marginBottom: '10px', letterSpacing: '-0.5px' }}>Privacy Policy</h1>
-        <p style={{ color: '#6b7280', fontSize: '14px', marginBottom: '30px' }}>Last Updated: March 2026</p>
+        <p style={{ color: '#6b7280', fontSize: '14px', marginBottom: '30px' }}>Last Updated: September 2026</p>
 
         <div style={{ lineHeight: '1.6', fontSize: '15px', color: '#374151' }}>
           <h2 style={{ fontSize: '20px', fontWeight: '700', marginTop: '30px', marginBottom: '10px', color: '#111' }}>1. Introduction</h2>
@@ -19,7 +19,7 @@ export default function PrivacyPage() {
           <h2 style={{ fontSize: '20px', fontWeight: '700', marginTop: '30px', marginBottom: '10px', color: '#111' }}>2. Information We Collect</h2>
           <ul style={{ marginBottom: '15px', paddingLeft: '20px' }}>
             <li style={{ marginBottom: '8px' }}><strong>Account Information:</strong> When you register, we collect your name, email address, and account password (securely hashed).</li>
-            <li style={{ marginBottom: '8px' }}><strong>Profile Data:</strong> Information you voluntarily provide to display on your digital business card, including your job title, company name, phone number, display email, bio, profile pictures, and external URLs.</li>
+            <li style={{ marginBottom: '8px' }}><strong>Profile Data:</strong> Information you voluntarily provide to display on your digital business card, including your chosen username (which acts as your public identifier), job title, company name, phone number, display email, bio, profile pictures, and external URLs.</li>
             <li style={{ marginBottom: '8px' }}><strong>Hardware Analytics:</strong> We collect anonymous interaction data, such as the number of times your NFC tags have been tapped, to provide you with dashboard analytics.</li>
             <li style={{ marginBottom: '8px' }}><strong>Payment Information:</strong> If you purchase hardware or a Premium subscription, your payment details are processed securely by our third-party payment provider (e.g., Stripe). We do not store full credit card details on our servers.</li>
           </ul>
@@ -37,7 +37,8 @@ export default function PrivacyPage() {
           <p style={{ marginBottom: '15px' }}>We do not sell your personal data. We may share your data with trusted third-party service providers (such as hosting platforms and payment processors) strictly for the purpose of operating our business. These providers are bound by strict data processing agreements.</p>
 
           <h2 style={{ fontSize: '20px', fontWeight: '700', marginTop: '30px', marginBottom: '10px', color: '#111' }}>5. Public Visibility</h2>
-          <p style={{ marginBottom: '15px' }}>Please be aware that any information you add to your Page Identity and Digital Business Card sections is intended for public display. When someone scans your Link Supply product or visits your custom URL, this data will be visible to them.</p>
+          <p style={{ marginBottom: '15px' }}>Upon account creation, your custom profile URL becomes active by default to enable immediate use of your Link Supply hardware. This initial public profile will only display your chosen public identifier (such as your username). You maintain full control over this public visibility and can toggle your profile to a 'hidden' or 'Coming Soon' state at any time within your account dashboard.</p>
+          <p style={{ marginBottom: '15px' }}>Please be aware that any additional information you add to your Page Identity and Digital Business Card sections is intended for public display. When someone scans your Link Supply product or visits your custom URL, this data will be visible to them.</p>
 
           <h2 style={{ fontSize: '20px', fontWeight: '700', marginTop: '30px', marginBottom: '10px', color: '#111' }}>6. Your GDPR Rights</h2>
           <p style={{ marginBottom: '15px' }}>Under the GDPR, you have the right to:</p>
