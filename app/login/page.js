@@ -75,7 +75,7 @@ export default function PremiumLoginPage() {
             display_name: `${firstName} ${lastName}`.trim(),
             username: baseUsername,
             tier: 'free', 
-            profile_status: 'coming_soon',
+            profile_status: 'live', // Profile is now instantly live
             remember_me: rememberMe 
           });
 
@@ -143,7 +143,6 @@ export default function PremiumLoginPage() {
           
           <input required type="email" placeholder="Email Address" onChange={(e) => setEmail(e.target.value)} style={inputStyle} autoComplete="username email" />
           
-          {/* Password wrapper with standard SVG icons */}
           <div style={{ position: 'relative', marginBottom: isSignUp ? '5px' : '15px' }}>
             <input 
               required 
@@ -157,18 +156,9 @@ export default function PremiumLoginPage() {
               type="button" 
               onClick={() => setShowPassword(!showPassword)}
               style={{
-                position: 'absolute',
-                right: '12px',
-                top: '50%',
-                transform: 'translateY(-50%)',
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
-                color: '#6b7280',
-                padding: '4px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
+                position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)',
+                background: 'none', border: 'none', cursor: 'pointer', color: '#6b7280',
+                padding: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center',
                 transition: 'color 0.2s'
               }}
               onMouseEnter={(e) => e.currentTarget.style.color = '#111'}
@@ -176,12 +166,10 @@ export default function PremiumLoginPage() {
               title={showPassword ? "Hide Password" : "Show Password"}
             >
               {showPassword ? (
-                // Eye Slash Icon (Hide)
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" style={{ width: '20px', height: '20px' }}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.894 7.894L21 21m-3.228-3.228-3.65-3.65m0 0a3 3 0 1 0-4.243-4.243m4.242 4.242L9.88 9.88" />
                 </svg>
               ) : (
-                // Standard Eye Icon (Show)
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" style={{ width: '20px', height: '20px' }}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
                   <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
@@ -197,18 +185,23 @@ export default function PremiumLoginPage() {
           )}
 
           <div style={{ textAlign: 'left', marginBottom: '20px' }}>
-            
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: isSignUp ? '10px' : '0' }}>
               <input type="checkbox" id="rememberMe" checked={rememberMe} onChange={(e) => setRememberMe(e.target.checked)} style={{ cursor: 'pointer', minWidth: '16px', minHeight: '16px' }} />
               <label htmlFor="rememberMe" style={{ fontSize: '13px', color: '#4b5563', fontWeight: '500', cursor: 'pointer' }}>Keep me signed in</label>
             </div>
 
             {isSignUp ? (
-              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', marginTop: '10px' }}>
-                <input type="checkbox" id="terms" checked={agreedToTerms} onChange={(e) => setAgreedToTerms(e.target.checked)} style={{ marginTop: '3px', cursor: 'pointer', minWidth: '16px', minHeight: '16px' }} />
-                <label htmlFor="terms" style={{ fontSize: '13px', color: '#6b7280', lineHeight: '1.4' }}>
-                  I agree to the Link Supply <a href="/terms" target="_blank" style={{ color: '#111', textDecoration: 'underline', fontWeight: '500' }}>Terms & Conditions</a> and <a href="/privacy" target="_blank" style={{ color: '#111', textDecoration: 'underline', fontWeight: '500' }}>Privacy Policy</a>.
-                </label>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '10px' }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+                  <input type="checkbox" id="terms" checked={agreedToTerms} onChange={(e) => setAgreedToTerms(e.target.checked)} style={{ marginTop: '3px', cursor: 'pointer', minWidth: '16px', minHeight: '16px' }} />
+                  <label htmlFor="terms" style={{ fontSize: '13px', color: '#6b7280', lineHeight: '1.4' }}>
+                    I agree to the Link Supply <a href="/terms" target="_blank" style={{ color: '#111', textDecoration: 'underline', fontWeight: '500' }}>Terms & Conditions</a> and <a href="/privacy" target="_blank" style={{ color: '#111', textDecoration: 'underline', fontWeight: '500' }}>Privacy Policy</a>.
+                  </label>
+                </div>
+                {/* GDPR Notice added directly below the terms checkbox */}
+                <p style={{ fontSize: '12px', color: '#6b7280', lineHeight: '1.4', margin: '4px 0 0 26px' }}>
+                  By creating an account, your public LinkSupply URL will be activated immediately. You can hide your profile at any time in your dashboard.
+                </p>
               </div>
             ) : (
                <p style={{ fontSize: '12px', color: '#9ca3af', marginTop: '15px', marginBottom: '0' }}>
