@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState } from 'react'
 import { createClient } from '../../utils/supabase/client'
 import { useRouter } from 'next/navigation'
 
@@ -9,53 +9,48 @@ export default function UpdatePassword() {
   const [isError, setIsError] = useState(false)
   const [loading, setLoading] = useState(true) 
   
-  // 🔥 THE SHIELD: This stops React from double-firing the security code
-  const hasAttempted = useRef(false)
-  
   const supabase = createClient()
   const router = useRouter()
 
   useEffect(() => {
-    const setupSession = async () => {
-      // If we already verified the code, stop immediately to prevent the double-fire bug
-      if (hasAttempted.current) return
-      hasAttempted.current = true
-
-      const params = new URLSearchParams(window.location.search)
-      const code = params.get('code')
-
-      if (code) {
-        // Trade the single-use code for a real session
-        const { error } = await supabase.auth.exchangeCodeForSession(code)
-        
-        if (error) {
-          setIsError(true)
-          setMessage('This reset link is invalid or has expired. Please request a new one.')
-          setLoading(false)
-          return
-        }
-        
-        // Success! We hide the code from the web address so it stays clean
-        window.history.replaceState({}, document.title, window.location.pathname)
+    // 1. Listen for the automatic password recovery event
+    const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        // The token in the URL was valid and successfully exchanged
+        setIsError(false)
+        setMessage('') 
+        setLoading(false) // Unlocks the form
+      } else if (event === 'SIGNED_IN') {
+        // Fallback: If they somehow just signed in normally, ensure form is unlocked
+        setLoading(false)
       }
-      
-      // Give Supabase a split second to lock in the new session
-      setTimeout(async () => {
-        const { data: { session } } = await supabase.auth.getSession()
-        
-        if (!session) {
-          setIsError(true)
-          setMessage('No active session found. Please request a new reset link.')
-          setLoading(false)
-        } else {
-          setIsError(false)
-          setMessage('') 
-          setLoading(false) // Unlocks the form!
-        }
-      }, 500)
+    })
+
+    // 2. Check manually just in case the event fired before the component mounted
+    const checkSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) {
+        // We wait a brief moment to see if the hash fragment processes
+        setTimeout(async () => {
+          const { data: { session: delayedSession } } = await supabase.auth.getSession()
+          if (!delayedSession) {
+             setIsError(true)
+             setMessage('Invalid or expired reset link. Please request a new one.')
+             setLoading(false)
+          }
+        }, 1500)
+      } else {
+         setIsError(false)
+         setMessage('') 
+         setLoading(false)
+      }
     }
 
-    setupSession()
+    checkSession()
+
+    return () => {
+      authListener.subscription.unsubscribe()
+    }
   }, [])
 
   const handleUpdatePassword = async (e) => {
@@ -73,7 +68,7 @@ export default function UpdatePassword() {
       setLoading(false)
     } else {
       setIsError(false)
-      setMessage('Password updated successfully! Redirecting to workspace...')
+      setMessage('Password updated successfully! Redirecting to dashboard...')
       setTimeout(() => {
         router.push('/dashboard')
       }, 2000)
