@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { createClient } from '../../../utils/supabase/client'
 import { notFound } from 'next/navigation'
 import Link from 'next/link' 
@@ -31,6 +31,7 @@ export default function PublicProfilePage({ params }) {
   const [showQr, setShowQr] = useState(false);
   const [isAtBottom, setIsAtBottom] = useState(false); 
   
+  const footerRef = useRef(null); // Used to strictly track when the footer is visible
   const supabase = createClient();
 
   useEffect(() => {
@@ -56,17 +57,18 @@ export default function PublicProfilePage({ params }) {
     loadProfile();
   }, [params]);
 
-  // Scroll listener to hide the floating button smoothly
+  // Robust visibility tracker for the footer (fixes mobile scrolling issues)
   useEffect(() => {
-    const handleScroll = () => {
-      // Increased sensitivity (120px) so it fades out earlier before touching the footer
-      const bottom = Math.ceil(window.innerHeight + window.scrollY) >= document.documentElement.scrollHeight - 120;
-      setIsAtBottom(bottom);
-    };
-    
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
+    if (!footerRef.current) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setIsAtBottom(entry.isIntersecting);
+      },
+      { threshold: 0.1 } // Triggers as soon as 10% of the footer is visible
+    );
+    observer.observe(footerRef.current);
+    return () => observer.disconnect();
+  }, [loading]);
 
   if (profile === 'not_found') return notFound();
   if (loading) return <div style={{ minHeight: '100vh', backgroundColor: '#0a0a0a', display: 'flex', justifyContent: 'center', alignItems: 'center', color: 'white' }}>Loading...</div>;
@@ -85,12 +87,12 @@ export default function PublicProfilePage({ params }) {
         padding: '20px', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif', color: textColor, position: 'relative', overflowX: 'hidden' 
       }}>
         <style>{`
-          body, html { margin: 0; padding: 0; } /* Kills the browser border */
+          body, html { margin: 0; padding: 0; }
           @keyframes subtlePulse { 0% { opacity: 0.5; transform: scale(0.95); } 50% { opacity: 1; transform: scale(1); } 100% { opacity: 0.5; transform: scale(0.95); } }
           .premium-lock { animation: subtlePulse 3.5s infinite ease-in-out; margin-bottom: 30px; }
         `}</style>
         
-        <div className="premium-lock" style={{ width: '80px', height: '80px', borderRadius: '50%', backgroundColor: textColor === 'white' ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)', display: 'flex', justifyContent: 'center', alignItems: 'center', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)' }}>
+        <div className="premium-lock" style={{ width: '80px', height: '80px', borderRadius: '50%', backgroundColor: textColor === 'white' ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)', display: 'flex', justifyContent: 'center', alignItems: 'center', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)', border: `1px solid ${textColor === 'white' ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.1)'}` }}>
           <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
         </div>
         
@@ -162,7 +164,7 @@ export default function PublicProfilePage({ params }) {
       )}
 
       <style>{`
-        body, html { margin: 0; padding: 0; } /* Kills the default browser border */
+        body, html { margin: 0; padding: 0; }
         * { box-sizing: border-box; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes modalFadeIn { from { opacity: 0; backdrop-filter: blur(0px); } to { opacity: 1; backdrop-filter: blur(15px); } }
@@ -174,7 +176,7 @@ export default function PublicProfilePage({ params }) {
         .premium-link {
           display: flex; align-items: center; justify-content: center; gap: 12px; width: 100%; max-width: 100%; padding: 18px 20px;
           background-color: ${textColor === 'white' ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.05)'}; 
-          border: none; outline: none;
+          border: 1px solid ${textColor === 'white' ? 'rgba(255, 255, 255, 0.15)' : 'rgba(0, 0, 0, 0.1)'};
           border-radius: 18px; color: ${textColor}; text-decoration: none; font-size: 16px; font-weight: 600;
           transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
         }
@@ -183,7 +185,8 @@ export default function PublicProfilePage({ params }) {
         .contact-btn {
           display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; max-width: 100%; padding: 18px 20px; 
           background-color: ${textColor === 'white' ? 'white' : '#111111'}; color: ${textColor === 'white' ? baseColor : 'white'}; 
-          border-radius: 100px; text-decoration: none; font-size: 16px; font-weight: 700; text-align: center; cursor: pointer; border: none; outline: none;
+          border-radius: 100px; text-decoration: none; font-size: 16px; font-weight: 700; text-align: center; cursor: pointer; 
+          border: 1px solid ${textColor === 'white' ? 'transparent' : 'rgba(0,0,0,0.1)'};
           margin-bottom: 30px; box-shadow: 0 8px 24px -6px rgba(0,0,0,0.3); transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
         }
         .contact-btn:hover { transform: translateY(-2px); box-shadow: 0 12px 28px -8px rgba(0,0,0,0.4); }
@@ -193,7 +196,7 @@ export default function PublicProfilePage({ params }) {
           position: absolute; top: 20px; width: 44px; height: 44px;
           display: flex; align-items: center; justify-content: center;
           background: ${textColor === 'white' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'}; 
-          border: none; outline: none;
+          border: 1px solid ${textColor === 'white' ? 'rgba(255, 255, 255, 0.15)' : 'rgba(0, 0, 0, 0.1)'};
           border-radius: 50%; cursor: pointer; backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
           z-index: 10; color: ${textColor}; transition: transform 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
         }
@@ -219,7 +222,7 @@ export default function PublicProfilePage({ params }) {
           gap: 8px;
           padding: 12px 24px;
           background: ${textColor === 'white' ? 'rgba(255, 255, 255, 0.15)' : 'rgba(0, 0, 0, 0.08)'};
-          border: none; outline: none;
+          border: 1px solid ${textColor === 'white' ? 'rgba(255, 255, 255, 0.15)' : 'rgba(0, 0, 0, 0.1)'};
           border-radius: 100px;
           color: ${textColor};
           text-decoration: none;
@@ -299,14 +302,14 @@ export default function PublicProfilePage({ params }) {
         </div>
       </main>
 
-      {/* Floating Action Button (Now smoothly disappears on scroll) */}
+      {/* Floating Action Button (Now smoothly disappears EXACTLY when footer enters screen) */}
       {showBranding && (
         <a 
           href="https://linksupply.co.uk" 
           className="branding-floater" 
           style={{ 
             opacity: isAtBottom ? 0 : 1, 
-            transform: isAtBottom ? 'translate(-50%, 10px)' : 'translateX(-50%)', 
+            transform: isAtBottom ? 'translate(-50%, 15px)' : 'translateX(-50%)', 
             pointerEvents: isAtBottom ? 'none' : 'auto' 
           }}
         >
@@ -315,8 +318,9 @@ export default function PublicProfilePage({ params }) {
         </a>
       )}
 
-      {/* Stacked "Manage your page" Footer */}
+      {/* Stacked "Manage your page" Footer with invisible tracker Ref */}
       <a 
+        ref={footerRef}
         href="/login" 
         style={{
           position: 'absolute',
@@ -357,7 +361,7 @@ export default function PublicProfilePage({ params }) {
             <p style={{ margin: 0, fontSize: '14px', color: '#6b7280', fontWeight: '500' }}>Scan to view profile</p>
           </div>
           
-          <button onClick={() => setShowQr(false)} style={{ marginTop: '30px', backgroundColor: 'rgba(255,255,255,0.2)', backdropFilter: 'blur(10px)', color: 'white', border: 'none', outline: 'none', borderRadius: '50%', width: '56px', height: '56px', fontSize: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'transform 0.2s' }} onMouseOver={(e) => e.target.style.transform = 'scale(1.1)'} onMouseOut={(e) => e.target.style.transform = 'scale(1)'}>
+          <button onClick={() => setShowQr(false)} style={{ marginTop: '30px', backgroundColor: 'rgba(255,255,255,0.2)', backdropFilter: 'blur(10px)', color: 'white', border: '1px solid rgba(255,255,255,0.3)', outline: 'none', borderRadius: '50%', width: '56px', height: '56px', fontSize: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'transform 0.2s' }} onMouseOver={(e) => e.target.style.transform = 'scale(1.1)'} onMouseOut={(e) => e.target.style.transform = 'scale(1)'}>
             &times;
           </button>
         </div>
