@@ -294,6 +294,34 @@ export default function PublicProfilePage({ params }) {
         </a>
       )}
 
+      {/* The Subdued Watermark Footer linking back to login */}
+      <a 
+        href="/login" 
+        style={{
+          position: 'absolute',
+          bottom: '15px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          color: textColor,
+          opacity: 0.5,
+          textDecoration: 'none',
+          fontSize: '12px',
+          fontWeight: '600',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '4px',
+          transition: 'opacity 0.2s ease',
+          zIndex: 10
+        }}
+        onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
+        onMouseLeave={(e) => e.currentTarget.style.opacity = '0.5'}
+      >
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+          <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+        </svg>
+        LinkSupply
+      </a>
+
       {showQr && (
         <div className="qr-modal" onClick={() => setShowQr(false)}>
           <div className="qr-card" onClick={(e) => e.stopPropagation()}>
