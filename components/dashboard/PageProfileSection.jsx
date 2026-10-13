@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { createClient } from '../../utils/supabase/client'
 
 export default function PageProfileSection({
@@ -26,6 +26,10 @@ export default function PageProfileSection({
 
   // 🔗 LOCAL LINK STATE (For frictionless sorting)
   const [localLinks, setLocalLinks] = useState([])
+  
+  // 🖼️ COVER PHOTO STATES
+  const coverFileInputRef = useRef(null)
+  const [isUploadingCover, setIsUploadingCover] = useState(false)
 
   // Sync parent links to local state on load
   useEffect(() => {
@@ -35,6 +39,55 @@ export default function PageProfileSection({
   // --- ORIGINAL CLEAN STYLES ---
   const inputStyle = { width: '100%', padding: '12px 14px', borderRadius: '10px', border: '1px solid #d1d5db', fontSize: '15px', color: '#111', outline: 'none', boxSizing: 'border-box' };
   const labelStyle = { display: 'block', fontSize: '14px', color: '#4b5563', marginBottom: '8px', fontWeight: '600' };
+
+  // --- 🖼️ COVER PHOTO UPLOAD HANDLER ---
+  const handleCoverPhotoUpload = async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    setIsUploadingCover(true);
+    const { data: { user } } = await supabase.auth.getUser();
+
+    // Generate a unique filename using timestamp
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${user.id}-${Date.now()}.${fileExt}`;
+    const filePath = `cover-photos/${fileName}`; // Save in a distinct folder within the bucket
+
+    try {
+      // 1. Upload to Supabase Storage (assuming your bucket is named 'public_assets' or similar based on standard setup)
+      // Note: Make sure your bucket is set to "Public" so the URLs resolve correctly on the frontend!
+      const { error: uploadError } = await supabase.storage
+        .from('avatars') // Replace 'avatars' with your actual bucket name if different
+        .upload(filePath, file, { cacheControl: '3600', upsert: false });
+
+      if (uploadError) throw uploadError;
+
+      // 2. Get the Public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(filePath);
+
+      // 3. Immediately update the database row
+      const { error: updateError } = await supabase
+        .from('customers')
+        .update({ cover_photo_url: publicUrl })
+        .eq('id', user.id);
+
+      if (updateError) throw updateError;
+
+      // 4. Update Local State so UI refreshes immediately
+      setPageProfile({ ...pageProfile, cover_photo_url: publicUrl });
+
+    } catch (error) {
+      console.error('Error uploading cover photo:', error.message);
+      alert('Failed to upload cover photo. Ensure the image is under 5MB.');
+    } finally {
+      setIsUploadingCover(false);
+      // Reset input so they can select the same file again if they want
+      event.target.value = null; 
+    }
+  };
+
 
   // --- 🔗 FRICTIONLESS LINK MANAGEMENT ---
   const handleFrictionlessAddLink = async (e) => {
@@ -127,13 +180,26 @@ export default function PageProfileSection({
             {!isPremium && <p style={{ fontSize: '12px', color: '#6b7280', marginTop: '6px' }}>Custom URLs are locked on the Free tier.</p>}
           </div>
 
+          {/* Profile Picture Upload */}
           <div style={{ gridColumn: '1 / -1' }}>
             <label style={labelStyle}>Profile Picture</label>
             <input type="file" accept="image/*" ref={fileInputRef} onChange={handleImageUpload} style={{ display: 'none' }} />
             <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-              <input type="text" value={pageProfile.profile_picture_url} placeholder="https://... or click upload" onChange={(e) => setPageProfile({...pageProfile, profile_picture_url: e.target.value})} style={{ ...inputStyle, flex: 1 }} />
+              <input type="text" value={pageProfile.profile_picture_url || ''} placeholder="https://... or click upload" onChange={(e) => setPageProfile({...pageProfile, profile_picture_url: e.target.value})} style={{ ...inputStyle, flex: 1 }} />
               <button type="button" onClick={() => fileInputRef.current.click()} disabled={isUploading} style={{ padding: '12px 20px', backgroundColor: '#f3f4f6', color: '#111', border: '1px solid #d1d5db', borderRadius: '8px', fontWeight: '700', cursor: isUploading ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap' }}>
-                {isUploading ? '⏳ Compressing...' : '📷 Upload Photo'}
+                {isUploading ? '⏳ Uploading...' : '📷 Upload Photo'}
+              </button>
+            </div>
+          </div>
+
+          {/* Cover Photo Upload */}
+          <div style={{ gridColumn: '1 / -1' }}>
+            <label style={labelStyle}>Cover Photo (Optional Header)</label>
+            <input type="file" accept="image/*" ref={coverFileInputRef} onChange={handleCoverPhotoUpload} style={{ display: 'none' }} />
+            <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+              <input type="text" value={pageProfile.cover_photo_url || ''} placeholder="https://... or click upload" onChange={(e) => setPageProfile({...pageProfile, cover_photo_url: e.target.value})} style={{ ...inputStyle, flex: 1 }} />
+              <button type="button" onClick={() => coverFileInputRef.current.click()} disabled={isUploadingCover} style={{ padding: '12px 20px', backgroundColor: '#f3f4f6', color: '#111', border: '1px solid #d1d5db', borderRadius: '8px', fontWeight: '700', cursor: isUploadingCover ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap' }}>
+                {isUploadingCover ? '⏳ Uploading...' : '🖼️ Upload Cover'}
               </button>
             </div>
           </div>
