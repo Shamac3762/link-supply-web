@@ -29,7 +29,7 @@ export default function PublicProfilePage({ params }) {
   const [links, setLinks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showQr, setShowQr] = useState(false);
-  const [isAtBottom, setIsAtBottom] = useState(false); // Controls floater visibility
+  const [isAtBottom, setIsAtBottom] = useState(false); 
   
   const supabase = createClient();
 
@@ -56,11 +56,11 @@ export default function PublicProfilePage({ params }) {
     loadProfile();
   }, [params]);
 
-  // Scroll listener to hide the floating button when reaching the footer
+  // Scroll listener to hide the floating button smoothly
   useEffect(() => {
     const handleScroll = () => {
-      // If the user scrolls within 60px of the absolute bottom, hide the floater
-      const bottom = Math.ceil(window.innerHeight + window.scrollY) >= document.documentElement.scrollHeight - 60;
+      // Increased sensitivity (120px) so it fades out earlier before touching the footer
+      const bottom = Math.ceil(window.innerHeight + window.scrollY) >= document.documentElement.scrollHeight - 120;
       setIsAtBottom(bottom);
     };
     
@@ -85,6 +85,7 @@ export default function PublicProfilePage({ params }) {
         padding: '20px', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif', color: textColor, position: 'relative', overflowX: 'hidden' 
       }}>
         <style>{`
+          body, html { margin: 0; padding: 0; } /* Kills the browser border */
           @keyframes subtlePulse { 0% { opacity: 0.5; transform: scale(0.95); } 50% { opacity: 1; transform: scale(1); } 100% { opacity: 0.5; transform: scale(0.95); } }
           .premium-lock { animation: subtlePulse 3.5s infinite ease-in-out; margin-bottom: 30px; }
         `}</style>
@@ -161,6 +162,7 @@ export default function PublicProfilePage({ params }) {
       )}
 
       <style>{`
+        body, html { margin: 0; padding: 0; } /* Kills the default browser border */
         * { box-sizing: border-box; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes modalFadeIn { from { opacity: 0; backdrop-filter: blur(0px); } to { opacity: 1; backdrop-filter: blur(15px); } }
@@ -172,7 +174,7 @@ export default function PublicProfilePage({ params }) {
         .premium-link {
           display: flex; align-items: center; justify-content: center; gap: 12px; width: 100%; max-width: 100%; padding: 18px 20px;
           background-color: ${textColor === 'white' ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.05)'}; 
-          border: none;
+          border: none; outline: none;
           border-radius: 18px; color: ${textColor}; text-decoration: none; font-size: 16px; font-weight: 600;
           transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
         }
@@ -181,7 +183,7 @@ export default function PublicProfilePage({ params }) {
         .contact-btn {
           display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; max-width: 100%; padding: 18px 20px; 
           background-color: ${textColor === 'white' ? 'white' : '#111111'}; color: ${textColor === 'white' ? baseColor : 'white'}; 
-          border-radius: 100px; text-decoration: none; font-size: 16px; font-weight: 700; text-align: center; cursor: pointer; border: none;
+          border-radius: 100px; text-decoration: none; font-size: 16px; font-weight: 700; text-align: center; cursor: pointer; border: none; outline: none;
           margin-bottom: 30px; box-shadow: 0 8px 24px -6px rgba(0,0,0,0.3); transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
         }
         .contact-btn:hover { transform: translateY(-2px); box-shadow: 0 12px 28px -8px rgba(0,0,0,0.4); }
@@ -191,7 +193,7 @@ export default function PublicProfilePage({ params }) {
           position: absolute; top: 20px; width: 44px; height: 44px;
           display: flex; align-items: center; justify-content: center;
           background: ${textColor === 'white' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'}; 
-          border: none;
+          border: none; outline: none;
           border-radius: 50%; cursor: pointer; backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
           z-index: 10; color: ${textColor}; transition: transform 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
         }
@@ -204,7 +206,7 @@ export default function PublicProfilePage({ params }) {
         }
         .qr-card {
           background-color: white; padding: 35px 30px; border-radius: 32px; display: flex; flex-direction: column; align-items: center;
-          box-shadow: 0 30px 60px -15px rgba(0,0,0,0.6); animation: popIn 0.4s cubic-bezier(0.25, 0.8, 0.25, 1) forwards; max-width: 320px; width: 100%;
+          box-shadow: 0 30px 60px -15px rgba(0,0,0,0.6); animation: popIn 0.4s cubic-bezier(0.25, 0.8, 0.25, 1) forwards; max-width: 320px; width: 100%; border: none;
         }
 
         .branding-floater {
@@ -217,7 +219,7 @@ export default function PublicProfilePage({ params }) {
           gap: 8px;
           padding: 12px 24px;
           background: ${textColor === 'white' ? 'rgba(255, 255, 255, 0.15)' : 'rgba(0, 0, 0, 0.08)'};
-          border: none;
+          border: none; outline: none;
           border-radius: 100px;
           color: ${textColor};
           text-decoration: none;
@@ -230,10 +232,6 @@ export default function PublicProfilePage({ params }) {
           transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
           animation: floatUp 0.6s cubic-bezier(0.25, 0.8, 0.25, 1) 0.5s both;
           white-space: nowrap;
-        }
-        .branding-floater:hover {
-          transform: translateX(-50%) translateY(-3px);
-          background: ${textColor === 'white' ? 'rgba(255, 255, 255, 0.25)' : 'rgba(0, 0, 0, 0.12)'};
         }
       `}</style>
 
@@ -303,7 +301,15 @@ export default function PublicProfilePage({ params }) {
 
       {/* Floating Action Button (Now smoothly disappears on scroll) */}
       {showBranding && (
-        <a href="https://linksupply.co.uk" className="branding-floater" style={{ opacity: isAtBottom ? 0 : 1, pointerEvents: isAtBottom ? 'none' : 'auto' }}>
+        <a 
+          href="https://linksupply.co.uk" 
+          className="branding-floater" 
+          style={{ 
+            opacity: isAtBottom ? 0 : 1, 
+            transform: isAtBottom ? 'translate(-50%, 10px)' : 'translateX(-50%)', 
+            pointerEvents: isAtBottom ? 'none' : 'auto' 
+          }}
+        >
           <span style={{ fontSize: '16px' }}>⚡</span>
           <span>Get your free digital profile</span>
         </a>
@@ -314,7 +320,7 @@ export default function PublicProfilePage({ params }) {
         href="/login" 
         style={{
           position: 'absolute',
-          bottom: '15px',
+          bottom: '25px',
           left: '50%',
           transform: 'translateX(-50%)',
           color: textColor,
@@ -344,14 +350,14 @@ export default function PublicProfilePage({ params }) {
       {showQr && (
         <div className="qr-modal" onClick={() => setShowQr(false)}>
           <div className="qr-card" onClick={(e) => e.stopPropagation()}>
-            <div style={{ padding: '15px', backgroundColor: '#f9fafb', borderRadius: '20px', border: '1px solid #e5e7eb', marginBottom: '20px' }}>
+            <div style={{ padding: '15px', backgroundColor: '#f9fafb', borderRadius: '20px', border: 'none', marginBottom: '20px' }}>
               <img src={qrImageUrl} alt="Profile QR Code" style={{ width: '220px', height: '220px', display: 'block', borderRadius: '8px' }} />
             </div>
             <h3 style={{ margin: '0 0 5px 0', fontSize: '20px', fontWeight: '800', color: '#111' }}>@{profile.username}</h3>
             <p style={{ margin: 0, fontSize: '14px', color: '#6b7280', fontWeight: '500' }}>Scan to view profile</p>
           </div>
           
-          <button onClick={() => setShowQr(false)} style={{ marginTop: '30px', backgroundColor: 'rgba(255,255,255,0.2)', backdropFilter: 'blur(10px)', color: 'white', border: '1px solid rgba(255,255,255,0.3)', borderRadius: '50%', width: '56px', height: '56px', fontSize: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'transform 0.2s' }} onMouseOver={(e) => e.target.style.transform = 'scale(1.1)'} onMouseOut={(e) => e.target.style.transform = 'scale(1)'}>
+          <button onClick={() => setShowQr(false)} style={{ marginTop: '30px', backgroundColor: 'rgba(255,255,255,0.2)', backdropFilter: 'blur(10px)', color: 'white', border: 'none', outline: 'none', borderRadius: '50%', width: '56px', height: '56px', fontSize: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'transform 0.2s' }} onMouseOver={(e) => e.target.style.transform = 'scale(1.1)'} onMouseOut={(e) => e.target.style.transform = 'scale(1)'}>
             &times;
           </button>
         </div>
