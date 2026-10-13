@@ -74,11 +74,11 @@ export default function PublicProfilePage({ params }) {
           @keyframes subtlePulse { 0% { opacity: 0.5; transform: scale(0.95); } 50% { opacity: 1; transform: scale(1); } 100% { opacity: 0.5; transform: scale(0.95); } }
           @keyframes floatUp { from { opacity: 0; bottom: 10px; } to { opacity: 1; bottom: 30px; } }
           .premium-lock { animation: subtlePulse 3.5s infinite ease-in-out; margin-bottom: 30px; }
-          .branding-floater { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 8px; padding: 12px 24px; background: ${textColor === 'white' ? 'rgba(255, 255, 255, 0.15)' : 'rgba(0, 0, 0, 0.08)'}; border: 1px solid ${textColor === 'white' ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.1)'}; border-radius: 100px; color: ${textColor}; text-decoration: none; font-size: 14px; font-weight: 700; backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); box-shadow: 0 10px 25px -5px rgba(0,0,0,0.2); z-index: 100; transition: all 0.3s ease; animation: floatUp 0.6s cubic-bezier(0.25, 0.8, 0.25, 1) 0.5s both; white-space: nowrap; }
+          .branding-floater { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 8px; padding: 12px 24px; background: ${textColor === 'white' ? 'rgba(255, 255, 255, 0.15)' : 'rgba(0, 0, 0, 0.08)'}; border-radius: 100px; color: ${textColor}; text-decoration: none; font-size: 14px; font-weight: 700; backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); box-shadow: 0 10px 25px -5px rgba(0,0,0,0.2); z-index: 100; transition: all 0.3s ease; animation: floatUp 0.6s cubic-bezier(0.25, 0.8, 0.25, 1) 0.5s both; white-space: nowrap; }
           .branding-floater:hover { transform: translateX(-50%) translateY(-3px); background: ${textColor === 'white' ? 'rgba(255, 255, 255, 0.25)' : 'rgba(0, 0, 0, 0.12)'}; }
         `}</style>
         
-        <div className="premium-lock" style={{ width: '80px', height: '80px', borderRadius: '50%', backgroundColor: textColor === 'white' ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)', border: `1px solid ${textColor === 'white' ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.1)'}`, display: 'flex', justifyContent: 'center', alignItems: 'center', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)' }}>
+        <div className="premium-lock" style={{ width: '80px', height: '80px', borderRadius: '50%', backgroundColor: textColor === 'white' ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)', display: 'flex', justifyContent: 'center', alignItems: 'center', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)' }}>
           <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
         </div>
         
@@ -147,6 +147,23 @@ export default function PublicProfilePage({ params }) {
       color: textColor, position: 'relative', overflowX: 'hidden' 
     }}>
       
+      {/* Facebook-style Cover Photo */}
+      {profile.cover_photo_url && (
+        <div style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: '200px',
+          backgroundImage: `url(${profile.cover_photo_url})`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          borderBottomLeftRadius: '35px',
+          borderBottomRightRadius: '35px',
+          zIndex: 0
+        }} />
+      )}
+
       <style>{`
         * { box-sizing: border-box; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
@@ -159,7 +176,6 @@ export default function PublicProfilePage({ params }) {
         .premium-link {
           display: flex; align-items: center; justify-content: center; gap: 12px; width: 100%; max-width: 100%; padding: 18px 20px;
           background-color: ${textColor === 'white' ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.05)'}; 
-          border: 1px solid ${textColor === 'white' ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.1)'};
           border-radius: 18px; color: ${textColor}; text-decoration: none; font-size: 16px; font-weight: 600;
           transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
         }
@@ -178,7 +194,6 @@ export default function PublicProfilePage({ params }) {
           position: absolute; top: 20px; width: 44px; height: 44px;
           display: flex; align-items: center; justify-content: center;
           background: ${textColor === 'white' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'}; 
-          border: 1px solid ${textColor === 'white' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'};
           border-radius: 50%; cursor: pointer; backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
           z-index: 10; color: ${textColor}; transition: transform 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
         }
@@ -204,7 +219,6 @@ export default function PublicProfilePage({ params }) {
           gap: 8px;
           padding: 12px 24px;
           background: ${textColor === 'white' ? 'rgba(255, 255, 255, 0.15)' : 'rgba(0, 0, 0, 0.08)'};
-          border: 1px solid ${textColor === 'white' ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.1)'};
           border-radius: 100px;
           color: ${textColor};
           text-decoration: none;
@@ -237,12 +251,13 @@ export default function PublicProfilePage({ params }) {
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
       </div>
 
-      <main style={{ width: '100%', maxWidth: '400px', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
+      <main style={{ width: '100%', maxWidth: '400px', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', zIndex: 1 }}>
         
+        {/* Profile Picture (Pushed down if cover photo exists so it overlaps exactly on the curve) */}
         {profile.profile_picture_url ? (
-          <img src={profile.profile_picture_url} alt="Profile" style={{ width: '120px', height: '120px', borderRadius: '50%', objectFit: 'cover', border: `4px solid ${textColor === 'white' ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.1)'}`, marginBottom: '22px', boxShadow: '0 10px 30px rgba(0,0,0,0.3)' }} />
+          <img src={profile.profile_picture_url} alt="Profile" style={{ width: '120px', height: '120px', borderRadius: '50%', objectFit: 'cover', marginBottom: '22px', boxShadow: '0 10px 30px rgba(0,0,0,0.3)', marginTop: profile.cover_photo_url ? '80px' : '0' }} />
         ) : (
-          <div style={{ width: '100px', height: '100px', borderRadius: '50%', backgroundColor: `${textColor === 'white' ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)'}`, border: `2px solid ${textColor === 'white' ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.1)'}`, display: 'flex', justifyContent: 'center', alignItems: 'center', fontSize: '40px', fontWeight: '800', marginBottom: '22px' }}>
+          <div style={{ width: '100px', height: '100px', borderRadius: '50%', backgroundColor: `${textColor === 'white' ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)'}`, display: 'flex', justifyContent: 'center', alignItems: 'center', fontSize: '40px', fontWeight: '800', marginBottom: '22px', marginTop: profile.cover_photo_url ? '80px' : '0' }}>
             {(profile.display_name || profile.username).charAt(0)}
           </div>
         )}
@@ -294,7 +309,7 @@ export default function PublicProfilePage({ params }) {
         </a>
       )}
 
-      {/* The Subdued Watermark Footer linking back to login */}
+      {/* Stacked "Manage your page" Footer */}
       <a 
         href="/login" 
         style={{
@@ -303,23 +318,27 @@ export default function PublicProfilePage({ params }) {
           left: '50%',
           transform: 'translateX(-50%)',
           color: textColor,
-          opacity: 0.5,
+          opacity: 0.6,
           textDecoration: 'none',
-          fontSize: '12px',
-          fontWeight: '600',
           display: 'flex',
+          flexDirection: 'column',
           alignItems: 'center',
           gap: '4px',
           transition: 'opacity 0.2s ease',
           zIndex: 10
         }}
         onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
-        onMouseLeave={(e) => e.currentTarget.style.opacity = '0.5'}
+        onMouseLeave={(e) => e.currentTarget.style.opacity = '0.6'}
       >
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-          <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
-        </svg>
-        LinkSupply
+        <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '13px', fontWeight: '700' }}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+          </svg>
+          LinkSupply
+        </span>
+        <span style={{ fontSize: '10px', fontWeight: '600', opacity: 0.8, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+          Manage your page
+        </span>
       </a>
 
       {showQr && (
