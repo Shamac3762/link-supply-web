@@ -314,17 +314,19 @@ export default function PageProfileSection({
       <div style={{ marginTop: '10px' }}>
         <button 
           onClick={handleSaveProfile} 
+          disabled={saveStatus.profile === 'Saving...'}
           style={{ 
             padding: '18px 20px', 
-            backgroundColor: '#111', 
+            backgroundColor: saveStatus.profile === '✅ Done!' ? '#059669' : '#111', 
             color: 'white', 
             border: 'none', 
             borderRadius: '12px', 
             fontWeight: '800', 
-            cursor: 'pointer', 
+            cursor: saveStatus.profile === 'Saving...' ? 'wait' : 'pointer', 
             width: '100%', 
             fontSize: '18px', 
-            boxShadow: '0 4px 12px rgba(0,0,0,0.15)' 
+            boxShadow: saveStatus.profile === '✅ Done!' ? '0 4px 12px rgba(5, 150, 105, 0.4)' : '0 4px 12px rgba(0,0,0,0.15)',
+            transition: 'all 0.3s ease'
           }}
         >
           {saveStatus.profile || '🚀 Update Public Profile'}
