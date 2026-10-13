@@ -340,11 +340,12 @@ export default function PremiumDashboard() {
     }
   };
 
-  // 🔥 NEW: Optimized handleSaveProfile for Auto-Saving
+  // 🔥 NEW: Optimized handleSaveProfile for Auto-Saving and Dynamic Visual Feedback
   const handleSaveProfile = async (overrideProfile = null) => {
     // Allows the child component to pass in real-time data so we don't accidentally save stale state
     const dataToSave = overrideProfile || pageProfile;
     
+    // Instantly trigger the "Saving..." state to lock the button and show the wait spinner
     setSaveStatus({ ...saveStatus, profile: 'Saving...' })
     const { data: { session } } = await supabase.auth.getSession()
     
@@ -353,7 +354,7 @@ export default function PremiumDashboard() {
     
     const updateData = { 
         id: session.user.id, display_name: dataToSave.display_name, bio: dataToSave.bio, theme_color: dataToSave.theme_color, 
-        profile_picture_url: dataToSave.profile_picture_url, job_title: dataToSave.job_title, company: dataToSave.company, 
+        profile_picture_url: dataToSave.profile_picture_url, cover_photo_url: dataToSave.cover_photo_url, job_title: dataToSave.job_title, company: dataToSave.company, 
         phone_number: dataToSave.phone_number, display_email: dataToSave.display_email, profile_status: dataToSave.profile_status, 
         remember_me: dataToSave.remember_me, show_save_contact: dataToSave.show_save_contact
     }
@@ -370,7 +371,11 @@ export default function PremiumDashboard() {
       setSaveStatus({ ...saveStatus, profile: 'Error!' }) 
     } else { 
       setPageProfile({ ...dataToSave, username: cleanUsername }); 
-      setSaveStatus({ ...saveStatus, profile: 'Saved! ✓' }); 
+      
+      // Push the success state to trigger the green button color
+      setSaveStatus({ ...saveStatus, profile: '✅ Done!' }); 
+      
+      // Reset the button back to black after 2 seconds
       setTimeout(() => setSaveStatus((prev) => ({ ...prev, profile: '' })), 2000) 
     }
   }
