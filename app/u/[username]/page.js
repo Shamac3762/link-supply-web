@@ -29,6 +29,8 @@ export default function PublicProfilePage({ params }) {
   const [links, setLinks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showQr, setShowQr] = useState(false);
+  const [isAtBottom, setIsAtBottom] = useState(false); // Controls floater visibility
+  
   const supabase = createClient();
 
   useEffect(() => {
@@ -54,6 +56,18 @@ export default function PublicProfilePage({ params }) {
     loadProfile();
   }, [params]);
 
+  // Scroll listener to hide the floating button when reaching the footer
+  useEffect(() => {
+    const handleScroll = () => {
+      // If the user scrolls within 60px of the absolute bottom, hide the floater
+      const bottom = Math.ceil(window.innerHeight + window.scrollY) >= document.documentElement.scrollHeight - 60;
+      setIsAtBottom(bottom);
+    };
+    
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
   if (profile === 'not_found') return notFound();
   if (loading) return <div style={{ minHeight: '100vh', backgroundColor: '#0a0a0a', display: 'flex', justifyContent: 'center', alignItems: 'center', color: 'white' }}>Loading...</div>;
 
@@ -72,10 +86,7 @@ export default function PublicProfilePage({ params }) {
       }}>
         <style>{`
           @keyframes subtlePulse { 0% { opacity: 0.5; transform: scale(0.95); } 50% { opacity: 1; transform: scale(1); } 100% { opacity: 0.5; transform: scale(0.95); } }
-          @keyframes floatUp { from { opacity: 0; bottom: 10px; } to { opacity: 1; bottom: 30px; } }
           .premium-lock { animation: subtlePulse 3.5s infinite ease-in-out; margin-bottom: 30px; }
-          .branding-floater { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 8px; padding: 12px 24px; background: ${textColor === 'white' ? 'rgba(255, 255, 255, 0.15)' : 'rgba(0, 0, 0, 0.08)'}; border-radius: 100px; color: ${textColor}; text-decoration: none; font-size: 14px; font-weight: 700; backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); box-shadow: 0 10px 25px -5px rgba(0,0,0,0.2); z-index: 100; transition: all 0.3s ease; animation: floatUp 0.6s cubic-bezier(0.25, 0.8, 0.25, 1) 0.5s both; white-space: nowrap; }
-          .branding-floater:hover { transform: translateX(-50%) translateY(-3px); background: ${textColor === 'white' ? 'rgba(255, 255, 255, 0.25)' : 'rgba(0, 0, 0, 0.12)'}; }
         `}</style>
         
         <div className="premium-lock" style={{ width: '80px', height: '80px', borderRadius: '50%', backgroundColor: textColor === 'white' ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)', display: 'flex', justifyContent: 'center', alignItems: 'center', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)' }}>
@@ -86,36 +97,23 @@ export default function PublicProfilePage({ params }) {
         <p style={{ fontSize: '15px', fontWeight: '500', opacity: 0.7, margin: 0, textAlign: 'center', maxWidth: '280px', lineHeight: '1.6' }}>
           This page is currently being prepared. Please check back soon.
         </p>
-
-        {showBranding && (
-          <a href="https://linksupply.co.uk" className="branding-floater">
-            <span style={{ fontSize: '16px' }}>⚡</span>
-            <span>Get your free digital profile</span>
-          </a>
-        )}
       </div>
     )
   }
 
   const showContactBtn = profile.show_save_contact !== false;
   
-  // 🔥 iOS BYPASS: Custom Save Contact Handler
   const handleSaveContact = (e) => {
     e.preventDefault();
     const vcard = `BEGIN:VCARD\r\nVERSION:3.0\r\nFN:${profile.display_name || profile.username}\r\nTITLE:${profile.job_title || ''}\r\nORG:${profile.company || ''}\r\nTEL;TYPE=CELL:${profile.phone_number || ''}\r\nEMAIL;TYPE=WORK:${profile.display_email || ''}\r\nURL:https://linksupply.co.uk/u/${profile.username}\r\nEND:VCARD`;
     
-    // Create a Blob from the VCard data
     const blob = new Blob([vcard], { type: 'text/vcard' });
     const url = URL.createObjectURL(blob);
-    
-    // Check if the user is on an iOS device (iPhone/iPad/iPod)
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
     
     if (isIOS) {
-      // Force iOS to navigate to the Blob directly, triggering the native contact sheet
       window.location.assign(url);
     } else {
-      // Standard download for Android & Desktop
       const link = document.createElement('a');
       link.href = url;
       link.download = `${profile.display_name || profile.username}.vcf`;
@@ -123,8 +121,6 @@ export default function PublicProfilePage({ params }) {
       link.click();
       document.body.removeChild(link);
     }
-    
-    // Clean up memory
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
 
@@ -176,6 +172,7 @@ export default function PublicProfilePage({ params }) {
         .premium-link {
           display: flex; align-items: center; justify-content: center; gap: 12px; width: 100%; max-width: 100%; padding: 18px 20px;
           background-color: ${textColor === 'white' ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.05)'}; 
+          border: none;
           border-radius: 18px; color: ${textColor}; text-decoration: none; font-size: 16px; font-weight: 600;
           transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
         }
@@ -194,6 +191,7 @@ export default function PublicProfilePage({ params }) {
           position: absolute; top: 20px; width: 44px; height: 44px;
           display: flex; align-items: center; justify-content: center;
           background: ${textColor === 'white' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'}; 
+          border: none;
           border-radius: 50%; cursor: pointer; backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
           z-index: 10; color: ${textColor}; transition: transform 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
         }
@@ -219,6 +217,7 @@ export default function PublicProfilePage({ params }) {
           gap: 8px;
           padding: 12px 24px;
           background: ${textColor === 'white' ? 'rgba(255, 255, 255, 0.15)' : 'rgba(0, 0, 0, 0.08)'};
+          border: none;
           border-radius: 100px;
           color: ${textColor};
           text-decoration: none;
@@ -228,7 +227,7 @@ export default function PublicProfilePage({ params }) {
           -webkit-backdrop-filter: blur(16px);
           box-shadow: 0 10px 25px -5px rgba(0,0,0,0.2);
           z-index: 100;
-          transition: all 0.3s ease;
+          transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
           animation: floatUp 0.6s cubic-bezier(0.25, 0.8, 0.25, 1) 0.5s both;
           white-space: nowrap;
         }
@@ -253,11 +252,11 @@ export default function PublicProfilePage({ params }) {
 
       <main style={{ width: '100%', maxWidth: '400px', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', zIndex: 1 }}>
         
-        {/* Profile Picture (Pushed down if cover photo exists so it overlaps exactly on the curve) */}
+        {/* Profile Picture (Keeps the 4px solid border and overlaps the cover photo) */}
         {profile.profile_picture_url ? (
-          <img src={profile.profile_picture_url} alt="Profile" style={{ width: '120px', height: '120px', borderRadius: '50%', objectFit: 'cover', marginBottom: '22px', boxShadow: '0 10px 30px rgba(0,0,0,0.3)', marginTop: profile.cover_photo_url ? '80px' : '0' }} />
+          <img src={profile.profile_picture_url} alt="Profile" style={{ width: '120px', height: '120px', borderRadius: '50%', objectFit: 'cover', border: `4px solid ${textColor === 'white' ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.1)'}`, marginBottom: '22px', boxShadow: '0 10px 30px rgba(0,0,0,0.3)', marginTop: profile.cover_photo_url ? '80px' : '0' }} />
         ) : (
-          <div style={{ width: '100px', height: '100px', borderRadius: '50%', backgroundColor: `${textColor === 'white' ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)'}`, display: 'flex', justifyContent: 'center', alignItems: 'center', fontSize: '40px', fontWeight: '800', marginBottom: '22px', marginTop: profile.cover_photo_url ? '80px' : '0' }}>
+          <div style={{ width: '100px', height: '100px', borderRadius: '50%', backgroundColor: `${textColor === 'white' ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)'}`, border: `4px solid ${textColor === 'white' ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.1)'}`, display: 'flex', justifyContent: 'center', alignItems: 'center', fontSize: '40px', fontWeight: '800', marginBottom: '22px', marginTop: profile.cover_photo_url ? '80px' : '0' }}>
             {(profile.display_name || profile.username).charAt(0)}
           </div>
         )}
@@ -302,8 +301,9 @@ export default function PublicProfilePage({ params }) {
         </div>
       </main>
 
+      {/* Floating Action Button (Now smoothly disappears on scroll) */}
       {showBranding && (
-        <a href="https://linksupply.co.uk" className="branding-floater">
+        <a href="https://linksupply.co.uk" className="branding-floater" style={{ opacity: isAtBottom ? 0 : 1, pointerEvents: isAtBottom ? 'none' : 'auto' }}>
           <span style={{ fontSize: '16px' }}>⚡</span>
           <span>Get your free digital profile</span>
         </a>
