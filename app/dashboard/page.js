@@ -340,10 +340,10 @@ export default function PremiumDashboard() {
     }
   };
 
-  // 🔥 NEW: Optimized handleSaveProfile for Auto-Saving and Dynamic Visual Feedback
-  const handleSaveProfile = async (overrideProfile = null) => {
-    // Allows the child component to pass in real-time data so we don't accidentally save stale state
-    const dataToSave = overrideProfile || pageProfile;
+// 🔥 NEW: Optimized handleSaveProfile for Auto-Saving and Dynamic Visual Feedback
+  const handleSaveProfile = async (incomingData = null) => {
+    // SAFETY FIX: Ignore the React click event, use actual profile data
+    const dataToSave = (incomingData && !incomingData.nativeEvent) ? incomingData : pageProfile;
     
     // Instantly trigger the "Saving..." state to lock the button and show the wait spinner
     setSaveStatus({ ...saveStatus, profile: 'Saving...' })
