@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { createClient } from '../../../utils/supabase/client'
 import { notFound } from 'next/navigation'
 
@@ -58,16 +58,12 @@ export default function PublicProfilePage({ params }) {
   // Scroll listener to smoothly hide the floating button before it touches the footer
   useEffect(() => {
     const handleScroll = () => {
-      // Calculate exactly how close the user is to the absolute bottom of the page
       const distToBottom = document.body.scrollHeight - (window.scrollY + window.innerHeight);
-      // If they are within 80 pixels of the bottom, hide the floater
       setIsAtBottom(distToBottom < 80);
     };
     
     window.addEventListener('scroll', handleScroll, { passive: true });
     window.addEventListener('resize', handleScroll);
-    
-    // Initial check right after load
     setTimeout(handleScroll, 100);
     
     return () => {
@@ -83,6 +79,11 @@ export default function PublicProfilePage({ params }) {
   const textColor = getContrastColor(baseColor);
   
   const showBranding = profile.tier === 'free' || !profile.remove_branding;
+
+  // 🔥 NEW: High-contrast values specifically for the top action buttons
+  const actionBg = textColor === 'white' ? 'rgba(0, 0, 0, 0.4)' : 'rgba(255, 255, 255, 0.8)';
+  const actionBorder = textColor === 'white' ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.1)';
+  const actionColor = textColor === 'white' ? '#ffffff' : '#111111';
 
   if (profile.profile_status === 'coming_soon') {
     return (
@@ -110,8 +111,6 @@ export default function PublicProfilePage({ params }) {
     )
   }
 
-  const showContactBtn = profile.show_save_contact !== false;
-  
   const handleSaveContact = (e) => {
     e.preventDefault();
     const vcard = `BEGIN:VCARD\r\nVERSION:3.0\r\nFN:${profile.display_name || profile.username}\r\nTITLE:${profile.job_title || ''}\r\nORG:${profile.company || ''}\r\nTEL;TYPE=CELL:${profile.phone_number || ''}\r\nEMAIL;TYPE=WORK:${profile.display_email || ''}\r\nURL:https://linksupply.co.uk/u/${profile.username}\r\nEND:VCARD`;
@@ -152,7 +151,6 @@ export default function PublicProfilePage({ params }) {
       color: textColor, position: 'relative', overflowX: 'hidden' 
     }}>
       
-      {/* Facebook-style Cover Photo */}
       {profile.cover_photo_url && (
         <div style={{
           position: 'absolute',
@@ -170,7 +168,6 @@ export default function PublicProfilePage({ params }) {
       )}
 
       <style>{`
-        /* FIX 1: Kills the default browser margin/border completely */
         body, html { margin: 0 !important; padding: 0 !important; }
         
         * { box-sizing: border-box; }
@@ -199,16 +196,13 @@ export default function PublicProfilePage({ params }) {
         .contact-btn:hover { transform: translateY(-2px); box-shadow: 0 12px 28px -8px rgba(0,0,0,0.4); }
         .contact-btn:active { transform: scale(0.96); box-shadow: 0 4px 12px -4px rgba(0,0,0,0.3); }
 
-        .action-trigger {
-          position: absolute; top: 20px; width: 44px; height: 44px;
-          display: flex; align-items: center; justify-content: center;
-          background: ${textColor === 'white' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'}; 
-          border: 1px solid ${textColor === 'white' ? 'rgba(255, 255, 255, 0.15)' : 'rgba(0, 0, 0, 0.1)'};
-          border-radius: 50%; cursor: pointer; backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
-          z-index: 10; color: ${textColor}; transition: transform 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
+        .action-btn {
+          transition: transform 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
         }
-        .action-trigger:active { transform: scale(0.92); }
-        
+        .action-btn:active {
+          transform: scale(0.92);
+        }
+
         .qr-modal {
           position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 9999;
           background-color: rgba(0,0,0,0.7); display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -244,7 +238,12 @@ export default function PublicProfilePage({ params }) {
         }
       `}</style>
 
-      <div onClick={() => setShowQr(true)} className="action-trigger" style={{ left: '20px' }}>
+      {/* NEW PREMIUM ACTION BUTTONS */}
+      <div 
+        onClick={() => setShowQr(true)} 
+        className="action-btn" 
+        style={{ position: 'absolute', top: '20px', left: '20px', width: '44px', height: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: actionBg, border: actionBorder, borderRadius: '50%', cursor: 'pointer', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', zIndex: 10, color: actionColor, boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}
+      >
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <rect x="3" y="3" width="7" height="7"></rect>
           <rect x="14" y="3" width="7" height="7"></rect>
@@ -253,13 +252,16 @@ export default function PublicProfilePage({ params }) {
         </svg>
       </div>
 
-      <div onClick={handleShare} className="action-trigger" style={{ right: '20px' }}>
+      <div 
+        onClick={handleShare} 
+        className="action-btn" 
+        style={{ position: 'absolute', top: '20px', right: '20px', width: '44px', height: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: actionBg, border: actionBorder, borderRadius: '50%', cursor: 'pointer', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', zIndex: 10, color: actionColor, boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}
+      >
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
       </div>
 
       <main style={{ width: '100%', maxWidth: '400px', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', zIndex: 1 }}>
         
-        {/* Profile Picture */}
         {profile.profile_picture_url ? (
           <img src={profile.profile_picture_url} alt="Profile" style={{ width: '120px', height: '120px', borderRadius: '50%', objectFit: 'cover', border: `4px solid ${textColor === 'white' ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.1)'}`, marginBottom: '22px', boxShadow: '0 10px 30px rgba(0,0,0,0.3)', marginTop: profile.cover_photo_url ? '80px' : '0' }} />
         ) : (
@@ -308,7 +310,6 @@ export default function PublicProfilePage({ params }) {
         </div>
       </main>
 
-      {/* FIX 2: Floating button perfectly fades out when it gets close to the bottom */}
       {showBranding && (
         <a 
           href="https://linksupply.co.uk" 
@@ -365,7 +366,6 @@ export default function PublicProfilePage({ params }) {
             <h3 style={{ margin: '0 0 5px 0', fontSize: '20px', fontWeight: '800', color: '#111' }}>@{profile.username}</h3>
             <p style={{ margin: 0, fontSize: '14px', color: '#6b7280', fontWeight: '500' }}>Scan to view profile</p>
             
-            {/* NEW: LinkSupply Logo inside the QR Modal */}
             <a href="https://linksupply.co.uk" target="_blank" rel="noreferrer" style={{ marginTop: '25px', display: 'flex', alignItems: 'center', gap: '5px', textDecoration: 'none', color: '#111', opacity: 0.4, fontSize: '13px', fontWeight: '700', transition: 'opacity 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.opacity = '0.8'} onMouseLeave={(e) => e.currentTarget.style.opacity = '0.4'}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
